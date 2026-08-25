@@ -57,6 +57,47 @@ coerced into UUIDs.
 `token_snapshots` exists because an experiment needs measurements *at a point in
 time*; the latest value on `tokens` is a convenience, not evidence.
 
+## Observation (PHASE 3)
+
+```
+ObservationSource ─▶ window ─▶ filter ─▶ detectors ─▶ scoring ─▶ observation + anomalies
+                                  │                                    │
+                            named drop reasons                   events, memory, agent_run
+```
+
+`app/providers/source.py` defines `ObservationSource`, one level above the raw
+RPC/API providers: the pipeline consumes normalized measurements over time, not
+RPC calls. Today the only implementation reads the synthetic time series; a live
+implementation fills the same interface later and the pipeline does not change.
+
+**Windows.** A window is a trailing series plus the newest measurement. Nothing is
+interpolated: a field missing from a snapshot is missing from the series, and a
+detector that needs it returns no verdict.
+
+**Filter.** Cheap gates run before any scoring: minimum history, minimum liquidity,
+minimum holders, and a cooldown that treats a repeat of the same anomaly on the same
+subject as a duplicate. Standing conditions (survival, cluster appearance) get a
+24-hour cooldown because they describe a state that persists, not an event.
+
+**Detectors.** Ten deterministic functions (`DETECTOR_NAMES`), each returning the
+baseline it compared against, the measurement that fired it, and the thresholds it
+used. Same window in, same verdict out. Scores are bounded to [0.1, 1.0] — a fired
+detector that reported 0.00 would read as a bug.
+
+**Scoring.** `novelty` is 1 − max cosine against recent observations (the memory
+embedder, reused). `importance` is 0.6 × strongest anomaly + 0.4 × a bounded log of
+liquidity. `confidence` is the completeness of the measurement — confidence in the
+data, not in a conclusion.
+
+**Anchoring.** The window ends at `as_of`, defaulting to the newest measurement the
+source has rather than the wall clock. A frozen dataset stays observable, and
+`run_backfill` walks the series hour by hour exactly the way a live loop would.
+
+**Output.** An `Observation` (+ `Anomaly` rows), a `SystemEvent` per observation and
+per anomaly, a memory entry when importance clears the floor, and one `AgentRun` row
+per cycle with `model=null` and `estimated_cost_usd=0.0` — because nothing was
+called, not because nothing was measured.
+
 ## Memory (PHASE 2)
 
 `app/services/memory.py` exposes five operations:

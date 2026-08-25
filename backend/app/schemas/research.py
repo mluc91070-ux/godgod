@@ -14,11 +14,32 @@ class AnomalyOut(ORMModel):
     observation_id: str | None
     anomaly_type: str
     detector: str
+    """Name and version of the deterministic detector that fired."""
     score: float | None
     baseline: dict | None
+    """Includes the thresholds used, so the call can be re-checked later."""
     measured: dict | None
     detected_at: datetime
     is_demo: bool
+
+
+class RunReportOut(ORMModel):
+    """Outcome of one or more pipeline cycles."""
+
+    as_of: datetime | None = None
+    cycles: int = 1
+    subjects_examined: int = 0
+    dropped: dict[str, int] = Field(default_factory=dict)
+    """Why candidates were rejected before any scoring — the cost gate at work."""
+    observations_created: int = 0
+    anomalies_created: int = 0
+    memories_written: int = 0
+    events_emitted: int = 0
+    snapshots_ingested: int = 0
+    posts_ingested: int = 0
+    duration_ms: int = 0
+    llm_calls: int = 0
+    """Always 0 in PHASE 3: the pipeline is deterministic end to end."""
 
 
 class ObservationOut(ORMModel):

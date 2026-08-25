@@ -13,6 +13,18 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def as_utc(value: datetime | None) -> datetime | None:
+    """Normalize a timestamp for comparison.
+
+    SQLite has no timezone type and hands back naive datetimes, while the
+    application works in aware UTC. Comparing the two directly always says
+    "different", which silently breaks any dedupe keyed on a timestamp.
+    """
+    if value is None:
+        return None
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
 def new_id() -> str:
     return str(uuid.uuid4())
 

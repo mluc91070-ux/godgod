@@ -19,17 +19,21 @@ from app.models import (
     SystemEvent,
 )
 from app.providers.registry import describe_providers
+from app.providers.source import get_observation_source
 from app.schemas.common import (
     HealthResponse,
     LiveResponse,
     MemoryInfo,
     ModeInfo,
     Page,
+    PipelineInfo,
     StatusResponse,
 )
 from app.schemas.research import AgentOut, AgentRunOut, EventOut, MetricsResponse, SourceOut
 from app.services.embeddings import get_embedding_provider
 from app.services.memory import dialect_name
+from app.services.observation.detectors import DETECTOR_NAMES
+from app.services.observation.pipeline import PIPELINE_RUN_NAME
 from app.services.state import get_counts, get_live, get_state
 
 
@@ -55,7 +59,23 @@ AUTONOMY_LABELS = {
     4: "FUTURE EXPERIMENTAL ACTIONS",
 }
 
-CURRENT_PHASE = "PHASE 2 — memory (store, embed, rank, cluster, digest)"
+CURRENT_PHASE = "PHASE 3 — observation (filter, score, detect anomalies; no model in the loop)"
+
+
+async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> PipelineInfo:
+    source = get_observation_source()
+    last_run = await session.scalar(
+        select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == PIPELINE_RUN_NAME)
+    )
+    return PipelineInfo(
+        implemented=True,
+        source=source.name,
+        source_is_demo=source.is_demo,
+        window_hours=settings.observation_window_hours,
+        detectors=sorted(DETECTOR_NAMES),
+        llm_in_loop=False,
+        last_run_at=last_run,
+    )
 
 
 @router.get("/health", response_model=HealthResponse, include_in_schema=True)
@@ -85,6 +105,7 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
             external_content_is_untrusted=settings.external_content_is_untrusted,
         ),
         memory=describe_memory(session, settings),
+        pipeline=await describe_pipeline(session, settings),
         providers=describe_providers(settings),
         counts=await get_counts(session),
         server_time=datetime.now(UTC),

@@ -70,6 +70,15 @@ export type Status = {
     semantic: boolean;
     backend: string;
   };
+  pipeline: {
+    implemented: boolean;
+    source: string;
+    source_is_demo: boolean;
+    window_hours: number;
+    detectors: string[];
+    llm_in_loop: boolean;
+    last_run_at: string | null;
+  };
   providers: { name: string; configured: boolean; implemented: boolean; note: string | null }[];
   counts: Record<string, number>;
   server_time: string;
@@ -77,12 +86,14 @@ export type Status = {
 
 export type Anomaly = {
   id: string;
+  observation_id: string | null;
   anomaly_type: string;
   detector: string;
   score: number | null;
   baseline: Record<string, unknown> | null;
   measured: Record<string, unknown> | null;
   detected_at: string;
+  is_demo: boolean;
 };
 
 export type Observation = {

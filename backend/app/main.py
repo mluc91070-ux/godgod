@@ -45,6 +45,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             result = await seed_demo(session)
         logger.info("demo seed: %s", result)
 
+    if settings.demo_mode and os.getenv("GODGOD_AUTO_OBSERVE", "1") == "1":
+        # Replay the synthetic series once so the demo shows observations the
+        # pipeline actually produced, rather than hand-written ones.
+        from sqlalchemy import func, select
+
+        from app.models import AgentRun
+        from app.services.observation import run_backfill
+        from app.services.observation.pipeline import PIPELINE_RUN_NAME
+
+        async with get_sessionmaker()() as session:
+            already = await session.scalar(
+                select(func.count())
+                .select_from(AgentRun)
+                .where(AgentRun.agent_name == PIPELINE_RUN_NAME)
+            )
+            if not already:
+                reports = await run_backfill(session, settings=settings)
+                logger.info(
+                    "observation backfill: %s cycles, %s observations, %s anomalies",
+                    len(reports),
+                    sum(report.observations_created for report in reports),
+                    sum(report.anomalies_created for report in reports),
+                )
+
     logger.info(
         "GODGOD %s starting | demo=%s autonomy=%s x_mode=%s",
         settings.app_version,

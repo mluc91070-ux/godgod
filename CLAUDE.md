@@ -27,8 +27,11 @@ backend/.venv/Scripts/python -m ruff check backend tests scripts
 backend/.venv/Scripts/python scripts/seed_demo.py --force      # reload fixtures
 backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
+backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
+backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
+cd backend && .venv/Scripts/python -m app.workers.observe [--backfill]
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 cd backend && .venv/Scripts/python -m alembic upgrade head
 cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"
@@ -119,6 +122,25 @@ Lowercase, short lines. Never a corporate chatbot, never crypto Twitter.
 Good: "i found an anomaly." / "i don't have enough data." / "i was wrong."
 Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 
+## Observation rules
+
+- The pipeline is deterministic and must stay that way. If you find yourself
+  wanting a model inside `app/services/observation/`, the answer is a detector,
+  a threshold, or a new field — not a prompt.
+- A detector returns `None` when it cannot measure. Never substitute a zero, a
+  default or a previous value for a missing measurement.
+- Every anomaly records its detector name **with a version suffix** and the
+  thresholds it used. Changing a threshold means bumping the detector version,
+  not silently editing a constant: old anomalies must stay interpretable.
+- A detector that fires scores at least 0.1 (`strength()`), because a reported
+  anomaly with score 0.00 reads as a bug.
+- Every dropped candidate is counted under a named reason in `RunReport.dropped`.
+  Silent filtering makes "found nothing" indistinguishable from "looked at nothing".
+- New detector → add it to `DETECTOR_NAMES`, give it a target in the synthetic
+  dataset, and add a case proving it stays silent on the FLAT control.
+- The window ends at `as_of`, never at the wall clock. That is what makes a
+  frozen dataset observable and a backfill equivalent to a live loop.
+
 ## Memory rules
 
 - Everything written to memory goes through `app/services/memory.store_memory`.
@@ -136,9 +158,10 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 
 ## Phases
 
-PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation · 4 hypothesis · 5 experiment ·
-6 critic · 9 live terminal · 10 public research pages, then the external
-integrations last: 7 X provider · 8 Solana provider · model calls · 11 production.
+PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ·
+5 experiment · 6 critic · 9 live terminal · 10 public research pages, then the
+external integrations last: 7 X provider · 8 Solana provider · model calls ·
+11 production.
 
 **External APIs come last by decision.** Until then, every engine is built against
 fixtures and deterministic logic, behind the provider interfaces, so wiring a key

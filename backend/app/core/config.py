@@ -84,6 +84,25 @@ class Settings(BaseSettings):
     the embedder changes — it is a property of the embedder, not a taste.
     """
 
+    # --- observation pipeline (PHASE 3) -------------------------------
+    observation_window_hours: int = 6
+    """Trailing window each detector compares its latest measurement against."""
+
+    observation_min_snapshots: int = 6
+    observation_min_liquidity_usd: float = 5_000.0
+    observation_min_holders: int = 50
+    """Deterministic floors. A subject below them is dropped before any
+    scoring — this is the cheap gate that keeps model cost bounded."""
+
+    observation_novelty_floor: float = 0.55
+    """A candidate with no anomaly is only recorded if it is this novel."""
+
+    observation_memory_importance_floor: float = 0.5
+    """Below this, an observation is stored but not written to memory."""
+
+    observation_cooldown_minutes: int = 180
+    """Same subject + same anomaly type inside this window is a duplicate."""
+
     # --- cost control -------------------------------------------------
     llm_daily_budget_usd: float = 3.0
     memory_retrieval_limit: int = 20

@@ -56,6 +56,19 @@ class MemoryInfo(BaseModel):
     """"pgvector" or "python-scan" — how ranking is performed."""
 
 
+class PipelineInfo(BaseModel):
+    """The observation stage: what it reads and whether a model is in the loop."""
+
+    implemented: bool
+    source: str
+    source_is_demo: bool
+    window_hours: int
+    detectors: list[str]
+    llm_in_loop: bool
+    """False in PHASE 3. Every observation carries llm_reviewed=False."""
+    last_run_at: datetime | None
+
+
 class CountsInfo(BaseModel):
     observations: int
     anomalies: int
@@ -76,6 +89,7 @@ class StatusResponse(BaseModel):
     state: str
     mode: ModeInfo
     memory: MemoryInfo
+    pipeline: PipelineInfo
     providers: list[ProviderStatus]
     counts: CountsInfo
     server_time: datetime

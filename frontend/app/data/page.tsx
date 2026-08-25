@@ -83,6 +83,29 @@ export default async function DataPage() {
             />
           </Section>
 
+          <Section title="observation pipeline">
+            <Field k="source" v={status.data.pipeline.source} />
+            <Field
+              k="source kind"
+              v={status.data.pipeline.source_is_demo ? "synthetic fixtures" : "live"}
+            />
+            <Field k="window" v={`${status.data.pipeline.window_hours}h`} />
+            <Field k="detectors" v={status.data.pipeline.detectors.join(", ")} />
+            <Field
+              k="model in the loop"
+              v={
+                status.data.pipeline.llm_in_loop ? (
+                  "yes"
+                ) : (
+                  <span className="text-muted">
+                    no — detection is deterministic, thresholds are recorded on every anomaly
+                  </span>
+                )
+              }
+            />
+            <Field k="last run" v={fmtTime(status.data.pipeline.last_run_at)} />
+          </Section>
+
           <Section title="stored rows">
             {Object.entries(status.data.counts).map(([key, value]) => (
               <Field key={key} k={key} v={String(value)} />

@@ -19,11 +19,12 @@ export default function DocsPage() {
         </p>
       </Section>
 
-      <Section title="what runs today" note="PHASE 1–2">
+      <Section title="what runs today" note="PHASE 1–3">
         <ul className="space-y-1 text-muted">
           <li>— database schema and migrations for the full research chain</li>
           <li>— read API over observations, hypotheses, experiments, traces, patterns, memory</li>
           <li>— memory: store, embed, rank by cosine, neighbours, cluster, digest</li>
+          <li>— observation pipeline: ingest, filter, score, ten anomaly detectors</li>
           <li>— demo mode serving fixtures, every row flagged is_demo</li>
           <li>— draft approval with an operator token; publishing deliberately refuses</li>
           <li>— this frontend</li>
@@ -32,13 +33,27 @@ export default function DocsPage() {
 
       <Section title="what does not run yet">
         <ul className="space-y-1 text-muted">
-          <li>— PHASE 3–6 observer, hypothesis, experiment and critic engines</li>
+          <li>— PHASE 4–6 hypothesis, experiment and critic engines</li>
           <li>— every external integration: model calls, X, Solana RPC (scheduled last)</li>
           <li>— PHASE 9 SSE streaming; the terminal is polled on load</li>
         </ul>
         <p className="mt-4 text-muted">
           Anything not in the first list is not implemented. The API reports the same thing at{" "}
           <code className="text-bone">/api/status</code>.
+        </p>
+      </Section>
+
+      <Section title="about the observation pipeline">
+        <p className="text-muted">
+          Detection is deterministic: ten threshold-based detectors over trailing windows of
+          measurements. Every anomaly records the detector version, the baseline it compared
+          against and the thresholds it used, so any call can be re-checked. Nothing here is a
+          judgement call by a model — the model layer, when it arrives, only sees what these
+          filters already decided was worth looking at.
+        </p>
+        <p className="mt-3 text-muted">
+          A detector that cannot measure a field returns no verdict rather than assuming a zero,
+          and every dropped candidate is counted under a named reason.
         </p>
       </Section>
 

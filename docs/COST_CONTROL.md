@@ -24,8 +24,20 @@ threshold can reject for free.
 
 Every observation carries `novelty_score`, `importance` and `confidence`. Only
 observations that clear those bars may trigger reasoning. `llm_reviewed` on the
-observation row records whether a model was ever involved — in PHASE 1 it is
-`false` everywhere, because no model has been called.
+observation row records whether a model was ever involved — it is `false`
+everywhere today, because no model has been called.
+
+**Measured on the demo dataset (PHASE 3).** One full replay of the 24-hour synthetic
+series: 18 cycles, 108 subject-examinations, **134 candidates dropped**, 9
+observations recorded, 11 anomalies, 5 memories written, **0 model calls**, about
+1.6 seconds total. Every rejection is counted under a named reason
+(`insufficient_history`, `below_liquidity_floor`, `duplicate_anomaly`,
+`not_novel_no_anomaly`, …) and returned in the run report, so the filter's work is
+visible rather than assumed.
+
+That ratio is the whole argument: if all 108 examinations had gone to a model at
+even a fraction of a cent each, a single day of six tokens would cost more than the
+month's budget for the entire system.
 
 ## Mechanisms
 

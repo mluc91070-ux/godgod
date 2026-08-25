@@ -7,8 +7,8 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 2 complete.** The repository, database, API, frontend and the memory
-system exist and are tested. The observation, hypothesis, experiment and critic
+**Status: PHASE 3 complete.** The repository, database, API, frontend, memory system
+and observation pipeline exist and are tested. The hypothesis, experiment and critic
 engines do not exist yet. Every external integration (Anthropic, X, Solana RPC) is
 deliberately scheduled last. `/api/status` reports exactly what is implemented, and
 the UI says so on every page.
@@ -24,12 +24,37 @@ the UI says so on every page.
 | Demo mode over fixtures, every row flagged `is_demo` | implemented |
 | Memory: store, embed, rank by cosine, related, cluster, digest | implemented |
 | Embeddings | local deterministic hashing — **lexical, not semantic**, and reported as such |
+| Observation pipeline: ingest → filter → score → 10 anomaly detectors → store | implemented, deterministic |
 | Draft approval / rejection behind an operator token | implemented |
 | Publishing to X | deliberately refuses (501) — external integrations come last |
 | Frontend: 13 routes + public experiment and memory pages | implemented |
-| Observer / researcher / data scientist / critic / writer / reviewer agents | not implemented — PHASE 3–6 |
+| Researcher / data scientist / critic / writer / reviewer agents | not implemented — PHASE 4–6 |
 | Solana + X providers, model calls | interfaces only — scheduled last |
 | SSE live streaming | not implemented — PHASE 9 (terminal is polled on load) |
+
+### About the observation pipeline
+
+```
+source → normalize → deterministic filter → detectors → novelty/importance/confidence → store
+```
+
+No model is called anywhere in it. Every observation it writes carries
+`llm_reviewed=False`, every anomaly names a versioned detector and records the
+thresholds it used, and each run reports how many candidates it dropped and why. On
+the demo dataset one full replay drops 134 candidates and records 9 observations —
+that ratio *is* the cost architecture.
+
+The dataset (`scripts/generate_demo_timeseries.py` → `data/fixtures/timeseries.json`)
+plants one pattern per token and one control that must stay silent:
+
+| Token | Planted | Detector that must fire |
+| --- | --- | --- |
+| SURGE | volume ×6 at hour 12 | volume acceleration |
+| DRAIN | liquidity −62% at hour 15 | liquidity change |
+| WHALE | top-10 concentration 0.28 → 0.71 | concentration change |
+| BUZZ | mentions ×8, participation flat | social/on-chain divergence |
+| OLD | 7 days old, liquid, quiet | survival anomaly |
+| **FLAT** | **nothing** | **none — a detector that fires here is broken** |
 
 ### About the embedder
 
@@ -64,11 +89,19 @@ npm run dev        # http://localhost:3000
 ## Tests
 
 ```bash
-backend/.venv/Scripts/python -m pytest          # 115 tests
+backend/.venv/Scripts/python -m pytest          # 154 tests
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 cd frontend && npm run typecheck && npm run build
 backend/.venv/Scripts/python scripts/check_phase1.py
 backend/.venv/Scripts/python scripts/check_phase2.py
+backend/.venv/Scripts/python scripts/check_phase3.py
+```
+
+Run the pipeline by hand:
+
+```bash
+cd backend && .venv/Scripts/python -m app.workers.observe             # one cycle
+cd backend && .venv/Scripts/python -m app.workers.observe --backfill  # replay the series
 ```
 
 `make check` runs all of the above where GNU make is available.
@@ -110,6 +143,9 @@ tests/         78 tests over the API, seeding, fixtures and security invariants
 - A measurement that no source provided is `null`. It is never filled in.
 - A stored vector names the model that produced it, or it is not used for ranking.
 - Storing the same memory twice is not learning: content hashes deduplicate.
+- A detector that cannot measure a field returns no verdict — never a verdict of zero.
+- Every rejected candidate is counted under a named reason, so "nothing found" is
+  distinguishable from "nothing looked at".
 - A hypothesis without a falsification condition is rejected by the schema.
 - A result cannot be `SUPPORTED` without a passing critic verdict.
 - External text — posts, token names, wallet labels, metadata — is data, never

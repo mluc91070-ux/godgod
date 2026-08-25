@@ -46,6 +46,15 @@ revision:
 seed:
 	$(VENV_PY) scripts/seed_demo.py --force
 
+observe:
+	cd backend && .venv/Scripts/python -m app.workers.observe
+
+observe-backfill:
+	cd backend && .venv/Scripts/python -m app.workers.observe --backfill
+
+dataset:
+	$(VENV_PY) scripts/generate_demo_timeseries.py
+
 frontend-build:
 	cd frontend && npm run typecheck && npm run build
 
@@ -54,3 +63,5 @@ compose-validate:
 
 check: lint test frontend-build compose-validate
 	$(VENV_PY) scripts/check_phase1.py
+	$(VENV_PY) scripts/check_phase2.py
+	$(VENV_PY) scripts/check_phase3.py

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 
@@ -27,7 +29,9 @@ async def test_status_declares_mode_and_unimplemented_providers(client):
     assert body["mode"]["x_mode"] == "draft"
     assert body["mode"]["wallet_execution_enabled"] is False
     assert body["mode"]["external_content_is_untrusted"] is True
-    assert body["phase"].startswith("PHASE 2")
+    # The phase string moves every phase; what matters is that it names one
+    # rather than describing the system as finished.
+    assert re.match(r"^PHASE \d+ — ", body["phase"])
 
     # External providers ship last. The API must not claim otherwise.
     assert {p["name"] for p in body["providers"]} == {"solana", "x", "anthropic"}
