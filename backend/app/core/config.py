@@ -61,6 +61,29 @@ class Settings(BaseSettings):
     model_writer: str | None = None
     model_critic: str | None = None
 
+    # --- memory (PHASE 2) ---------------------------------------------
+    embedding_provider: Literal["local", "none"] = "local"
+    """"local" is a deterministic hashing embedder that needs no API key.
+    A learned model becomes available when the provider work lands."""
+
+    embedding_model: str = "local-hashing-v1"
+    """Recorded on every stored vector. A vector whose model is unknown is
+    a vector nobody can reproduce."""
+
+    embedding_dim: int = 1536
+    memory_scan_limit: int = 5000
+    """Rows loaded by the Python cosine fallback used when the database is
+    not PostgreSQL. PostgreSQL ranks with pgvector instead."""
+
+    memory_similarity_threshold: float = 0.12
+    """Minimum cosine for a hit to be returned.
+
+    Measured on the demo corpus with the local hashing embedder: unrelated
+    queries top out around 0.06 (hash collisions), while the weakest genuine
+    match scores about 0.15. 0.12 sits between the two. Re-measure this when
+    the embedder changes — it is a property of the embedder, not a taste.
+    """
+
     # --- cost control -------------------------------------------------
     llm_daily_budget_usd: float = 3.0
     memory_retrieval_limit: int = 20

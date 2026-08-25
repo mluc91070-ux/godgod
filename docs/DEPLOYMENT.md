@@ -39,7 +39,17 @@ cd backend && python -m alembic upgrade head
 
 The initial migration issues `CREATE EXTENSION IF NOT EXISTS vector` when it
 detects PostgreSQL, so the `memories.embedding` column is created as a real
-`vector(1536)`.
+`vector(1536)`; migration `0002` adds the HNSW `vector_cosine_ops` index that
+memory search orders against.
+
+> The pgvector ranking path has not been executed on the development machine
+> (no PostgreSQL available). The Python fallback is the tested one. Run
+> `scripts/check_phase2.py` against the Postgres instance after the first
+> deploy — it exercises search, related, cluster and digest end to end.
+
+If you change `EMBEDDING_MODEL`, run `python scripts/backfill_embeddings.py`.
+Search ignores vectors produced by a different model, so skipping the backfill
+makes memory look empty rather than wrong — quietly.
 
 Supabase works as-is: enable the `vector` extension in the dashboard, then point
 `DATABASE_URL` at the connection string.

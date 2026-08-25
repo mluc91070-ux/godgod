@@ -157,15 +157,49 @@ class MemoryOut(ORMModel):
     ref_id: str | None
     created_at: datetime
     is_demo: bool
+    embedding_model: str | None = None
+    has_vector: bool = False
+    access_count: int = 0
+
+
+class MemoryHitOut(ORMModel):
+    score: float
+    """Cosine similarity for vector search, 1.0 for a lexical match."""
+    memory: MemoryOut
 
 
 class MemorySearchResponse(ORMModel):
     query: str
     method: str
-    """PHASE 1 is lexical only. Vector search arrives in PHASE 2."""
+    vector: bool
     semantic: bool
-    items: list[MemoryOut]
+    """False while the only embedder is lexical. See docs/ARCHITECTURE.md."""
+    embedding_model: str | None
+    items: list[MemoryHitOut]
+    total_candidates: int
+    truncated: bool
+    is_demo: bool
+
+
+class MemoryClusterResponse(ORMModel):
+    seed_id: str
+    threshold: float
+    method: str
+    items: list[MemoryHitOut]
+    is_demo: bool
+
+
+class MemoryDigestResponse(ORMModel):
+    method: str
     total: int
+    with_vectors: int
+    by_type: dict[str, int]
+    recurring_terms: list[tuple[str, int]]
+    recent_failures: list[str]
+    sources: dict[str, int]
+    oldest_at: datetime | None
+    newest_at: datetime | None
+    note: str
     is_demo: bool
 
 

@@ -7,10 +7,11 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 1 complete.** The repository, database, API, frontend shell and demo
-mode exist and are tested. The observation, hypothesis, experiment and critic engines
-do not exist yet. `/api/status` reports exactly what is implemented, and the UI says so
-on every page.
+**Status: PHASE 2 complete.** The repository, database, API, frontend and the memory
+system exist and are tested. The observation, hypothesis, experiment and critic
+engines do not exist yet. Every external integration (Anthropic, X, Solana RPC) is
+deliberately scheduled last. `/api/status` reports exactly what is implemented, and
+the UI says so on every page.
 
 ---
 
@@ -18,16 +19,26 @@ on every page.
 
 | Capability | State |
 | --- | --- |
-| Database schema + migration for the full research chain (22 tables) | implemented |
+| Database schema + migrations for the full research chain (22 tables) | implemented |
 | Read API: observations, hypotheses, experiments, traces, patterns, memory, events, metrics | implemented |
 | Demo mode over fixtures, every row flagged `is_demo` | implemented |
+| Memory: store, embed, rank by cosine, related, cluster, digest | implemented |
+| Embeddings | local deterministic hashing — **lexical, not semantic**, and reported as such |
 | Draft approval / rejection behind an operator token | implemented |
-| Publishing to X | deliberately refuses (501) — PHASE 7 |
-| Frontend: 12 routes + public experiment pages | implemented |
-| Vector memory search | not implemented — PHASE 2 (search is lexical, and says so) |
+| Publishing to X | deliberately refuses (501) — external integrations come last |
+| Frontend: 13 routes + public experiment and memory pages | implemented |
 | Observer / researcher / data scientist / critic / writer / reviewer agents | not implemented — PHASE 3–6 |
-| Solana + X providers | interfaces only — PHASE 7–8 |
+| Solana + X providers, model calls | interfaces only — scheduled last |
 | SSE live streaming | not implemented — PHASE 9 (terminal is polled on load) |
+
+### About the embedder
+
+Memory ranks by cosine over vectors from a local hashing embedder: deterministic,
+free, and reproducible across machines. It matches **wording, not meaning** — so
+`semantic` is `false` everywhere it is reported, and it stays false until a learned
+model is wired in. The similarity threshold (0.12) was measured, not guessed: on the
+demo corpus unrelated queries top out near 0.06 and the weakest true match scores
+about 0.15.
 
 ## Quick start (no API keys, no Docker, no database server)
 
@@ -53,10 +64,11 @@ npm run dev        # http://localhost:3000
 ## Tests
 
 ```bash
-backend/.venv/Scripts/python -m pytest          # 78 tests
+backend/.venv/Scripts/python -m pytest          # 115 tests
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 cd frontend && npm run typecheck && npm run build
 backend/.venv/Scripts/python scripts/check_phase1.py
+backend/.venv/Scripts/python scripts/check_phase2.py
 ```
 
 `make check` runs all of the above where GNU make is available.
@@ -96,6 +108,8 @@ tests/         78 tests over the API, seeding, fixtures and security invariants
 ## Rules this codebase enforces
 
 - A measurement that no source provided is `null`. It is never filled in.
+- A stored vector names the model that produced it, or it is not used for ranking.
+- Storing the same memory twice is not learning: content hashes deduplicate.
 - A hypothesis without a falsification condition is rejected by the schema.
 - A result cannot be `SUPPORTED` without a passing critic verdict.
 - External text — posts, token names, wallet labels, metadata — is data, never

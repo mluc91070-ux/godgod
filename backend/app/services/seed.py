@@ -36,6 +36,7 @@ from app.models import (
     WalletCluster,
 )
 from app.services.fixtures import dataset_hash, load_fixture, parse_dt
+from app.services.memory import store_memory
 
 DEMO_TABLES = (
     PublishedPost,
@@ -379,19 +380,18 @@ async def _seed_memories(session: AsyncSession, ids: dict[str, dict[str, str]]) 
     data = load_fixture("memories.json")
     for item in data.get("memories", []):
         ref_type = item.get("ref_type")
-        session.add(
-            Memory(
-                memory_type=item["memory_type"],
-                content=item["content"],
-                summary=item.get("summary"),
-                meta=item.get("meta"),
-                source=item.get("source"),
-                confidence=item.get("confidence"),
-                ref_type=ref_type,
-                ref_id=ids.get(ref_type or "", {}).get(item.get("ref_key") or ""),
-                embedding=None,  # PHASE 2
-                is_demo=True,
-            )
+        await store_memory(
+            session,
+            memory_type=item["memory_type"],
+            content=item["content"],
+            summary=item.get("summary"),
+            meta=item.get("meta"),
+            source=item.get("source"),
+            confidence=item.get("confidence"),
+            ref_type=ref_type,
+            ref_id=ids.get(ref_type or "", {}).get(item.get("ref_key") or ""),
+            is_demo=True,
+            commit=False,
         )
     await session.flush()
 

@@ -1,7 +1,7 @@
 """Persistent research memory.
 
-Vector search is a PHASE 2 deliverable. The column exists so migrations are
-stable, but nothing in PHASE 1 writes or ranks embeddings.
+Vectors are written by `app.services.memory.store_memory` and ranked either
+by pgvector (PostgreSQL) or by a bounded Python cosine pass (SQLite).
 """
 
 from __future__ import annotations
@@ -28,7 +28,17 @@ class Memory(Entity):
     ref_type: Mapped[str | None] = mapped_column(String(32))
     ref_id: Mapped[str | None] = mapped_column(String(36), index=True)
 
+    content_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    """SHA-256 of the content. Storing the same memory twice is not learning."""
+
     embedding: Mapped[list[float] | None] = mapped_column(Embedding())
     embedding_model: Mapped[str | None] = mapped_column(String(128))
+    """Which embedder produced the vector. A vector with no named model
+    cannot be reproduced or compared, so it is not trusted for ranking."""
     access_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_accessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def has_vector(self) -> bool:
+        """The API reports this instead of shipping 1536 floats to a browser."""
+        return bool(self.embedding)

@@ -44,6 +44,18 @@ class ProviderStatus(BaseModel):
     note: str | None = None
 
 
+class MemoryInfo(BaseModel):
+    """What the memory subsystem can actually do right now."""
+
+    embedding_provider: str
+    embedding_model: str | None
+    embedding_dim: int
+    vector_search: bool
+    semantic: bool
+    backend: str
+    """"pgvector" or "python-scan" — how ranking is performed."""
+
+
 class CountsInfo(BaseModel):
     observations: int
     anomalies: int
@@ -63,6 +75,7 @@ class StatusResponse(BaseModel):
     phase: str
     state: str
     mode: ModeInfo
+    memory: MemoryInfo
     providers: list[ProviderStatus]
     counts: CountsInfo
     server_time: datetime

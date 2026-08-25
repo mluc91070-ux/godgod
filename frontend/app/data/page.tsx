@@ -64,6 +64,25 @@ export default async function DataPage() {
             ))}
           </Section>
 
+          <Section title="memory subsystem">
+            <Field k="embedding provider" v={status.data.memory.embedding_provider} />
+            <Field k="embedding model" v={status.data.memory.embedding_model} />
+            <Field k="dimensions" v={String(status.data.memory.embedding_dim)} />
+            <Field k="ranking backend" v={status.data.memory.backend} />
+            <Field
+              k="semantic"
+              v={
+                status.data.memory.semantic ? (
+                  "yes"
+                ) : (
+                  <span className="text-muted">
+                    no — the current embedder matches wording, not meaning
+                  </span>
+                )
+              }
+            />
+          </Section>
+
           <Section title="stored rows">
             {Object.entries(status.data.counts).map(([key, value]) => (
               <Field key={key} k={key} v={String(value)} />

@@ -48,8 +48,19 @@ async def test_experiment_records_a_real_dataset_hash(session, seeded):
     assert experiment.dataset_hash != "COMPUTED_AT_SEED"
 
 
-async def test_memories_have_no_fabricated_embeddings(session, seeded):
+async def test_seeded_memories_are_embedded_reproducibly(session, seeded):
+    """Vectors exist as of PHASE 2, and every one names the model that made it."""
+    from app.services.embeddings import get_embedding_provider
+
+    provider = get_embedding_provider()
     memories = (await session.scalars(select(Memory))).all()
-    assert all(memory.embedding is None for memory in memories), (
-        "embedding generation is PHASE 2; PHASE 1 must not invent vectors"
-    )
+    assert memories
+
+    for memory in memories:
+        assert memory.embedding is not None
+        assert len(memory.embedding) == provider.dim
+        assert memory.embedding_model == provider.name
+
+    sample = memories[0]
+    source_text = f"{sample.summary}\n{sample.content}" if sample.summary else sample.content
+    assert sample.embedding == provider.embed(source_text), "re-embedding must reproduce it"

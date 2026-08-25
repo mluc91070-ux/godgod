@@ -57,6 +57,37 @@ coerced into UUIDs.
 `token_snapshots` exists because an experiment needs measurements *at a point in
 time*; the latest value on `tokens` is a convenience, not evidence.
 
+## Memory (PHASE 2)
+
+`app/services/memory.py` exposes five operations:
+
+| Operation | What it does |
+| --- | --- |
+| `store_memory` | embeds, hashes and writes one memory; refuses exact duplicates |
+| `search_memory` | ranks by cosine (`mode="vector"`) or substring (`mode="lexical"`) |
+| `retrieve_related_memories` | neighbours of one memory, seed excluded |
+| `get_memory_cluster` | seed plus everything above a similarity threshold |
+| `summarize_memory` | structural digest: counts, recurring terms, recent failures |
+
+Ranking takes one of two paths, and always reports which one in `method`:
+
+- **PostgreSQL** → `ORDER BY embedding <=> :query` with an HNSW
+  `vector_cosine_ops` index (migration `0002`).
+- **anything else** → a bounded Python cosine pass over at most
+  `MEMORY_SCAN_LIMIT` rows, with `truncated: true` when the cap was hit.
+
+The embedder (`app/services/embeddings.py`) is a signed-hash bag of unigrams and
+bigrams, L2 normalized, built on blake2b so the same text produces the same vector
+on any machine forever. That property is what makes a stored vector reproducible —
+and it is why `embedding_model` is written next to every vector, and why
+`search_memory` ignores rows embedded by a different model.
+
+It is **lexical**: it matches wording, not meaning. `EmbeddingProvider.semantic`
+carries that fact into `/api/memory/search` and `/api/status`, and nothing may
+report `semantic: true` until a learned model is wired in. Swapping one in means
+implementing `EmbeddingProvider`, setting `EMBEDDING_MODEL`, and running
+`scripts/backfill_embeddings.py`.
+
 ## Portability
 
 `app/db/types.py` defines two column types:
@@ -84,7 +115,9 @@ random animation: a frozen system draws a frozen field.
 
 Read: `/health`, `/api/status`, `/api/live`, `/api/observations[/:id]`,
 `/api/hypotheses[/:id]`, `/api/experiments[/:id]`, `/api/traces[/:id]`,
-`/api/patterns`, `/api/memory`, `/api/memory/search`, `/api/events`,
+`/api/patterns`, `/api/memory[/:id]`, `/api/memory/search`,
+`/api/memory/:id/related`, `/api/memory/:id/cluster`, `/api/memory/summary`,
+`/api/events`,
 `/api/metrics`, `/api/agents`, `/api/agents/runs`, `/api/sources`,
 `/api/tokens[/:address]`, `/api/x/drafts`.
 
@@ -93,6 +126,11 @@ Write (operator token required): `/api/x/drafts/:id/approve`, `/reject`.
 
 ## Deferred by design
 
-SSE streaming (PHASE 9), embeddings and vector retrieval (PHASE 2), the six
-agents (PHASE 3–6), the live providers (PHASE 7–8). Each is reported as
-unimplemented by `/api/status` rather than stubbed with fake behaviour.
+SSE streaming (PHASE 9), the six agents (PHASE 3–6), the live providers and every
+model call (scheduled last, by decision). Each is reported as unimplemented by
+`/api/status` rather than stubbed with fake behaviour.
+
+One branch ships **unverified**: the pgvector ordering in `_rank_postgres`. No
+PostgreSQL instance was available on the development machine, so only the Python
+path is covered by tests. It is marked as such in the source, and a Postgres
+deployment exercises it on its first search.

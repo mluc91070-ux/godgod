@@ -25,7 +25,10 @@ system as it actually is.
 backend/.venv/Scripts/python -m pytest                         # tests
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 backend/.venv/Scripts/python scripts/seed_demo.py --force      # reload fixtures
-backend/.venv/Scripts/python scripts/check_phase1.py           # phase gate
+backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
+backend/.venv/Scripts/python scripts/check_phase2.py
+backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
+backend/.venv/Scripts/python scripts/validate_compose.py
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 cd backend && .venv/Scripts/python -m alembic upgrade head
 cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"
@@ -116,11 +119,30 @@ Lowercase, short lines. Never a corporate chatbot, never crypto Twitter.
 Good: "i found an anomaly." / "i don't have enough data." / "i was wrong."
 Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 
+## Memory rules
+
+- Everything written to memory goes through `app/services/memory.store_memory`.
+  It embeds, hashes and deduplicates; direct `Memory(...)` construction skips all
+  three.
+- A vector is only usable if its `embedding_model` matches the active provider.
+  Change the embedder → run `scripts/backfill_embeddings.py`, or memory silently
+  shrinks.
+- `semantic` is `False` while the embedder is lexical. Do not describe hashed
+  bag-of-terms cosine as semantic search in code, copy, or commit messages.
+- `MEMORY_SIMILARITY_THRESHOLD` is a measured property of the embedder (noise
+  floor vs weakest true match), not a preference. Re-measure it when the embedder
+  changes instead of nudging it to make a test pass.
+- Memory retrieval happens before hypothesis generation (enforced from PHASE 4).
+
 ## Phases
 
-PHASE 1 foundation ✅ · 2 memory · 3 observation · 4 hypothesis · 5 experiment ·
-6 critic · 7 X provider · 8 Solana provider · 9 live terminal · 10 public research
-pages · 11 production.
+PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation · 4 hypothesis · 5 experiment ·
+6 critic · 9 live terminal · 10 public research pages, then the external
+integrations last: 7 X provider · 8 Solana provider · model calls · 11 production.
+
+**External APIs come last by decision.** Until then, every engine is built against
+fixtures and deterministic logic, behind the provider interfaces, so wiring a key
+later changes configuration and not architecture.
 
 Do not start a phase before the previous one passes: inspect code, run tests, fix
 errors, update documentation, verify architecture, then continue.

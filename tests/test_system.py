@@ -27,13 +27,24 @@ async def test_status_declares_mode_and_unimplemented_providers(client):
     assert body["mode"]["x_mode"] == "draft"
     assert body["mode"]["wallet_execution_enabled"] is False
     assert body["mode"]["external_content_is_untrusted"] is True
-    assert body["phase"].startswith("PHASE 1")
+    assert body["phase"].startswith("PHASE 2")
 
-    # PHASE 1 ships interfaces, not clients. The API must not claim otherwise.
+    # External providers ship last. The API must not claim otherwise.
     assert {p["name"] for p in body["providers"]} == {"solana", "x", "anthropic"}
     assert all(p["implemented"] is False for p in body["providers"])
 
     assert body["counts"]["observations"] > 0
+
+
+async def test_status_describes_the_memory_subsystem(client):
+    memory = (await client.get("/api/status")).json()["memory"]
+
+    assert memory["vector_search"] is True
+    assert memory["embedding_provider"] == "local"
+    assert memory["embedding_model"] == "local-hashing-v1"
+    assert memory["embedding_dim"] == 1536
+    assert memory["backend"] == "python-scan", "pgvector is only used on PostgreSQL"
+    assert memory["semantic"] is False, "the local embedder is lexical"
 
 
 async def test_live_snapshot_reflects_stored_events(client):

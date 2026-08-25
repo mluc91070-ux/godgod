@@ -85,5 +85,16 @@ memecoins? what failed? what recurred? what assumptions changed? which
 experiments contradict each other? — from stored rows, not from the model's
 impression.
 
-PHASE 1 stores memory and searches it lexically. Vector retrieval is PHASE 2 and
-the API says `semantic: false` until then.
+As of PHASE 2 memory is stored with a vector, ranked by cosine, clustered by
+threshold and digested structurally. Two honesty constraints ride along:
+
+- The embedder is lexical, so `semantic: false` is reported everywhere. Ranking
+  by wording is useful — "regime" finds the regime lesson — but it will not find
+  a differently-worded version of the same idea, and the system must not pretend
+  it can.
+- The digest counts and quotes; it does not interpret. A written synthesis of
+  "what I have learned" requires a model, and that comes with the external
+  integrations.
+
+The consequence for research: when a hypothesis cites memory, it cites rows with
+ids and scores, not a summary someone might have imagined.

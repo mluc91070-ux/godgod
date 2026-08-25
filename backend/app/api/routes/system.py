@@ -19,9 +19,31 @@ from app.models import (
     SystemEvent,
 )
 from app.providers.registry import describe_providers
-from app.schemas.common import HealthResponse, LiveResponse, ModeInfo, Page, StatusResponse
+from app.schemas.common import (
+    HealthResponse,
+    LiveResponse,
+    MemoryInfo,
+    ModeInfo,
+    Page,
+    StatusResponse,
+)
 from app.schemas.research import AgentOut, AgentRunOut, EventOut, MetricsResponse, SourceOut
+from app.services.embeddings import get_embedding_provider
+from app.services.memory import dialect_name
 from app.services.state import get_counts, get_live, get_state
+
+
+def describe_memory(session: SessionDep, settings: SettingsDep) -> MemoryInfo:
+    provider = get_embedding_provider(settings)
+    vector_search = settings.embedding_provider != "none"
+    return MemoryInfo(
+        embedding_provider=settings.embedding_provider,
+        embedding_model=provider.name if vector_search else None,
+        embedding_dim=provider.dim,
+        vector_search=vector_search,
+        semantic=provider.semantic,
+        backend="pgvector" if dialect_name(session) == "postgresql" else "python-scan",
+    )
 
 router = APIRouter(tags=["system"])
 
@@ -33,7 +55,7 @@ AUTONOMY_LABELS = {
     4: "FUTURE EXPERIMENTAL ACTIONS",
 }
 
-CURRENT_PHASE = "PHASE 1 — foundation (repo, database, API, frontend shell, demo mode)"
+CURRENT_PHASE = "PHASE 2 — memory (store, embed, rank, cluster, digest)"
 
 
 @router.get("/health", response_model=HealthResponse, include_in_schema=True)
@@ -62,6 +84,7 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
             wallet_execution_enabled=settings.wallet_execution_enabled,
             external_content_is_untrusted=settings.external_content_is_untrusted,
         ),
+        memory=describe_memory(session, settings),
         providers=describe_providers(settings),
         counts=await get_counts(session),
         server_time=datetime.now(UTC),

@@ -62,6 +62,14 @@ export type Status = {
     wallet_execution_enabled: boolean;
     external_content_is_untrusted: boolean;
   };
+  memory: {
+    embedding_provider: string;
+    embedding_model: string | null;
+    embedding_dim: number;
+    vector_search: boolean;
+    semantic: boolean;
+    backend: string;
+  };
   providers: { name: string; configured: boolean; implemented: boolean; note: string | null }[];
   counts: Record<string, number>;
   server_time: string;
@@ -198,14 +206,48 @@ export type Memory = {
   ref_type: string | null;
   ref_id: string | null;
   created_at: string;
+  is_demo: boolean;
+  embedding_model: string | null;
+  has_vector: boolean;
+  access_count: number;
+};
+
+export type MemoryHit = {
+  score: number;
+  memory: Memory;
 };
 
 export type MemorySearch = {
   query: string;
   method: string;
+  vector: boolean;
   semantic: boolean;
-  items: Memory[];
+  embedding_model: string | null;
+  items: MemoryHit[];
+  total_candidates: number;
+  truncated: boolean;
+  is_demo: boolean;
+};
+
+export type MemoryCluster = {
+  seed_id: string;
+  threshold: number;
+  method: string;
+  items: MemoryHit[];
+  is_demo: boolean;
+};
+
+export type MemoryDigest = {
+  method: string;
   total: number;
+  with_vectors: number;
+  by_type: Record<string, number>;
+  recurring_terms: [string, number][];
+  recent_failures: string[];
+  sources: Record<string, number>;
+  oldest_at: string | null;
+  newest_at: string | null;
+  note: string;
   is_demo: boolean;
 };
 
