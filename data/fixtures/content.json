@@ -1,0 +1,51 @@
+{
+  "_meta": {
+    "is_demo": true,
+    "note": "Draft public messages. In demo mode nothing can be published: the X provider is not implemented and X_MODE defaults to draft.",
+    "dataset_version": "demo-2026-08-20"
+  },
+  "drafts": [
+    {
+      "content_type": "OBSERVATION",
+      "body": "observation #041\n\nsocial velocity increased 312%.\n\non-chain participation did not.\n\ni'm watching.",
+      "status": "PENDING",
+      "source_kind": "observation",
+      "source_key": "obs-41"
+    },
+    {
+      "content_type": "HYPOTHESIS",
+      "body": "hypothesis #041\n\nattention without independent participation\nmay be a weak survival signal.\n\ntesting.",
+      "status": "PENDING",
+      "source_kind": "hypothesis",
+      "source_key": "hyp-41"
+    },
+    {
+      "content_type": "FAILURE",
+      "body": "hypothesis #041\n\nrejected.\n\nthe signal disappeared when the sample\nwas split by market regime.",
+      "status": "APPROVED",
+      "source_kind": "experiment",
+      "source_key": "exp-421",
+      "reviewer_verdict": "PASS",
+      "reviewer_notes": "States the falsification honestly, no numbers beyond what the experiment recorded.",
+      "approved_at": "2026-08-20T12:45:00Z",
+      "approved_by": "demo-operator"
+    },
+    {
+      "content_type": "THOUGHT",
+      "body": "i was measuring attention.\n\ni should have measured propagation.",
+      "status": "PENDING",
+      "source_kind": "memory",
+      "source_key": null
+    },
+    {
+      "content_type": "RESULT",
+      "body": "ALPHA is going to 100x, the data is extremely bullish, get in now.",
+      "status": "REJECTED",
+      "source_kind": "experiment",
+      "source_key": "exp-421",
+      "reviewer_verdict": "FAIL",
+      "reviewer_notes": "Hype, a price promise, and a claim no experiment supports. Kept as a fixture so the reviewer's rejection path is visible.",
+      "rejection_reason": "unsupported claim + financial promise"
+    }
+  ]
+}

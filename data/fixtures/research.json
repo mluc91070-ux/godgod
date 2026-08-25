@@ -1,0 +1,259 @@
+{
+  "_meta": {
+    "is_demo": true,
+    "note": "Synthetic research chain used to exercise the API and the UI. No experiment here was run against real data; every row is flagged is_demo=true.",
+    "dataset_version": "demo-2026-08-20"
+  },
+  "sources": [
+    {
+      "kind": "FIXTURE",
+      "name": "godgod-demo-fixtures",
+      "url": null,
+      "description": "Local JSON fixtures shipped with the repository. The only data source available in demo mode.",
+      "reliability": null,
+      "last_used_at": "2026-08-20T12:41:02Z"
+    },
+    {
+      "kind": "RPC",
+      "name": "solana-rpc (not configured)",
+      "url": null,
+      "description": "Planned read-only RPC source. Not connected in PHASE 1.",
+      "reliability": null,
+      "last_used_at": null
+    }
+  ],
+  "observations": [
+    {
+      "key": "obs-41",
+      "seq": 41,
+      "kind": "DERIVED",
+      "summary": "social velocity for ALPHA rose 312% over 6h while on-chain participation stayed flat",
+      "subject_type": "token",
+      "subject_ref": "DEMO1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload": {
+        "social_velocity_change_pct": 3.12,
+        "unique_posters_6h": 37,
+        "unique_buyers_6h": 41,
+        "unique_buyers_prev_6h": 39,
+        "volume_change_pct": 0.07,
+        "holder_change_pct": 0.14,
+        "window_hours": 6
+      },
+      "novelty_score": 0.82,
+      "importance": 0.71,
+      "confidence": 0.6,
+      "observed_at": "2026-08-20T12:41:02Z",
+      "source": "godgod-demo-fixtures",
+      "llm_reviewed": false,
+      "anomalies": [
+        {
+          "anomaly_type": "SOCIAL_ONCHAIN_DIVERGENCE",
+          "detector": "divergence-detector v0 (fixture)",
+          "score": 0.78,
+          "baseline": {"social_velocity_z": 0.4, "buyer_velocity_z": 0.3},
+          "measured": {"social_velocity_z": 3.9, "buyer_velocity_z": 0.2},
+          "detected_at": "2026-08-20T12:41:04Z"
+        }
+      ]
+    },
+    {
+      "key": "obs-42",
+      "seq": 42,
+      "kind": "ONCHAIN",
+      "summary": "holder concentration for QUIET stayed above 0.60 for 7 consecutive hours",
+      "subject_type": "token",
+      "subject_ref": "DEMO2bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "payload": {
+        "holder_concentration_top10": 0.62,
+        "hours_above_threshold": 7,
+        "threshold": 0.6,
+        "holders": 214
+      },
+      "novelty_score": 0.34,
+      "importance": 0.4,
+      "confidence": 0.7,
+      "observed_at": "2026-08-20T12:10:00Z",
+      "source": "godgod-demo-fixtures",
+      "llm_reviewed": false,
+      "anomalies": []
+    },
+    {
+      "key": "obs-43",
+      "seq": 43,
+      "kind": "SOCIAL",
+      "summary": "one account produced 61% of all ALPHA mentions in the last hour",
+      "subject_type": "token",
+      "subject_ref": "DEMO1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "payload": {
+        "top_account_share": 0.61,
+        "mentions_1h": 23,
+        "unique_accounts_1h": 6
+      },
+      "novelty_score": 0.55,
+      "importance": 0.5,
+      "confidence": 0.65,
+      "observed_at": "2026-08-20T12:44:00Z",
+      "source": "godgod-demo-fixtures",
+      "llm_reviewed": false,
+      "anomalies": [
+        {
+          "anomaly_type": "SOCIAL_VELOCITY",
+          "detector": "velocity-detector v0 (fixture)",
+          "score": 0.51,
+          "baseline": {"mentions_1h_median": 4},
+          "measured": {"mentions_1h": 23},
+          "detected_at": "2026-08-20T12:44:03Z"
+        }
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "key": "hyp-41",
+      "seq": 41,
+      "origin_observation_key": "obs-41",
+      "statement": "Tokens whose social mention velocity rises above 3 standard deviations without a matching rise in unique buyers are less likely to still have liquidity above $10k seven days later than tokens whose social and buyer velocity rise together.",
+      "question": "Is attention without independent participation a weak survival signal?",
+      "variables": {
+        "independent": ["social_velocity_z", "unique_buyer_velocity_z"],
+        "dependent": ["liquidity_usd_at_day_7"],
+        "controls": ["token_age_at_detection", "launchpad", "market_regime"]
+      },
+      "population": "Solana tokens first observed within 24h of launch during the study window",
+      "sample_definition": "Tokens with at least 6h of continuous observation and at least 10 recorded social mentions",
+      "timeframe": "detection window 6h, outcome measured at day 7",
+      "baseline": "Tokens matched on age and launchpad whose social and buyer velocity rose together",
+      "expected_result": "Divergent-attention tokens show a lower 7-day liquidity survival rate than the matched baseline",
+      "falsification_condition": "Survival rates differ by less than 5 percentage points, or the difference does not hold when the sample is split by market regime",
+      "confidence": 0.35,
+      "status": "REJECTED"
+    },
+    {
+      "key": "hyp-42",
+      "seq": 42,
+      "origin_observation_key": "obs-42",
+      "statement": "Tokens holding top-10 holder concentration above 0.60 for more than 6 consecutive hours in their first day show a higher rate of liquidity withdrawal within 48h than tokens below that threshold.",
+      "question": "Does sustained early concentration precede liquidity withdrawal?",
+      "variables": {
+        "independent": ["hours_above_concentration_threshold"],
+        "dependent": ["liquidity_withdrawal_within_48h"],
+        "controls": ["initial_liquidity_usd", "launchpad"]
+      },
+      "population": "Solana tokens in their first 24h",
+      "sample_definition": "Tokens with at least 6 concentration measurements in the first day",
+      "timeframe": "first 24h for exposure, 48h for outcome",
+      "baseline": "Tokens whose concentration never exceeded 0.60",
+      "expected_result": "Higher withdrawal rate in the concentrated group",
+      "falsification_condition": "Withdrawal rates are within 3 percentage points, or the effect disappears when controlling for initial liquidity",
+      "confidence": 0.4,
+      "status": "PROPOSED"
+    }
+  ],
+  "experiments": [
+    {
+      "key": "exp-421",
+      "seq": 421,
+      "hypothesis_key": "hyp-41",
+      "title": "Attention/participation divergence vs 7-day liquidity survival",
+      "method": "Matched-cohort comparison. Tokens are labelled divergent when social velocity z-score exceeds 3 while unique-buyer velocity z-score stays below 1. Each divergent token is matched to a control on age bucket and launchpad. Survival is liquidity >= $10k at detection + 7 days. Significance by two-proportion z-test, then re-run split by market regime.",
+      "features": [
+        "social_velocity_z",
+        "unique_buyer_velocity_z",
+        "token_age_hours_at_detection",
+        "launchpad",
+        "market_regime"
+      ],
+      "parameters": {
+        "divergence_threshold_z": 3.0,
+        "participation_ceiling_z": 1.0,
+        "survival_liquidity_usd": 10000,
+        "match_on": ["age_bucket", "launchpad"]
+      },
+      "dataset_version": "demo-2026-08-20",
+      "dataset_hash": "COMPUTED_AT_SEED",
+      "sample_size": 96,
+      "train_period": "not applicable (no model fitted)",
+      "validation_period": "2026-08-06 to 2026-08-13",
+      "out_of_sample_period": "2026-08-13 to 2026-08-20",
+      "status": "COMPLETED",
+      "started_at": "2026-08-20T12:41:12Z",
+      "completed_at": "2026-08-20T12:41:18Z",
+      "limitations": "Demo fixture sample. 96 tokens is far below the size needed to split by market regime; the regime split leaves fewer than 30 tokens per cell.",
+      "results": [
+        {
+          "outcome": "REJECTED",
+          "summary": "The pooled difference in 7-day survival was 6 percentage points in the expected direction, but it did not survive the market-regime split: in the second regime the sign reversed. The pre-registered falsification condition was met, so the hypothesis is rejected.",
+          "metrics": {
+            "survival_rate_divergent": 0.29,
+            "survival_rate_control": 0.35,
+            "difference_pp": -6.0,
+            "regime_a_difference_pp": -11.0,
+            "regime_b_difference_pp": 4.0,
+            "n_divergent": 48,
+            "n_control": 48
+          },
+          "effect_size": -0.06,
+          "p_value": 0.41,
+          "confidence": 0.25,
+          "critic_verdict": "FAIL",
+          "critic_notes": "Sample size is insufficient for a subgroup analysis, and the divergence label was constructed from the same window used to detect the original anomaly. Result is reported as REJECTED per the falsification rule, but the underlying question remains open with a proper sample.",
+          "critic_checks": {
+            "sample_size": "FAIL",
+            "selection_bias": "NEEDS_MORE_DATA",
+            "look_ahead_bias": "PASS",
+            "data_leakage": "NEEDS_MORE_DATA",
+            "survivorship_bias": "NEEDS_MORE_DATA",
+            "multiple_testing": "FAIL",
+            "confounding": "NEEDS_MORE_DATA"
+          },
+          "limitations": "Fixture data. Not evidence about any real token."
+        }
+      ]
+    }
+  ],
+  "traces": [
+    {
+      "seq": 421,
+      "title": "attention without participation",
+      "hypothesis_key": "hyp-41",
+      "experiment_key": "exp-421",
+      "started_at": "2026-08-20T12:41:02Z",
+      "completed_at": "2026-08-20T12:41:21Z",
+      "steps": [
+        {"kind": "OBSERVATION", "summary": "social velocity +312%, buyer velocity flat", "ref_type": "observation", "ref_key": "obs-41", "occurred_at": "2026-08-20T12:41:02Z"},
+        {"kind": "ANOMALY", "summary": "SOCIAL_ONCHAIN_DIVERGENCE fired at score 0.78", "ref_type": "anomaly", "ref_key": null, "occurred_at": "2026-08-20T12:41:04Z"},
+        {"kind": "MEMORY_SEARCH", "summary": "3 related memories retrieved (lexical match, PHASE 1 has no vector search)", "ref_type": null, "ref_key": null, "occurred_at": "2026-08-20T12:41:07Z"},
+        {"kind": "HYPOTHESIS", "summary": "hypothesis #041 created with an explicit falsification condition", "ref_type": "hypothesis", "ref_key": "hyp-41", "occurred_at": "2026-08-20T12:41:09Z"},
+        {"kind": "DATASET", "summary": "96 tokens, matched on age bucket and launchpad", "ref_type": null, "ref_key": null, "occurred_at": "2026-08-20T12:41:11Z"},
+        {"kind": "EXPERIMENT", "summary": "matched-cohort comparison executed", "ref_type": "experiment", "ref_key": "exp-421", "occurred_at": "2026-08-20T12:41:12Z"},
+        {"kind": "CRITIC", "summary": "critic returned FAIL: sample too small for the subgroup split", "ref_type": null, "ref_key": null, "occurred_at": "2026-08-20T12:41:18Z"},
+        {"kind": "RESULT", "summary": "hypothesis #041 rejected by its own falsification rule", "ref_type": "experiment", "ref_key": "exp-421", "occurred_at": "2026-08-20T12:41:20Z"},
+        {"kind": "MEMORY_UPDATE", "summary": "failure stored; measurement definition flagged for revision", "ref_type": null, "ref_key": null, "occurred_at": "2026-08-20T12:41:21Z"}
+      ]
+    }
+  ],
+  "patterns": [
+    {
+      "name": "single-account amplification",
+      "description": "A large share of a token's mentions originating from one account has appeared alongside short-lived attention spikes in the demo sample. Recorded as a candidate only: it has not been tested.",
+      "status": "CANDIDATE",
+      "support_count": 2,
+      "contradiction_count": 0,
+      "confidence": 0.3,
+      "first_seen_at": "2026-08-20T12:44:00Z",
+      "last_confirmed_at": null,
+      "evidence_refs": ["obs-43"]
+    },
+    {
+      "name": "attention predicts survival",
+      "description": "Rejected. The proposed link between raw attention velocity and 7-day survival did not hold once the sample was split by market regime.",
+      "status": "REJECTED",
+      "support_count": 0,
+      "contradiction_count": 1,
+      "confidence": 0.1,
+      "first_seen_at": "2026-08-20T12:41:02Z",
+      "last_confirmed_at": null,
+      "evidence_refs": ["exp-421"]
+    }
+  ]
+}

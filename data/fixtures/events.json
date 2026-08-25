@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "is_demo": true,
+    "note": "Event log for the live terminal. These events describe the demo research cycle, not a live run.",
+    "dataset_version": "demo-2026-08-20"
+  },
+  "events": [
+    {"seq": 1, "event_type": "SYSTEM_START", "message": "demo mode. fixtures only. no provider connected.", "level": "INFO", "occurred_at": "2026-08-20T12:40:58Z"},
+    {"seq": 2, "event_type": "OBSERVATION", "message": "#041 social velocity +312%, buyer velocity flat", "level": "INFO", "ref_type": "observation", "ref_key": "obs-41", "occurred_at": "2026-08-20T12:41:02Z"},
+    {"seq": 3, "event_type": "ANOMALY", "message": "SOCIAL_ONCHAIN_DIVERGENCE score=0.78", "level": "INFO", "occurred_at": "2026-08-20T12:41:04Z"},
+    {"seq": 4, "event_type": "MEMORY_SEARCH", "message": "3 related memories", "level": "INFO", "occurred_at": "2026-08-20T12:41:07Z"},
+    {"seq": 5, "event_type": "HYPOTHESIS_CREATED", "message": "#041 attention without participation", "level": "INFO", "ref_type": "hypothesis", "ref_key": "hyp-41", "occurred_at": "2026-08-20T12:41:09Z"},
+    {"seq": 6, "event_type": "EXPERIMENT_STARTED", "message": "#000421 matched-cohort, n=96", "level": "INFO", "ref_type": "experiment", "ref_key": "exp-421", "occurred_at": "2026-08-20T12:41:12Z"},
+    {"seq": 7, "event_type": "EXPERIMENT_COMPLETED", "message": "#000421 difference -6pp, p=0.41", "level": "INFO", "ref_type": "experiment", "ref_key": "exp-421", "occurred_at": "2026-08-20T12:41:18Z"},
+    {"seq": 8, "event_type": "CRITIC_RESULT", "message": "FAIL: sample too small for subgroup split", "level": "WARN", "occurred_at": "2026-08-20T12:41:19Z"},
+    {"seq": 9, "event_type": "HYPOTHESIS_REJECTED", "message": "#041 rejected by its own falsification rule", "level": "INFO", "ref_type": "hypothesis", "ref_key": "hyp-41", "occurred_at": "2026-08-20T12:41:20Z"},
+    {"seq": 10, "event_type": "MEMORY_UPDATED", "message": "failure stored. measurement definition flagged.", "level": "INFO", "occurred_at": "2026-08-20T12:41:21Z"},
+    {"seq": 11, "event_type": "DRAFT_CREATED", "message": "FAILURE draft queued for approval", "level": "INFO", "occurred_at": "2026-08-20T12:41:24Z"},
+    {"seq": 12, "event_type": "OBSERVATION", "message": "#043 one account produced 61% of mentions", "level": "INFO", "ref_type": "observation", "ref_key": "obs-43", "occurred_at": "2026-08-20T12:44:00Z"}
+  ]
+}

@@ -1,0 +1,32 @@
+# secrets
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.sqlite3
+
+# node / next
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+
+# data
+data/exports/*
+!data/exports/.gitkeep
+
+# os / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

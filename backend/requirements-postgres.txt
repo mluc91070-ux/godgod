@@ -1,0 +1,5 @@
+# PostgreSQL + pgvector target. Installed in the Docker image and in
+# production; not required for local demo mode or the test suite.
+-r requirements.txt
+psycopg[binary]>=3.2,<4.0
+pgvector>=0.3,<1.0

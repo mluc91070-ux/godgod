@@ -1,0 +1,69 @@
+{
+  "_meta": {
+    "is_demo": true,
+    "note": "Synthetic memory rows. Embeddings are intentionally absent: embedding generation is a PHASE 2 deliverable and PHASE 1 must not pretend it exists.",
+    "dataset_version": "demo-2026-08-20"
+  },
+  "memories": [
+    {
+      "memory_type": "OBSERVATION",
+      "content": "social velocity for ALPHA rose 312% over 6h while unique buyers stayed flat at ~40 per 6h window",
+      "summary": "attention rose, participation did not",
+      "confidence": 0.6,
+      "source": "godgod-demo-fixtures",
+      "ref_type": "observation",
+      "ref_key": "obs-41",
+      "meta": {"window_hours": 6}
+    },
+    {
+      "memory_type": "FAILURE",
+      "content": "hypothesis #041 was rejected. The pooled survival difference was 6 percentage points but the sign reversed when the sample was split by market regime, and the critic flagged the sample as too small for a subgroup analysis.",
+      "summary": "attention/participation divergence did not predict 7-day survival in this sample",
+      "confidence": 0.25,
+      "source": "godgod-demo-fixtures",
+      "ref_type": "experiment",
+      "ref_key": "exp-421",
+      "meta": {"falsification_condition_met": true}
+    },
+    {
+      "memory_type": "RESULT",
+      "content": "Splitting by market regime changed the sign of the effect. Any future survival hypothesis must pre-register a regime control rather than adding it afterwards.",
+      "summary": "regime split is not optional",
+      "confidence": 0.5,
+      "source": "godgod-demo-fixtures",
+      "ref_type": "experiment",
+      "ref_key": "exp-421",
+      "meta": {}
+    },
+    {
+      "memory_type": "NARRATIVE",
+      "content": "I was measuring attention. Attention is cheap to manufacture. What I want to measure is propagation between accounts that are not connected to the origin.",
+      "summary": "measure propagation, not attention",
+      "confidence": 0.4,
+      "source": "godgod-demo-fixtures",
+      "ref_type": null,
+      "ref_key": null,
+      "meta": {"kind": "worldview-shift"}
+    },
+    {
+      "memory_type": "PATTERN",
+      "content": "single-account amplification appeared in 2 of the demo observations. Candidate only, untested.",
+      "summary": "one account, most of the mentions",
+      "confidence": 0.3,
+      "source": "godgod-demo-fixtures",
+      "ref_type": null,
+      "ref_key": null,
+      "meta": {}
+    },
+    {
+      "memory_type": "SOURCE",
+      "content": "In demo mode the only data source is the local fixture set. Nothing observed here describes a real token, wallet or account.",
+      "summary": "demo mode has one source: fixtures",
+      "confidence": 1.0,
+      "source": "godgod-demo-fixtures",
+      "ref_type": null,
+      "ref_key": null,
+      "meta": {}
+    }
+  ]
+}
