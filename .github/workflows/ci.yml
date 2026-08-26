@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r backend/requirements-dev.txt
+
+      - name: lint
+        run: python -m ruff check backend tests scripts
+
+      - name: tests
+        run: python -m pytest -q
+
+      - name: phase gates
+        # Each gate runs against its own database; see scripts/check_all.py.
+        run: python scripts/check_all.py
+
+      - name: preflight, as a production config would see it
+        env:
+          ENVIRONMENT: production
+          DEMO_MODE: "true"
+          DATABASE_URL: postgresql+psycopg://user:pass@localhost:5432/godgod
+          ADMIN_TOKEN: ci-token-that-is-long-enough-to-pass
+          CORS_ORIGINS: https://godgod.example
+        run: python scripts/preflight.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build

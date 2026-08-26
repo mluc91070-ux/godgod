@@ -21,9 +21,10 @@ external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 backend/.venv/Scripts/python scripts/preflight.py     # refuses an unsafe config
 ```
 
-`render.yaml` is a blueprint for the API, the free PostgreSQL and an hourly
-research cron. The frontend goes to Vercel with one variable,
-`NEXT_PUBLIC_API_URL`. The full runbook is in `docs/DEPLOYMENT.md`.
+`render.yaml` is a blueprint for the API and a free PostgreSQL. The frontend
+goes to Vercel with one variable, `NEXT_PUBLIC_API_URL`. The hourly research
+cycle runs from GitHub Actions rather than a paid scheduler. Total to launch:
+nothing. The full runbook is in `docs/DEPLOYMENT.md`.
 
 It launches in demo mode, and says so on every page. Serving the synthetic
 dataset with `is_demo` on every row is the honest launch state; turning it off

@@ -19,7 +19,10 @@ services:
   - type: web
     name: godgod-api
     runtime: docker
-    plan: starter
+    # Free to launch. A free instance spins down when idle and takes ~30s to
+    # wake; the hourly GitHub Actions workflow wakes it as a side effect of
+    # running the research cycle. Move to `starter` when that stops being funny.
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -61,28 +64,8 @@ services:
       - key: LLM_DAILY_BUDGET_USD
         value: "3.0"
 
-  - type: cron
-    name: godgod-research
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
-    # Hourly: one observation pass, then one research cycle over what it found.
-    # Both are idempotent — a question already asked is not asked again.
-    schedule: "0 * * * *"
-    dockerCommand: >
-      sh -c "python -m app.workers.observe &&
-             python -m app.workers.research"
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: godgod-db
-          property: connectionString
-      - key: ENVIRONMENT
-        value: production
-      - key: DEMO_MODE
-        value: "true"
-      - key: FIXTURES_DIR
-        value: /data/fixtures
-      - key: GODGOD_AUTO_SEED
-        value: "0"
+# The research cycle used to be a Render cron service here. Render crons are
+# paid-only, and the job is one authenticated POST, so it lives in
+# .github/workflows/research.yml instead — free, scheduled hourly, and it wakes
+# the free instance as a side effect. Set GODGOD_API_URL and GODGOD_ADMIN_TOKEN
+# as repository secrets to switch it on.

@@ -1,0 +1,47 @@
+name: research cycle
+
+# The research worker, run from here rather than a paid scheduler.
+#
+# It calls the deployed API, so it also wakes a free-tier instance that has
+# spun down. Everything it triggers is idempotent: a question already asked is
+# not asked again, and a snapshot already ingested is not ingested twice.
+#
+# Needs two repository secrets: GODGOD_API_URL and GODGOD_ADMIN_TOKEN.
+# Until they are set the job says so and stops, rather than failing silently.
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check the deployment is configured
+        id: config
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "GODGOD_API_URL is not set; nothing is deployed yet." >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: is it up
+        if: steps.config.outputs.ready == 'true'
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+        run: curl -fsS --retry 5 --retry-all-errors --retry-delay 10 "$API_URL/health"
+
+      - name: run one research cycle
+        if: steps.config.outputs.ready == 'true'
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+          ADMIN_TOKEN: ${{ secrets.GODGOD_ADMIN_TOKEN }}
+        run: |
+          curl -fsS -X POST "$API_URL/api/admin/research/run" \
+            -H "X-Admin-Token: $ADMIN_TOKEN" | tee report.json
+          python -c "import json;d=json.load(open('report.json'));print(f\"{d['hypotheses_created']} hypotheses, {d['experiments_run']} experiments, {d['supported']} supported, {d['rejected']} rejected, {d['inconclusive']} inconclusive, {d['llm_calls']} model calls\")" >> "$GITHUB_STEP_SUMMARY"
