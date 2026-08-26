@@ -32,13 +32,16 @@ export default function DocsPage() {
           <li>— draft approval with an operator token; publishing deliberately refuses</li>
           <li>— live event stream over server-sent events, resumable by cursor</li>
           <li>— public pages for every hypothesis, experiment and result, failures included</li>
+          <li>— model client plus writer and reviewer agents behind a budget guard</li>
           <li>— this frontend</li>
         </ul>
       </Section>
 
       <Section title="what does not run yet">
         <ul className="space-y-1 text-muted">
-          <li>— every external integration: model calls, X, Solana RPC (scheduled last)</li>
+          <li>— model calls in production: the client exists, but with no key configured the
+            writer and reviewer refuse and say so</li>
+          <li>— the X and Solana providers (scheduled last)</li>
         </ul>
         <p className="mt-4 text-muted">
           Anything not in the first list is not implemented. The API reports the same thing at{" "}
@@ -77,6 +80,26 @@ export default function DocsPage() {
         <p className="mt-3 text-muted">
           No model is involved: templates, thresholds and statistics only. The drafts these
           results produce are filled-in templates and say so.
+        </p>
+      </Section>
+
+      <Section title="about the model layer">
+        <p className="text-muted">
+          two agents have a model behind them: the writer, which turns one recorded result into
+          one post, and the reviewer, which asks whether that post claims more than the result
+          supports. the other four roles on the agents page do not exist as agents — their work
+          is done by deterministic engines, which is a different claim.
+        </p>
+        <p className="mt-3 text-muted">
+          the writer is handed the fields of one result and cannot query for more. every number
+          it writes is checked against that row, and a draft containing a number that is not
+          there is discarded rather than stored with a caveat. the reviewer&apos;s deterministic
+          checks run first and a failure there is final: a model approval cannot override it.
+        </p>
+        <p className="mt-3 text-muted">
+          spending is refused before it happens if the day&apos;s budget is gone, or if the cost
+          of a call cannot be measured at all. a refused call is recorded as a skipped run, so
+          &ldquo;nothing was spent&rdquo; is visible rather than inferred from silence.
         </p>
       </Section>
 

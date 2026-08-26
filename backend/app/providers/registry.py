@@ -11,6 +11,31 @@ from app.core.config import Settings, get_settings
 from app.schemas.common import ProviderStatus
 
 
+def _model_note(settings: Settings) -> str:
+    """What the model layer can actually do right now, in one sentence."""
+    if not settings.anthropic_api_key:
+        return (
+            "Client implemented; no API key set, so the writer and reviewer agents "
+            "refuse rather than run. The deterministic engines are unaffected."
+        )
+    missing = [
+        role
+        for role in ("model_writer", "model_critic")
+        if not getattr(settings, role, None)
+    ]
+    if missing:
+        return f"Key set, but {', '.join(role.upper() for role in missing)} is unset."
+    if (
+        settings.model_price_input_usd_per_mtok is None
+        or settings.model_price_output_usd_per_mtok is None
+    ):
+        return (
+            "Key and roles set, but MODEL_PRICE_* is unset: the budget guard refuses "
+            "to spend what it cannot measure."
+        )
+    return f"Writer and reviewer agents enabled; daily budget ${settings.llm_daily_budget_usd:.2f}."
+
+
 def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]:
     settings = settings or get_settings()
     return [
@@ -29,7 +54,7 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
         ProviderStatus(
             name="anthropic",
             configured=bool(settings.anthropic_api_key),
-            implemented=False,
-            note="No model is called in PHASE 1.",
+            implemented=True,
+            note=_model_note(settings),
         ),
     ]

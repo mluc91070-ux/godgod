@@ -20,9 +20,17 @@ export default async function AgentsPage() {
       </div>
 
       <p className="mt-4 max-w-2xl text-muted">
-        Each agent answers exactly one question and holds only the tools that question requires.
-        An agent marked <span className="text-bone">not implemented</span> does not run yet — the
+        each agent answers exactly one question and holds only the tools that question requires.
+        an agent marked <span className="text-bone">not implemented</span> does not run — the
         roster describes the architecture, not a capability.
+      </p>
+
+      <p className="mt-3 max-w-2xl text-muted">
+        the writer and the reviewer have a model behind them. the other four do not: their work
+        is done by deterministic engines under <code className="text-bone">app/services</code>,
+        which is a different thing and is not counted as an agent here. every model call is
+        recorded with its tokens and its cost, and refused before it happens if the day’s
+        budget cannot account for it.
       </p>
 
       <div className="mt-8 space-y-8">

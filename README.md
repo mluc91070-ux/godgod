@@ -32,7 +32,8 @@ external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 | Experiment engine: token-hour cohorts, two-proportion tests, strata, chronological split | implemented, deterministic |
 | Critic: 10 design checks + the gate blocking `SUPPORTED` without a `PASS` | implemented, deterministic |
 | Researcher / data scientist / critic / writer / reviewer *agents* (model-backed) | not implemented — scheduled last |
-| Solana + X providers, model calls | interfaces only — scheduled last |
+| Model client + writer and reviewer agents, behind a budget guard | implemented; refuse to run until a key, roles and prices are set |
+| Solana + X providers | interfaces only — scheduled last |
 | SSE live streaming: `GET /api/live/stream`, resumable by cursor | implemented |
 
 ### About the research engine

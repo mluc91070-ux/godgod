@@ -40,6 +40,8 @@ EVENT_STATE: dict[str, SystemState] = {
     EventType.HYPOTHESIS_SUPPORTED: SystemState.SUPPORTED,
     EventType.MEMORY_UPDATED: SystemState.LEARNING,
     EventType.DRAFT_CREATED: SystemState.LEARNING,
+    EventType.DRAFT_REVIEWED: SystemState.LEARNING,
+    EventType.AGENT_RUN: SystemState.ANALYZING,
     EventType.ERROR: SystemState.IDLE,
 }
 

@@ -122,6 +122,19 @@ class Settings(BaseSettings):
     """Hard lifetime for one connection. The client reconnects with its cursor;
     a forgotten tab does not poll the database forever."""
 
+    # --- model calls --------------------------------------------------
+    model_timeout_seconds: float = 60.0
+
+    model_price_input_usd_per_mtok: float | None = None
+    model_price_output_usd_per_mtok: float | None = None
+    """Per-million-token prices for the configured models.
+
+    Unset means unpriced, and an unpriced call records `estimated_cost_usd=None`
+    rather than 0.0 — a fabricated zero would defeat the budget it is meant to
+    protect. The budget guard refuses to spend what it cannot measure, so these
+    must be set alongside the MODEL_* roles before any agent runs.
+    """
+
     # --- cost control -------------------------------------------------
     llm_daily_budget_usd: float = 3.0
     memory_retrieval_limit: int = 20

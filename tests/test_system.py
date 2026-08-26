@@ -33,9 +33,16 @@ async def test_status_declares_mode_and_unimplemented_providers(client):
     # rather than describing the system as finished.
     assert re.match(r"^PHASE \d+ — ", body["phase"])
 
-    # External providers ship last. The API must not claim otherwise.
-    assert {p["name"] for p in body["providers"]} == {"solana", "x", "anthropic"}
-    assert all(p["implemented"] is False for p in body["providers"])
+    # The chain providers ship last. The API must not claim otherwise.
+    providers = {p["name"]: p for p in body["providers"]}
+    assert set(providers) == {"solana", "x", "anthropic"}
+    assert providers["solana"]["implemented"] is False
+    assert providers["x"]["implemented"] is False
+
+    # The model client exists; with no key set its note must say the agents refuse.
+    assert providers["anthropic"]["implemented"] is True
+    assert providers["anthropic"]["configured"] is False
+    assert "no API key" in providers["anthropic"]["note"]
 
     assert body["counts"]["observations"] > 0
 
@@ -101,7 +108,10 @@ async def test_agent_roster_is_not_claimed_as_running(client):
         "writer",
         "reviewer",
     }
-    assert all(a["implemented"] is False for a in agents)
+    from app.agents import IMPLEMENTED_AGENTS
+
+    for agent in agents:
+        assert agent["implemented"] is (agent["name"] in IMPLEMENTED_AGENTS), agent["name"]
     assert all(a["allowed_tools"] for a in agents), "each agent declares limited tools"
 
 

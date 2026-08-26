@@ -31,6 +31,7 @@ backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
+backend/.venv/Scripts/python scripts/check_agents.py           # model layer
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
 backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
@@ -192,13 +193,32 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 - One short-lived database session per poll. A session held open for the life of
   a connection is how a pool dies.
 
+## Model-call rules
+
+- Every call goes through `app/agents/base.run_agent`. It checks the budget
+  first and records an `agent_runs` row whether the call succeeded, failed, or
+  never happened. An agent that returns nothing because the provider errored
+  must never look like an agent that found nothing.
+- `estimated_cost_usd` is `0.0` only when nothing was called. An unpriced model
+  call records `NULL`. Never write a zero you did not measure.
+- The budget guard refuses on unpriced, spent, or unmeasured — see
+  `docs/COST_CONTROL.md`. Do not add a bypass flag.
+- A model chooses words, never facts. Everything it writes passes
+  `agents/guards.check_draft`, and a draft containing a number absent from its
+  source row is discarded, not stored with a caveat.
+- A model verdict can only be stricter than the deterministic one. An approval
+  never overrides a failed check.
+- A truncated answer (`stop_reason == "max_tokens"`) is an error, not a result.
+- `implemented=true` on an agent means a model-backed agent runs. A deterministic
+  engine doing the same job is not the same claim.
+
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
 5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages ✅,
 then
-the external integrations last: 7 X provider · 8 Solana provider · model calls ·
-11 production.
+the external integrations last: model calls ✅ (client, writer, reviewer, budget
+guard — needs a key to run) · 7 X provider · 8 Solana provider · 11 production.
 
 **External APIs come last by decision.** Until then, every engine is built against
 fixtures and deterministic logic, behind the provider interfaces, so wiring a key

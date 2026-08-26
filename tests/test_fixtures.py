@@ -120,7 +120,10 @@ def test_events_use_declared_types():
         assert event["event_type"] in valid
 
 
-def test_agent_roster_is_not_marked_implemented():
+def test_only_agents_that_actually_run_are_marked_implemented():
+    """The four deterministic engines do the job; the agents do not exist."""
+    from app.agents import IMPLEMENTED_AGENTS
+
     for agent in load_fixture("agents.json")["agents"]:
-        assert agent["implemented"] is False
+        assert agent["implemented"] is (agent["name"] in IMPLEMENTED_AGENTS), agent["name"]
         assert agent["question"].endswith("?")

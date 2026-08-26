@@ -138,6 +138,48 @@ p-value, effect size, all ten critic checks, limitations), trace steps for every
 stage, a `Memory` entry, a `Pattern` update, a templated `ContentDraft` marked
 `PENDING`, and one `AgentRun` with `model=null` and `estimated_cost_usd=0.0`.
 
+## The model layer
+
+```
+result ─▶ facts ─▶ writer ─▶ guards ─▶ draft ─▶ reviewer ─▶ verdict ─▶ operator
+                     │                              │
+              budget checked first          deterministic + model, strictest wins
+```
+
+`app/providers/model.py` holds one interface and two implementations: a null
+provider that refuses with an explanation, and an HTTP client for the messages
+API. No model name appears anywhere in the code — `MODEL_FAST`,
+`MODEL_REASONING`, `MODEL_WRITER` and `MODEL_CRITIC` resolve through settings.
+
+Two agents have a model behind them:
+
+| Agent | Question | Role |
+| --- | --- | --- |
+| `writer` | Is there something worth communicating, and how does it read? | `MODEL_WRITER` |
+| `reviewer` | Does this draft claim more than the row it came from? | `MODEL_CRITIC` |
+
+The other four roster entries — observer, researcher, data_scientist, critic —
+stay `implemented: false`. Their job is done by the deterministic engines, which
+is a different claim and is reported as one.
+
+**The writer is given facts, not the database.** It receives the exact fields of
+one result and cannot query for more, so an invented number has nothing to hide
+behind: `agents/guards.check_draft` extracts every numeric token from the output
+and requires each to appear in the source row. A draft that fails is discarded
+with reasons, never stored with a caveat.
+
+**The reviewer combines two verdicts and the strict one wins.** Deterministic
+checks run first — voice, length, links, advice, certainty about an inconclusive
+result, grounded numbers — and a failure there is final: no model approval can
+override it, and no model is paid to read a draft that already failed. With no
+model configured the review still happens, and the notes say it was
+deterministic only, because a review that did not happen must not read like one
+that did.
+
+**Spend is gated before the call, not reconciled after it.** See
+`docs/COST_CONTROL.md`: unpriced, spent, or unmeasured are all refusals, and a
+refusal is recorded as a `SKIPPED` run rather than silence.
+
 ## Live stream (PHASE 9)
 
 ```
@@ -225,17 +267,23 @@ Read: `/health`, `/api/status`, `/api/live`, `/api/live/stream` (SSE),
 `/api/memory/:id/related`, `/api/memory/:id/cluster`, `/api/memory/summary`,
 `/api/events`,
 `/api/metrics`, `/api/agents`, `/api/agents/runs`, `/api/sources`,
-`/api/tokens[/:address]`, `/api/x/drafts`.
+`/api/tokens[/:address]`, `/api/x/drafts`, `/api/budget`.
 
 Write (operator token required): `/api/admin/research/run`,
+`/api/admin/agents/writer/run`, `/api/admin/agents/reviewer/run`,
 `/api/x/drafts/:id/approve`, `/reject`.
 `/publish` exists and refuses with 501 — see `X_PUBLISHING.md`.
 
 ## Deferred by design
 
-The model-backed agents, the live providers and every
-model call (scheduled last, by decision). Each is reported as unimplemented by
-`/api/status` rather than stubbed with fake behaviour.
+The X and Solana providers (scheduled last, by decision), and the four roster
+agents whose work the deterministic engines do instead. Each is reported as
+unimplemented by `/api/status` and `/api/agents` rather than stubbed with fake
+behaviour.
+
+The model client is implemented but inert without configuration: with no key,
+the writer and reviewer refuse and say why. That is deliberate — the alternative
+is an agent that appears to work and quietly produces nothing.
 
 One branch ships **unverified**: the pgvector ordering in `_rank_postgres`. No
 PostgreSQL instance was available on the development machine, so only the Python

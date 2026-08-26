@@ -1,7 +1,7 @@
 {
   "_meta": {
     "is_demo": false,
-    "note": "Agent roster. This is configuration, not demo data: it describes the intended architecture. 'implemented' is false for every agent in PHASE 1 and must stay false until the agent actually runs.",
+    "note": "Agent roster. This is configuration, not demo data: it describes the intended architecture. 'implemented' means a model-backed agent exists and runs. The writer and the reviewer do; the other four roles are covered by deterministic engines under app/services, which is not the same thing and is not claimed as such.",
     "dataset_version": "roster-v1"
   },
   "agents": [
@@ -9,9 +9,20 @@
       "name": "observer",
       "role": "Collects and normalizes raw signals",
       "question": "What happened?",
-      "inputs": ["solana rpc (read-only)", "x search", "token/social fixtures"],
-      "outputs": ["Observation", "Anomaly"],
-      "allowed_tools": ["solana_provider.read", "x_provider.read", "db.write:observations"],
+      "inputs": [
+        "solana rpc (read-only)",
+        "x search",
+        "token/social fixtures"
+      ],
+      "outputs": [
+        "Observation",
+        "Anomaly"
+      ],
+      "allowed_tools": [
+        "solana_provider.read",
+        "x_provider.read",
+        "db.write:observations"
+      ],
       "model_role": "MODEL_FAST",
       "implemented": false
     },
@@ -19,9 +30,19 @@
       "name": "researcher",
       "role": "Turns anomalies plus memory into falsifiable hypotheses",
       "question": "What could explain this?",
-      "inputs": ["Observation", "Anomaly", "memory search results", "past experiments"],
-      "outputs": ["Hypothesis"],
-      "allowed_tools": ["memory.search", "db.write:hypotheses"],
+      "inputs": [
+        "Observation",
+        "Anomaly",
+        "memory search results",
+        "past experiments"
+      ],
+      "outputs": [
+        "Hypothesis"
+      ],
+      "allowed_tools": [
+        "memory.search",
+        "db.write:hypotheses"
+      ],
       "model_role": "MODEL_REASONING",
       "implemented": false
     },
@@ -29,9 +50,20 @@
       "name": "data_scientist",
       "role": "Builds the dataset and runs the test",
       "question": "Does the data support it?",
-      "inputs": ["Hypothesis", "token snapshots", "social posts"],
-      "outputs": ["Experiment", "ExperimentResult"],
-      "allowed_tools": ["db.read", "db.write:experiments", "compute"],
+      "inputs": [
+        "Hypothesis",
+        "token snapshots",
+        "social posts"
+      ],
+      "outputs": [
+        "Experiment",
+        "ExperimentResult"
+      ],
+      "allowed_tools": [
+        "db.read",
+        "db.write:experiments",
+        "compute"
+      ],
       "model_role": "MODEL_REASONING",
       "implemented": false
     },
@@ -39,9 +71,18 @@
       "name": "critic",
       "role": "Attacks the result before anyone believes it",
       "question": "Why might this be wrong?",
-      "inputs": ["Experiment", "ExperimentResult", "dataset metadata"],
-      "outputs": ["critic verdict PASS | FAIL | NEEDS_MORE_DATA"],
-      "allowed_tools": ["db.read", "db.write:experiment_results.critic_*"],
+      "inputs": [
+        "Experiment",
+        "ExperimentResult",
+        "dataset metadata"
+      ],
+      "outputs": [
+        "critic verdict PASS | FAIL | NEEDS_MORE_DATA"
+      ],
+      "allowed_tools": [
+        "db.read",
+        "db.write:experiment_results.critic_*"
+      ],
       "model_role": "MODEL_CRITIC",
       "implemented": false
     },
@@ -49,21 +90,39 @@
       "name": "writer",
       "role": "Drafts public messages from real results only",
       "question": "Is there something worth communicating?",
-      "inputs": ["Observation", "Hypothesis", "ExperimentResult", "Memory"],
-      "outputs": ["ContentDraft"],
-      "allowed_tools": ["db.read", "db.write:content_drafts"],
+      "inputs": [
+        "Observation",
+        "Hypothesis",
+        "ExperimentResult",
+        "Memory"
+      ],
+      "outputs": [
+        "ContentDraft"
+      ],
+      "allowed_tools": [
+        "db.read",
+        "db.write:content_drafts"
+      ],
       "model_role": "MODEL_WRITER",
-      "implemented": false
+      "implemented": true
     },
     {
       "name": "reviewer",
       "role": "Final gate before anything becomes public",
       "question": "Is every claim in this supported by a stored result?",
-      "inputs": ["ContentDraft", "referenced source row"],
-      "outputs": ["reviewer verdict PASS | FAIL"],
-      "allowed_tools": ["db.read", "db.write:content_drafts.reviewer_*"],
+      "inputs": [
+        "ContentDraft",
+        "referenced source row"
+      ],
+      "outputs": [
+        "reviewer verdict PASS | FAIL"
+      ],
+      "allowed_tools": [
+        "db.read",
+        "db.write:content_drafts.reviewer_*"
+      ],
       "model_role": "MODEL_CRITIC",
-      "implemented": false
+      "implemented": true
     }
   ]
 }
