@@ -30,6 +30,7 @@ backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
+backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
 backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
@@ -194,7 +195,8 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
-5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages, then
+5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages ✅,
+then
 the external integrations last: 7 X provider · 8 Solana provider · model calls ·
 11 production.
 

@@ -102,3 +102,38 @@ async def test_patterns_record_rejections_too(client):
     statuses = {item["name"]: item["status"] for item in body["items"]}
     assert statuses["attention predicts survival"] == "REJECTED"
     assert statuses["single-account amplification"] == "CANDIDATE"
+
+
+async def test_results_are_listed_with_their_experiment(client):
+    body = (await client.get("/api/results")).json()
+    assert body["total"] >= 1
+    for result in body["items"]:
+        assert result["experiment_id"]
+        assert result["outcome"] in {"SUPPORTED", "REJECTED", "INCONCLUSIVE"}
+        assert result["summary"]
+
+
+async def test_results_can_be_filtered_by_outcome(client):
+    all_results = (await client.get("/api/results")).json()["items"]
+    outcome = all_results[0]["outcome"]
+    filtered = (await client.get("/api/results", params={"outcome": outcome.lower()})).json()
+    assert filtered["total"] >= 1
+    assert {item["outcome"] for item in filtered["items"]} == {outcome}
+
+
+async def test_a_rejection_is_never_hidden_from_the_listing(client):
+    """The public record includes what failed. Filtering is the reader's choice."""
+    experiments = (await client.get("/api/experiments")).json()["items"]
+    recorded = set()
+    for experiment in experiments:
+        detail = (await client.get(f"/api/experiments/{experiment['id']}")).json()
+        recorded.update(result["id"] for result in detail["results"])
+
+    listed = {item["id"] for item in (await client.get("/api/results?limit=200")).json()["items"]}
+    assert recorded <= listed
+
+
+async def test_an_unknown_outcome_filter_returns_an_empty_page_not_an_error(client):
+    body = (await client.get("/api/results", params={"outcome": "PROMISING"})).json()
+    assert body["total"] == 0
+    assert body["items"] == []

@@ -146,6 +146,7 @@ export type Hypothesis = {
 
 export type ExperimentResult = {
   id: string;
+  experiment_id: string;
   outcome: string;
   summary: string;
   metrics: Record<string, number> | null;
@@ -156,6 +157,8 @@ export type ExperimentResult = {
   critic_notes: string | null;
   critic_checks: Record<string, string> | null;
   limitations: string | null;
+  created_at?: string;
+  is_demo?: boolean;
 };
 
 export type Experiment = {

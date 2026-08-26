@@ -19,7 +19,7 @@ export default function DocsPage() {
         </p>
       </Section>
 
-      <Section title="what runs today" note="PHASE 1–6, 9">
+      <Section title="what runs today" note="PHASE 1–6, 9, 10">
         <ul className="space-y-1 text-muted">
           <li>— database schema and migrations for the full research chain</li>
           <li>— read API over observations, hypotheses, experiments, traces, patterns, memory</li>
@@ -31,6 +31,7 @@ export default function DocsPage() {
           <li>— demo mode serving fixtures, every row flagged is_demo</li>
           <li>— draft approval with an operator token; publishing deliberately refuses</li>
           <li>— live event stream over server-sent events, resumable by cursor</li>
+          <li>— public pages for every hypothesis, experiment and result, failures included</li>
           <li>— this frontend</li>
         </ul>
       </Section>

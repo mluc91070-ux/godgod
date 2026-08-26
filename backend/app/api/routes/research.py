@@ -16,6 +16,7 @@ from app.api.deps import (
 )
 from app.models import (
     Experiment,
+    ExperimentResult,
     Hypothesis,
     Observation,
     Pattern,
@@ -25,6 +26,7 @@ from app.schemas.common import Page
 from app.schemas.research import (
     ExperimentDetail,
     ExperimentOut,
+    ExperimentResultOut,
     HypothesisDetail,
     HypothesisOut,
     ObservationDetail,
@@ -135,6 +137,29 @@ async def get_experiment(session: SessionDep, experiment_id: str) -> Experiment:
     if row is None:
         raise HTTPException(status_code=404, detail="experiment not found")
     return row
+
+
+@router.get("/results", response_model=Page[ExperimentResultOut])
+async def list_results(
+    session: SessionDep,
+    settings: SettingsDep,
+    page: PageDep,
+    outcome: str | None = Query(default=None),
+    critic_verdict: str | None = Query(default=None),
+) -> Page:
+    """Every recorded result, rejections included.
+
+    A result is never withdrawn because it was disappointing; filtering is the
+    reader's choice, not the system's.
+    """
+    stmt = select(ExperimentResult).order_by(ExperimentResult.created_at.desc())
+    if outcome:
+        stmt = stmt.where(ExperimentResult.outcome == outcome.upper())
+    if critic_verdict:
+        stmt = stmt.where(ExperimentResult.critic_verdict == critic_verdict.upper())
+    total = await count_query(session, stmt)
+    rows = (await session.scalars(stmt.limit(page.limit).offset(page.offset))).all()
+    return build_page(rows, ExperimentResultOut, total, page, settings)
 
 
 @router.get("/traces", response_model=Page[TraceOut])

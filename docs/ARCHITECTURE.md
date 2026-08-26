@@ -221,7 +221,7 @@ random animation: a frozen system draws a frozen field.
 Read: `/health`, `/api/status`, `/api/live`, `/api/live/stream` (SSE),
 `/api/observations[/:id]`,
 `/api/hypotheses[/:id]`, `/api/experiments[/:id]`, `/api/traces[/:id]`,
-`/api/patterns`, `/api/memory[/:id]`, `/api/memory/search`,
+`/api/results`, `/api/patterns`, `/api/memory[/:id]`, `/api/memory/search`,
 `/api/memory/:id/related`, `/api/memory/:id/cluster`, `/api/memory/summary`,
 `/api/events`,
 `/api/metrics`, `/api/agents`, `/api/agents/runs`, `/api/sources`,

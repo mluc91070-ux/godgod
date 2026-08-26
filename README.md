@@ -7,7 +7,7 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 6 + 9 complete.** The repository, database, API, frontend, memory
+**Status: PHASE 1-6, 9 and 10 complete.** The repository, database, API, frontend, memory
 system, observation pipeline and the hypothesis / experiment / critic engines exist
 and are tested. All of it is deterministic — no model is called anywhere yet. Every
 external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
@@ -27,7 +27,7 @@ external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 | Observation pipeline: ingest → filter → score → 10 anomaly detectors → store | implemented, deterministic |
 | Draft approval / rejection behind an operator token | implemented |
 | Publishing to X | deliberately refuses (501) — external integrations come last |
-| Frontend: 13 routes + public experiment and memory pages | implemented |
+| Frontend: 14 routes + public hypothesis, experiment, findings and memory pages | implemented |
 | Hypothesis engine: 6 templates, memory consulted before each question | implemented, deterministic |
 | Experiment engine: token-hour cohorts, two-proportion tests, strata, chronological split | implemented, deterministic |
 | Critic: 10 design checks + the gate blocking `SUPPORTED` without a `PASS` | implemented, deterministic |
