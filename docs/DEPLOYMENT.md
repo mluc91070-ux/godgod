@@ -14,9 +14,21 @@ Two things about the free tiers that will bite if nobody writes them down:
 - **The free database expires 30 days after creation** (2026-09-25 for the
   current one). Render deletes it. Upgrade it, or export and recreate, before
   then — `pg_dump` against the external connection string is enough.
-- **The free web instance spins down when idle** and takes ~30 s to answer the
-  first request afterwards. The hourly research workflow wakes it as a side
-  effect, so it is usually warm.
+- **The free web instance spins down when idle** and takes 30-60s to answer the
+  first request afterwards. Pages fetch server-side, so this used to hold the
+  whole render open until Vercel gave up — a visitor saw a site that never
+  loaded. Two changes:
+
+  - `lib/api.ts` bounds every request at 6 seconds. A cold API now costs an
+    honest "state unavailable" page, served in milliseconds, with the identity
+    and the hero intact.
+  - `.github/workflows/keepalive.yml` pings `/health` every ten minutes.
+
+  **The ping is a mitigation, not a fix.** GitHub's scheduler is best-effort
+  and skips runs under load — measured gaps of 317 and 93 minutes against a
+  15-minute cron on the research workflow. The fix is Render's paid instance,
+  which never sleeps: $7/month, and the `plan: free` line in `render.yaml`
+  becomes `plan: starter`.
 
 ### Verified against the live deployment
 

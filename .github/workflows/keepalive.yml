@@ -1,0 +1,43 @@
+name: keep the api awake
+
+# The free Render instance sleeps after ~15 minutes idle and takes 30-60s to
+# wake. Pages fetch server-side, so a sleeping backend used to hold the whole
+# render open until it timed out.
+#
+# The client now bounds every request, so a cold API costs an honest "state
+# unavailable" rather than a hang — this workflow is what keeps that from
+# happening in the first place. It is separate from the research cycle because
+# the two have different failure costs: a missed research run is one missing
+# row, a missed ping is a visitor seeing an empty site.
+#
+# GitHub's scheduler is best-effort and skips runs under load — measured gaps
+# of 317 and 93 minutes on the research schedule, against a 15-minute cron. So
+# this is a mitigation, not a fix. The fix is a paid instance that never
+# sleeps; see docs/DEPLOYMENT.md.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: wake it
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "GODGOD_API_URL is not set; nothing to ping." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          start=$(date +%s)
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 \
+                   --retry 3 --retry-all-errors --retry-delay 15 "$API_URL/health")
+          echo "health $code in $(( $(date +%s) - start ))s" >> "$GITHUB_STEP_SUMMARY"
+          [ "$code" = "200" ]

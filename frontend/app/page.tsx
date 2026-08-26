@@ -10,10 +10,29 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const result = await api<Live>("/api/live");
 
+  // A backend that is asleep or slow must not take the page down with it. The
+  // hero and the identity are static; only the live numbers are missing, and
+  // the page says exactly that instead of showing nothing.
   if (!result.ok) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <Disconnected error={result.error} what="the current state" />
+      <div className="mx-auto flex max-w-5xl flex-col items-center">
+        <div className="flex w-full items-baseline justify-between">
+          <h1 className="font-display text-[13px] tracking-[0.2em]">GODGOD</h1>
+          <span className="text-[10px] uppercase tracking-widest text-muted">
+            state unavailable
+          </span>
+        </div>
+
+        <div className="my-12">
+          <Hero state="IDLE" activity={0} novelty={null} confidence={null} />
+        </div>
+
+        <div className="w-full max-w-2xl space-y-6">
+          <p className="text-center font-display text-[10px] uppercase tracking-[0.3em] text-grey">
+            the autonomous meme researcher
+          </p>
+          <Disconnected error={result.error} what="the current state" />
+        </div>
       </div>
     );
   }

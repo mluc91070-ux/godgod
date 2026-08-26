@@ -3,24 +3,43 @@
  *
  * When the research API is unreachable the UI shows that it is unreachable.
  * It never substitutes placeholder numbers for missing data.
+ *
+ * Every request is bounded. Pages fetch server-side, so an API that is slow to
+ * answer holds the whole render open: a sleeping free-tier instance takes 30 to
+ * 60 seconds to wake, and without a deadline the page simply never arrives.
+ * A visitor reads that as a broken site, which is worse than an honest one
+ * saying it cannot reach its backend right now.
  */
+
+const TIMEOUT_MS = 6000;
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
-export async function api<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
+export async function api<T>(
+  path: string,
+  init?: RequestInit & { timeoutMs?: number },
+): Promise<ApiResult<T>> {
+  const { timeoutMs = TIMEOUT_MS, ...rest } = init ?? {};
   try {
     const response = await fetch(`${API_URL}${path}`, {
-      ...init,
+      ...rest,
       cache: "no-store",
-      headers: { accept: "application/json", ...(init?.headers ?? {}) },
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: { accept: "application/json", ...(rest.headers ?? {}) },
     });
     if (!response.ok) {
       return { ok: false, error: `${response.status} ${response.statusText}` };
     }
     return { ok: true, data: (await response.json()) as T };
   } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      return {
+        ok: false,
+        error: `no answer within ${timeoutMs / 1000}s — the API may be waking up`,
+      };
+    }
     const message = error instanceof Error ? error.message : "unknown error";
     return { ok: false, error: `unreachable: ${message}` };
   }
