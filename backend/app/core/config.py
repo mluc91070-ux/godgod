@@ -122,6 +122,57 @@ class Settings(BaseSettings):
     """Hard lifetime for one connection. The client reconnects with its cursor;
     a forgotten tab does not poll the database forever."""
 
+    # --- chain and market (PHASE 8) ------------------------------------
+    solana_timeout_seconds: float = 20.0
+
+    solana_retry_seconds: float = 1.5
+    """Backoff before one retry of a rate-limited call. Zero disables it.
+
+    Measured against the shared public endpoint: `getTokenSupply` answers,
+    `getTokenLargestAccounts` throttles. One retry is worth trying; more would
+    be pretending a shared endpoint is a dedicated one.
+    """
+
+    market_api_url: str | None = None
+    """Where liquidity, volume and trade counts are read from.
+
+    A URL rather than a vendor name, for the same reason SOLANA_RPC_URL is:
+    swapping data sources must be an environment change, not a code change.
+    """
+
+    market_timeout_seconds: float = 20.0
+
+    chain_watch_queries: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["solana"]
+    )
+    """Search terms the collector uses to find tokens worth measuring."""
+
+    chain_max_tokens: int = 40
+    """Tokens tracked per collection run. The deterministic floors drop most of
+    them before anything is stored; this caps the work before that."""
+
+    chain_min_liquidity_usd: float = 10_000.0
+    """A token below this is not worth a row. Distinct from the pipeline's own
+    floor, which decides what is worth *observing* once it is stored."""
+
+    chain_min_volume_usd: float = 25_000.0
+    """Liquidity alone says nothing.
+
+    Measured on the live feed: pools holding over a billion dollars of wrapped
+    SOL reported about a hundred dollars of daily volume. That is a parked
+    balance, not a market, and tracking it would fill the dataset with tokens
+    nothing ever happens to.
+    """
+
+    chain_discover: bool = True
+    """Read the promotion feed instead of searching by name.
+
+    Name search on a permissionless chain returns clones of whatever was typed.
+    The promotion feed is a real sampling frame — of tokens someone is pushing,
+    which is exactly the population this system studies, and which every
+    experiment records as its population rather than pretending it is neutral.
+    """
+
     # --- X (PHASE 7) ---------------------------------------------------
     x_timeout_seconds: float = 30.0
 
@@ -181,7 +232,7 @@ class Settings(BaseSettings):
             raise ValueError("autonomy_level must be between 0 and 4")
         return v
 
-    @field_validator("cors_origins", "x_search_terms", mode="before")
+    @field_validator("cors_origins", "x_search_terms", "chain_watch_queries", mode="before")
     @classmethod
     def _split_list(cls, v: object) -> object:
         """Comma-separated in the environment; a list everywhere else."""

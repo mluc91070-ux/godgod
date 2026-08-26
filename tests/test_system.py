@@ -33,13 +33,16 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     # rather than describing the system as finished.
     assert re.match(r"^PHASE \d+ — ", body["phase"])
 
-    # Solana ships last. The API must not claim otherwise.
+    # Every client is implemented; none is configured here. The notes must say
+    # each one refuses, rather than implying a live feed.
     providers = {p["name"]: p for p in body["providers"]}
-    assert set(providers) == {"solana", "x", "anthropic"}
-    assert providers["solana"]["implemented"] is False
+    assert set(providers) == {"solana", "market", "x", "anthropic"}
+    assert all(p["configured"] is False for p in providers.values())
 
-    # The model and X clients exist; with nothing configured, their notes must
-    # say they refuse rather than implying a live feed.
+    assert providers["solana"]["implemented"] is True
+    assert "no signing path" in providers["solana"]["note"].lower()
+    assert providers["market"]["implemented"] is True
+    assert "MARKET_API_URL" in providers["market"]["note"]
     assert providers["anthropic"]["implemented"] is True
     assert providers["anthropic"]["configured"] is False
     assert "no API key" in providers["anthropic"]["note"]

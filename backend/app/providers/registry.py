@@ -11,6 +11,32 @@ from app.core.config import Settings, get_settings
 from app.schemas.common import ProviderStatus
 
 
+def _solana_note(settings: Settings) -> str:
+    """Read-only, and specific about what a node cannot answer."""
+    if not settings.solana_rpc_url:
+        return (
+            "Read-only JSON-RPC client implemented; SOLANA_RPC_URL is not set, so "
+            "no chain data is read. No signing path exists in any configuration."
+        )
+    return (
+        "Reading accounts, supply and the largest token accounts. Holder *counts* "
+        "need an indexer and are recorded as null, never estimated. Read-only: "
+        "there is no signing path."
+    )
+
+
+def _market_note(settings: Settings) -> str:
+    if not settings.market_api_url:
+        return (
+            "Liquidity, volume and trade counts are not measured: MARKET_API_URL "
+            "is unset, so the chain collector records nothing rather than zeroes."
+        )
+    return (
+        f"Measuring tokens above ${settings.chain_min_liquidity_usd:,.0f} liquidity, "
+        f"at most {settings.chain_max_tokens} per run."
+    )
+
+
 def _x_note(settings: Settings) -> str:
     """Read access only, and only when a token is present."""
     if not settings.x_bearer_token:
@@ -56,8 +82,14 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
         ProviderStatus(
             name="solana",
             configured=bool(settings.solana_rpc_url),
-            implemented=False,
-            note="Interface only. Read-only client lands in PHASE 8.",
+            implemented=True,
+            note=_solana_note(settings),
+        ),
+        ProviderStatus(
+            name="market",
+            configured=bool(settings.market_api_url),
+            implemented=True,
+            note=_market_note(settings),
         ),
         ProviderStatus(
             name="x",

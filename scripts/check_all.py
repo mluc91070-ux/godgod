@@ -28,6 +28,7 @@ GATES = (
     ("PHASE 3  observation", "check_phase3.py"),
     ("PHASE 4-6 research", "check_phase4.py"),
     ("PHASE 7  x provider", "check_phase7.py"),
+    ("PHASE 8  chain + market", "check_phase8.py"),
     ("PHASE 9  live stream", "check_phase9.py"),
     ("PHASE 10 public pages", "check_phase10.py"),
     ("model layer", "check_agents.py"),

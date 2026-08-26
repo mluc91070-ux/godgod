@@ -13,8 +13,9 @@ from sqlalchemy import select
 from app.agents import review_draft, write_draft_for_result
 from app.api.deps import AdminDep, SessionDep, SettingsDep
 from app.models import ContentDraft, ExperimentResult
-from app.schemas.agents import BudgetOut, CollectionOut, ReviewOut, WriterOut
+from app.schemas.agents import BudgetOut, ChainOut, CollectionOut, ReviewOut, WriterOut
 from app.services.budget import get_budget_status
+from app.services.chain import collect_chain
 from app.services.social import collect_posts
 
 router = APIRouter(prefix="/api", tags=["agents"])
@@ -75,3 +76,17 @@ async def run_collector(
     """
     report = await collect_posts(session, settings=settings)
     return CollectionOut(**report.as_dict())
+
+
+@router.post("/admin/chain/collect", response_model=ChainOut)
+async def run_chain_collector(
+    session: SessionDep, settings: SettingsDep, admin: AdminDep
+) -> ChainOut:
+    """Measure real tokens once and store one snapshot each.
+
+    Holder counts stay null — a public node cannot supply them and this will not
+    estimate one. The pipeline needs several measurements before any detector
+    speaks, so the first runs are deliberately quiet.
+    """
+    report = await collect_chain(session, settings=settings)
+    return ChainOut(**report.as_dict())

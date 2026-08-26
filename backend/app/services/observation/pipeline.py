@@ -106,9 +106,18 @@ class ObservationPipeline:
         settings: Settings | None = None,
         params: DetectorParams | None = None,
     ) -> None:
-        self.source = source or get_observation_source()
         self.settings = settings or get_settings()
+        self._explicit_source = source
+        # Resolved per run rather than here: the live source reads from the
+        # session, and a pipeline built once must not be pinned to fixtures.
+        self.source = source or get_observation_source(settings=self.settings)
         self.params = params or DetectorParams()
+
+    def _resolve_source(self, session: AsyncSession) -> ObservationSource:
+        if self._explicit_source is not None:
+            return self._explicit_source
+        self.source = get_observation_source(session=session, settings=self.settings)
+        return self.source
 
     # -- ingestion ---------------------------------------------------------
 
@@ -418,6 +427,7 @@ class ObservationPipeline:
         started = utcnow()
         report = RunReport()
 
+        self._resolve_source(session)
         as_of = as_of or await self.source.latest_timestamp()
         if as_of is None:
             report.duration_ms = int((utcnow() - started).total_seconds() * 1000)

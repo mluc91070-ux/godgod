@@ -76,7 +76,7 @@ CURRENT_PHASE = (
 
 
 async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> PipelineInfo:
-    source = get_observation_source()
+    source = get_observation_source(session=session, settings=settings)
     last_run = await session.scalar(
         select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == PIPELINE_RUN_NAME)
     )

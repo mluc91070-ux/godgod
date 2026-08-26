@@ -1,5 +1,41 @@
 # Data sources
 
+## What is actually read (PHASE 8)
+
+| Source | Endpoint | Cost | What it gives |
+| --- | --- | --- | --- |
+| Chain | `SOLANA_RPC_URL` | free (shared) | supply, largest token accounts, signatures |
+| Market | `MARKET_API_URL` | free | liquidity, 24h volume, trade counts, token discovery |
+| X | `X_BEARER_TOKEN` | paid tier | recent posts |
+
+Neither URL names a vendor anywhere in the code. Swapping data sources is an
+environment change.
+
+### What cannot be measured, and is therefore null
+
+- **Holder counts.** A public RPC node does not expose one; it needs an indexer.
+  `token_snapshots.holders` stays `NULL` on every live row and the detectors
+  that need it return no verdict. Estimating from the largest accounts would be
+  inventing a measurement.
+- **Holder concentration, on a shared endpoint.** `getTokenLargestAccounts` is
+  throttled on the free public RPC — measured, not assumed: `getTokenSupply`
+  answers and the largest-accounts call does not, twice in a row. The field
+  stays null and the run reports `holder_distribution_rate_limited`, which is a
+  different problem from an unconfigured node and is named differently. A
+  dedicated RPC url fixes it.
+
+### Why discovery reads the promotion feed
+
+Searching by name on a permissionless chain returns clones of whatever was
+typed. A query for "solana" returned pools holding **$1.8bn of liquidity against
+$102 of daily volume** — a parked balance, not a market. `CHAIN_MIN_VOLUME_USD`
+exists because of that measurement.
+
+The promotion feed is a real sampling frame: tokens someone is actively pushing,
+which is the population this system studies. Being promoted is not evidence of
+anything, and every experiment records that frame as its population rather than
+pretending the sample is neutral.
+
 ## Today
 
 Two fixture sets, both `is_demo=true` on every row, and nothing else connected.

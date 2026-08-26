@@ -31,6 +31,7 @@ backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
 backend/.venv/Scripts/python scripts/check_phase7.py           # x provider
+backend/.venv/Scripts/python scripts/check_phase8.py           # chain + market
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
 backend/.venv/Scripts/python scripts/check_agents.py           # model layer
@@ -237,13 +238,38 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 - The quota is the binding constraint: `X_MAX_POSTS_PER_RUN` is a ceiling per
   run, and no test or gate ever makes a real request.
 
+## Chain rules
+
+- **A public node cannot count holders.** `holders` is `NULL` on every live
+  row, and the detectors that need it return no verdict. Estimating one from
+  the largest token accounts would be inventing a measurement.
+- `holder_concentration_top10` is a share of supply held by the largest *token
+  accounts*, capped at 20 by the RPC. A pool, a burn address and a treasury each
+  look like one holder. Never call it a Gini coefficient or a holder count.
+- **Liquidity alone means nothing.** Measured on the live feed: pools holding
+  over a billion dollars reported about a hundred dollars of daily volume.
+  `CHAIN_MIN_VOLUME_USD` exists because of that, and the drop is named.
+- Discovery reads the promotion feed, not a name search — searching by name on
+  a permissionless chain returns clones of whatever was typed. Being promoted is
+  a sampling frame, not evidence, and experiments record it as their population.
+- Failures are named apart when the fix differs: `holder_distribution_rate_limited`
+  needs a dedicated RPC url, `holder_distribution_unavailable` needs any url.
+- Live rows are `is_demo=False` and never mix with fixtures. The observation
+  source is chosen by `DEMO_MODE`, and without a session it returns fixtures
+  rather than silently serving them to a production pipeline.
+- The collector cannot fabricate history. Its first run stores one measurement
+  per token; nothing fires until `OBSERVATION_MIN_SNAPSHOTS` of them exist. That
+  silence is correct — a system that watched a token for an hour saw no trend.
+
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
 5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages ✅,
 then
-the external integrations: model calls ✅ · 7 X provider ✅ (both need a key to
-run) · 11 production ✅ (deployed). Remaining: 8 Solana provider.
+the external integrations: model calls ✅ (needs a key) · 7 X provider ✅ (needs a
+paid tier) · 8 Solana + market ✅ (free, no key) · 11 production ✅ (deployed).
+
+All eleven are built. What remains is operation, not construction.
 
 **External APIs come last by decision.** Until then, every engine is built against
 fixtures and deterministic logic, behind the provider interfaces, so wiring a key

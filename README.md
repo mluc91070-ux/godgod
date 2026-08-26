@@ -9,11 +9,11 @@ It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
 **Live:** [godgod.vercel.app](https://godgod.vercel.app) · API [godgod-api.onrender.com](https://godgod-api.onrender.com/api/status)
 
-**Status: PHASE 1-6, 9, 10 and the model layer complete, deployed.** The repository, database, API, frontend, memory
-system, observation pipeline and the hypothesis / experiment / critic engines exist
-and are tested. All of it is deterministic — no model is called anywhere yet. Every
-external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
-`/api/status` reports exactly what is implemented, and the UI says so on every page.
+**Status: all eleven phases built and deployed.** What remains is operation, not
+construction. The research chain is deterministic end to end; the model layer, the
+X collector and the chain collector are implemented and each says plainly when it
+is unconfigured rather than reporting an empty result. `/api/status` reports
+exactly what is implemented, and the UI says so on every page.
 
 ---
 
@@ -56,7 +56,9 @@ than a better one.
 | Model client + writer and reviewer agents, behind a budget guard | implemented; refuse to run until a key, roles and prices are set |
 | X: recent-search collector, rate-limit aware | implemented; needs a bearer token with search access |
 | Publishing to X | refuses, by design — V1 drafts, a human publishes |
-| Solana provider | interface only — scheduled last |
+| Solana: read-only RPC, holder concentration | implemented; no signing path exists in any configuration |
+| Market: liquidity, volume, trade counts, token discovery | implemented; free, no key |
+| Holder *counts* | not measured — a public node cannot supply one, so it stays `null` |
 | SSE live streaming: `GET /api/live/stream`, resumable by cursor | implemented |
 
 ### About the research engine

@@ -55,3 +55,17 @@ class CollectionOut(BaseModel):
     """False when the run was cut short. Zero posts with complete=false is not
     the same claim as zero posts with complete=true."""
     llm_calls: int = 0
+
+
+class ChainOut(BaseModel):
+    candidates: int
+    measured: int
+    tokens_created: int
+    snapshots_stored: int
+    distributions_measured: int
+    """Tokens whose top-10 holder share the RPC could compute. The rest are null."""
+    dropped: dict[str, int] = Field(default_factory=dict)
+    error: str | None = None
+    duration_ms: int
+    complete: bool
+    llm_calls: int = 0
