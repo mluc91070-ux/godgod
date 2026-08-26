@@ -16,17 +16,26 @@ ellipse plus six lines; at 16 pixels those land on the same three rows and turn
 to mush — checked by rendering it, not assumed. A mark nobody can read in a
 browser tab is not more faithful for having kept every stroke.
 
-## sphere.mp4
+## sphere.mp4 / sphere.webm
 
-Drop a video here and the homepage plays it instead of the WebGL field. No code
-change and no flag: `components/Hero.tsx` probes for the file and falls back
-when it is absent.
+The homepage hero. `components/Hero.tsx` serves the WebM first and falls back
+to the WebGL field if the video fails to decode at all.
 
-- **Square**, 1:1. It renders at 520×520 and is object-contained.
-- **Loop seamlessly** — it plays muted on repeat forever.
-- **Keep it small.** Every visitor downloads it; over ~3MB, cut the duration or
-  the bitrate rather than the resolution.
-- Black background, `#050506`, so it sits on the page without an edge.
+Built from `TEASER.mp4` (1280×720, 15s, 9.5MB) by:
+
+1. **Cropping to square.** The sphere is centred, so a 720×720 centre crop
+   loses nothing, and the hero slot is 1:1.
+2. **Boomerang, opening on the close-up.** The source is an approach: it starts
+   on a distant speck and ends on a full-frame sphere, so a hard loop would
+   jump. Reversed-then-forward runs close → far → close, which is seamless at
+   both ends — measured at 0.02/255 mean difference across the seam. The order
+   matters: forward-then-reversed is equally seamless but opens on the darkest
+   frame, and a visitor's first impression is a black square.
+3. **Re-encoding.** 9.5MB → 505KB MP4 / 420KB WebM at 640×640, CRF 30. Every
+   visitor downloads this; the original was nineteen times heavier for a
+   picture nobody can tell apart at this size.
+
+To rebuild from a new source, the steps are above and `ffmpeg` is all it takes.
 
 A rendered loop cannot represent live state, so it is marked `aria-hidden` and
 the real numbers stay in the text underneath. The WebGL field is the one bound
