@@ -65,7 +65,7 @@ async def test_live_snapshot_reflects_stored_events(client):
         "LEARNING",
     }
     assert body["is_demo"] is True
-    assert body["streaming"] is False, "SSE is a PHASE 9 deliverable"
+    assert body["streaming"] is True, "GET /api/live/stream is served on this build"
     assert body["current_observation"]["summary"]
     assert 0.0 <= body["activity"] <= 1.0
 

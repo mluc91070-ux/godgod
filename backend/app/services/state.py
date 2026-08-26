@@ -157,5 +157,5 @@ async def get_live(session: AsyncSession) -> LiveResponse:
         activity=activity,
         novelty=observation.novelty_score if observation else None,
         confidence=hypothesis.confidence if hypothesis else None,
-        streaming=False,
+        streaming=True,
     )

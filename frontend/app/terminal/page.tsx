@@ -1,45 +1,41 @@
+import LiveTerminal from "@/components/LiveTerminal";
 import { Disconnected, Label } from "@/components/ui";
-import { api, clock } from "@/lib/api";
-import type { Page, SystemEvent } from "@/lib/types";
+import { API_URL, api } from "@/lib/api";
+import type { Page, StreamEvent, SystemEvent } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-
-const LEVEL_COLOR: Record<string, string> = {
-  WARN: "text-violet",
-  ERROR: "text-violet",
-};
 
 export default async function TerminalPage() {
   const result = await api<Page<SystemEvent>>("/api/events?limit=100");
 
   if (!result.ok) return <Disconnected error={result.error} what="the event log" />;
 
-  const events = [...result.data.items].reverse();
+  // Rendered on the server so the page is readable before the stream connects,
+  // and still readable if it never does.
+  const initial: StreamEvent[] = [...result.data.items].reverse().map((event) => ({
+    ...event,
+    ref_type: null,
+    ref_id: null,
+    is_demo: true,
+    replayed: true,
+  }));
 
   return (
     <div className="mx-auto max-w-4xl">
       <div className="flex items-baseline justify-between">
         <Label>terminal</Label>
-        <span className="text-[10px] text-muted">
-          {result.data.total} events · polled on load · SSE streaming lands in PHASE 9
-        </span>
+        <span className="text-[10px] text-muted">{result.data.total} events recorded</span>
       </div>
 
-      <div className="mt-6 border border-line p-4">
-        {events.length === 0 ? (
-          <p className="text-muted">no events recorded.</p>
-        ) : (
-          <ol className="space-y-1">
-            {events.map((event) => (
-              <li key={event.id} className="grid grid-cols-[5.5rem_11rem_1fr] gap-3">
-                <span className="text-muted">{clock(event.occurred_at)}</span>
-                <span className={LEVEL_COLOR[event.level] ?? "text-bone"}>{event.event_type}</span>
-                <span className="text-muted">{event.message}</span>
-              </li>
-            ))}
-          </ol>
-        )}
+      <div className="mt-6">
+        <LiveTerminal apiUrl={API_URL} initial={initial} />
       </div>
+
+      <p className="mt-4 text-[11px] text-muted">
+        server-sent events over the rows the system writes as it works. history is marked as
+        replay; only what arrives after you connect is marked new. the stream carries no
+        prediction of what is about to happen — if it is quiet, the system is quiet.
+      </p>
     </div>
   );
 }

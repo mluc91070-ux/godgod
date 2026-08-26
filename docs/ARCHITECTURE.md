@@ -138,6 +138,30 @@ p-value, effect size, all ten critic checks, limitations), trace steps for every
 stage, a `Memory` entry, a `Pattern` update, a templated `ContentDraft` marked
 `PENDING`, and one `AgentRun` with `model=null` and `estimated_cost_usd=0.0`.
 
+## Live stream (PHASE 9)
+
+```
+system_events ──seq cursor──▶ event_stream ──SSE──▶ terminal page
+```
+
+`GET /api/live/stream` is server-sent events over rows the pipeline and research
+cycle already commit. There is no message bus: the writers and the reader share
+one database, and a queue would be a second source of truth for no gain at this
+scale.
+
+- Frames: `open` (version, cursor, what this connection will do), `log` (one
+  event row), `state` (derived state changed), `close` (ageing out). Heartbeats
+  are `:` comments so they fire no client handler.
+- `replayed: true` marks history. A demo database holds events with past
+  timestamps; showing them as if they had just arrived would be dishonesty
+  introduced by the transport.
+- Every frame carries `id: <seq>`. The browser resends it as `Last-Event-ID`, so
+  a reconnect resumes exactly where it stopped — nothing skipped, nothing twice.
+- `STREAM_MAX_SECONDS` caps a connection's life; the client reconnects with its
+  cursor, so a forgotten tab does not poll forever.
+- Each poll opens its own short-lived session. An idle transaction pinned for the
+  life of a connection is how a pool dies.
+
 ## Memory (PHASE 2)
 
 `app/services/memory.py` exposes five operations:
@@ -194,7 +218,8 @@ random animation: a frozen system draws a frozen field.
 
 ## API surface
 
-Read: `/health`, `/api/status`, `/api/live`, `/api/observations[/:id]`,
+Read: `/health`, `/api/status`, `/api/live`, `/api/live/stream` (SSE),
+`/api/observations[/:id]`,
 `/api/hypotheses[/:id]`, `/api/experiments[/:id]`, `/api/traces[/:id]`,
 `/api/patterns`, `/api/memory[/:id]`, `/api/memory/search`,
 `/api/memory/:id/related`, `/api/memory/:id/cluster`, `/api/memory/summary`,
@@ -202,12 +227,13 @@ Read: `/health`, `/api/status`, `/api/live`, `/api/observations[/:id]`,
 `/api/metrics`, `/api/agents`, `/api/agents/runs`, `/api/sources`,
 `/api/tokens[/:address]`, `/api/x/drafts`.
 
-Write (operator token required): `/api/x/drafts/:id/approve`, `/reject`.
+Write (operator token required): `/api/admin/research/run`,
+`/api/x/drafts/:id/approve`, `/reject`.
 `/publish` exists and refuses with 501 — see `X_PUBLISHING.md`.
 
 ## Deferred by design
 
-SSE streaming (PHASE 9), the model-backed agents, the live providers and every
+The model-backed agents, the live providers and every
 model call (scheduled last, by decision). Each is reported as unimplemented by
 `/api/status` rather than stubbed with fake behaviour.
 

@@ -125,5 +125,5 @@ class LiveResponse(BaseModel):
     confidence: float | None = None
     streaming: bool = Field(
         default=False,
-        description="SSE streaming is a PHASE 9 deliverable; false until then.",
+        description="True when GET /api/live/stream is available on this build.",
     )

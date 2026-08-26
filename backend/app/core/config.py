@@ -103,6 +103,25 @@ class Settings(BaseSettings):
     observation_cooldown_minutes: int = 180
     """Same subject + same anomaly type inside this window is a duplicate."""
 
+    # --- live stream (PHASE 9) ----------------------------------------
+    stream_poll_seconds: float = 1.0
+    """How often the SSE endpoint looks for rows newer than the cursor.
+
+    Polling, not a message bus: the writers are the pipeline and the research
+    cycle, both of which commit to the same database the reader is watching.
+    A queue would be a second source of truth for no gain at this scale.
+    """
+
+    stream_replay_events: int = 60
+    """Events sent on connect so a new tab is not staring at an empty log."""
+
+    stream_heartbeat_seconds: float = 15.0
+    """Comment frame keeping proxies from closing an idle connection."""
+
+    stream_max_seconds: float = 900.0
+    """Hard lifetime for one connection. The client reconnects with its cursor;
+    a forgotten tab does not poll the database forever."""
+
     # --- cost control -------------------------------------------------
     llm_daily_budget_usd: float = 3.0
     memory_retrieval_limit: int = 20

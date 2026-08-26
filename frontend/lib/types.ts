@@ -281,6 +281,14 @@ export type SystemEvent = {
   occurred_at: string;
 };
 
+/** One `log` frame from /api/live/stream. `replayed` separates history from now. */
+export type StreamEvent = SystemEvent & {
+  ref_type: string | null;
+  ref_id: string | null;
+  is_demo: boolean;
+  replayed: boolean;
+};
+
 export type AgentInfo = {
   id: string;
   name: string;

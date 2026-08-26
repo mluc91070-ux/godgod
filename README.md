@@ -7,7 +7,7 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 6 complete.** The repository, database, API, frontend, memory
+**Status: PHASE 6 + 9 complete.** The repository, database, API, frontend, memory
 system, observation pipeline and the hypothesis / experiment / critic engines exist
 and are tested. All of it is deterministic — no model is called anywhere yet. Every
 external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
@@ -33,7 +33,7 @@ external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 | Critic: 10 design checks + the gate blocking `SUPPORTED` without a `PASS` | implemented, deterministic |
 | Researcher / data scientist / critic / writer / reviewer *agents* (model-backed) | not implemented — scheduled last |
 | Solana + X providers, model calls | interfaces only — scheduled last |
-| SSE live streaming | not implemented — PHASE 9 (terminal is polled on load) |
+| SSE live streaming: `GET /api/live/stream`, resumable by cursor | implemented |
 
 ### About the research engine
 

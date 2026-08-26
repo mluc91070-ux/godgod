@@ -29,6 +29,7 @@ backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
+backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
 backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
@@ -176,10 +177,24 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 - `INCONCLUSIVE` is the expected output on the current data, and shipping five of
   them is a correct outcome, not a bug to tune away.
 
+## Stream rules
+
+- The stream is a cursor over `system_events.seq`, not a second source of truth.
+  Anything worth streaming is worth committing first — never emit a frame for
+  something that has not been written.
+- Replayed history is labelled `replayed: true`. Presenting old rows as if they
+  had just happened is a lie told by the transport, and the UI would repeat it.
+- Silence is a valid state. Never synthesise a filler frame to make the terminal
+  look busy; the heartbeat is a `:` comment and fires no client handler.
+- Every connection ages out (`STREAM_MAX_SECONDS`) and every frame carries an
+  `id`, so a reconnect resumes rather than replaying or skipping.
+- One short-lived database session per poll. A session held open for the life of
+  a connection is how a pool dies.
+
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
-5 experiment ✅ · 6 critic ✅ · 9 live terminal · 10 public research pages, then
+5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages, then
 the external integrations last: 7 X provider · 8 Solana provider · model calls ·
 11 production.
 

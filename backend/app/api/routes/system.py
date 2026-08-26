@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Header, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, text
 
 from app.api.deps import PageDep, SessionDep, SettingsDep, build_page, count_query
@@ -43,6 +44,7 @@ from app.services.research import (
     TEMPLATES,
 )
 from app.services.state import get_counts, get_live, get_state
+from app.services.stream import STREAM_VERSION, event_stream
 
 
 def describe_memory(session: SessionDep, settings: SettingsDep) -> MemoryInfo:
@@ -143,6 +145,43 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
 @router.get("/api/live", response_model=LiveResponse)
 async def live(session: SessionDep) -> LiveResponse:
     return await get_live(session)
+
+
+@router.get("/api/live/stream")
+async def live_stream(
+    request: Request,
+    settings: SettingsDep,
+    after: int | None = Query(
+        default=None,
+        ge=0,
+        description="Resume from this system_events.seq. Omit to replay the recent tail.",
+    ),
+    last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+) -> StreamingResponse:
+    """Server-sent events over the log the system writes as it works.
+
+    Frames: `open` (cursor and what this connection will do), `log` (one event
+    row, `replayed` true for history), `state` (derived state changed), `close`
+    (this connection is ageing out; reconnect with the cursor). A `:` comment
+    every few seconds is the heartbeat.
+
+    The browser resends `Last-Event-ID` automatically on reconnect, so no event
+    is skipped and none is delivered twice.
+    """
+    cursor = after
+    if cursor is None and last_event_id and last_event_id.isdigit():
+        cursor = int(last_event_id)
+
+    return StreamingResponse(
+        event_stream(settings, after=cursor, is_disconnected=request.is_disconnected),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "X-Stream-Version": STREAM_VERSION,
+        },
+    )
 
 
 @router.get("/api/events", response_model=Page[EventOut])

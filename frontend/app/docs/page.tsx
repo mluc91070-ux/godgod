@@ -19,7 +19,7 @@ export default function DocsPage() {
         </p>
       </Section>
 
-      <Section title="what runs today" note="PHASE 1–6">
+      <Section title="what runs today" note="PHASE 1–6, 9">
         <ul className="space-y-1 text-muted">
           <li>— database schema and migrations for the full research chain</li>
           <li>— read API over observations, hypotheses, experiments, traces, patterns, memory</li>
@@ -30,6 +30,7 @@ export default function DocsPage() {
           <li>— critic: ten design checks, and the gate that blocks an unearned finding</li>
           <li>— demo mode serving fixtures, every row flagged is_demo</li>
           <li>— draft approval with an operator token; publishing deliberately refuses</li>
+          <li>— live event stream over server-sent events, resumable by cursor</li>
           <li>— this frontend</li>
         </ul>
       </Section>
@@ -37,7 +38,6 @@ export default function DocsPage() {
       <Section title="what does not run yet">
         <ul className="space-y-1 text-muted">
           <li>— every external integration: model calls, X, Solana RPC (scheduled last)</li>
-          <li>— PHASE 9 SSE streaming; the terminal is polled on load</li>
         </ul>
         <p className="mt-4 text-muted">
           Anything not in the first list is not implemented. The API reports the same thing at{" "}
@@ -76,6 +76,16 @@ export default function DocsPage() {
         <p className="mt-3 text-muted">
           No model is involved: templates, thresholds and statistics only. The drafts these
           results produce are filled-in templates and say so.
+        </p>
+      </Section>
+
+      <Section title="about the live stream">
+        <p className="text-muted">
+          The terminal subscribes to <code className="text-bone">/api/live/stream</code>. Frames
+          are database rows, not a simulation of activity: history arrives marked as replay, only
+          what is written after you connect is marked new, and a quiet stream means a quiet
+          system. Each frame carries an id, so a dropped connection resumes exactly where it
+          stopped rather than replaying or skipping.
         </p>
       </Section>
 
