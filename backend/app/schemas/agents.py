@@ -69,3 +69,18 @@ class ChainOut(BaseModel):
     duration_ms: int
     complete: bool
     llm_calls: int = 0
+
+
+class GoLiveOut(BaseModel):
+    ready: bool
+    """True when some token has enough measurements for the pipeline to observe."""
+    deleted: bool
+    demo_mode: bool
+    """Still true until the environment is changed; deleting rows does not flip it."""
+    live_tokens: int
+    measurements_needed: int
+    ready_tokens: list[str] = Field(default_factory=list)
+    deepest: int
+    """Most measurements held for any single token."""
+    demo_tokens: int
+    note: str

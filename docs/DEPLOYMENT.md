@@ -79,6 +79,33 @@ backend/.venv/Scripts/python scripts/check_phase2.py           # pgvector, first
 never run on the development machine — the pgvector ranking path. Run it once
 after the first deploy.
 
+### Going live: from fixtures to real research
+
+The deployment starts in demo mode, and both halves of leaving it have to
+happen together:
+
+```bash
+# is there enough real history for the pipeline to observe anything?
+curl -sX POST "$API/api/admin/go-live" -H "X-Admin-Token: $TOKEN"
+
+# delete the demo rows (refuses while ready:false)
+curl -sX POST "$API/api/admin/go-live?confirm=true" -H "X-Admin-Token: $TOKEN"
+
+# then set DEMO_MODE=false in the hosting environment
+```
+
+Deleting without flipping the flag leaves an empty demo site. Flipping without
+deleting leaves hand-written experiments sitting next to real ones, and a
+visitor reading a findings page does not audit `is_demo` flags.
+
+The endpoint refuses to delete until some token has
+`OBSERVATION_MIN_SNAPSHOTS` measurements — the hourly collector needs about six
+hours from a standing start. A live site with no research and no explanation
+reads as broken, which is worse than an honest demo.
+
+It runs as an endpoint rather than a script because Render's database refuses
+external connections by default, which is the correct setting and worth keeping.
+
 ### What launches, honestly
 
 `DEMO_MODE=true` is the launch state, and it is a legitimate one: the site

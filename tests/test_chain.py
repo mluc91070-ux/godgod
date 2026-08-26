@@ -540,3 +540,71 @@ async def test_status_reports_solana_and_market_honestly(client) -> None:
     assert "no signing path" in providers["solana"]["note"].lower()
     assert providers["market"]["implemented"] is True
     assert providers["market"]["configured"] is False
+
+
+# -- going live -----------------------------------------------------------
+
+
+async def test_go_live_requires_the_operator_token(client) -> None:
+    assert (await client.post("/api/admin/go-live")).status_code in (401, 403)
+
+
+async def test_go_live_refuses_before_there_is_history(client, admin_headers) -> None:
+    body = (await client.post("/api/admin/go-live", headers=admin_headers)).json()
+    assert body["ready"] is False
+    assert body["deleted"] is False
+    assert "measurements yet" in body["note"]
+
+
+async def test_go_live_does_not_delete_without_confirmation(
+    session, client, admin_headers, chain_settings
+) -> None:
+    from app.models import Token as TokenModel
+
+    for hour in range(6):
+        await collect_chain(
+            session,
+            settings=chain_settings,
+            market=FakeMarket(snapshot()),
+            chain=FakeChain(),
+            as_of=datetime(2026, 8, 26, 8 + hour, tzinfo=UTC),
+        )
+
+    body = (await client.post("/api/admin/go-live", headers=admin_headers)).json()
+    assert body["ready"] is True
+    assert body["deleted"] is False
+    assert body["ready_tokens"] == ["TOK"]
+
+    demo = (await session.scalars(select(TokenModel).where(TokenModel.is_demo.is_(True)))).all()
+    assert demo, "the demo rows are still there"
+
+
+async def test_go_live_deletes_demo_rows_but_does_not_flip_the_mode(
+    session, client, admin_headers, chain_settings
+) -> None:
+    """Deleting rows is not the same act as changing the environment, and the
+    response must not imply the site is live when it is not."""
+    from app.models import Token as TokenModel
+
+    for hour in range(6):
+        await collect_chain(
+            session,
+            settings=chain_settings,
+            market=FakeMarket(snapshot()),
+            chain=FakeChain(),
+            as_of=datetime(2026, 8, 26, 8 + hour, tzinfo=UTC),
+        )
+
+    body = (
+        await client.post(
+            "/api/admin/go-live", params={"confirm": "true"}, headers=admin_headers
+        )
+    ).json()
+    assert body["deleted"] is True
+    assert "DEMO_MODE=false" in body["note"]
+
+    demo = (await session.scalars(select(TokenModel).where(TokenModel.is_demo.is_(True)))).all()
+    assert not demo
+
+    live = (await session.scalars(select(TokenModel).where(TokenModel.is_demo.is_(False)))).all()
+    assert live, "the real measurements survived"
