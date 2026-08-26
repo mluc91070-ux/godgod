@@ -1,3 +1,4 @@
+import Collection from "@/components/Collection";
 import { Disconnected, Field, Label, Section } from "@/components/ui";
 import { api, fmtTime } from "@/lib/api";
 import type { Source, Status } from "@/lib/types";
@@ -21,6 +22,8 @@ export default async function DataPage() {
           provides is stored as null and displayed as “—”.
         </p>
       </div>
+
+      {status.ok ? <Collection status={status.data} /> : null}
 
       <Section title="sources">
         <div className="space-y-6">

@@ -89,6 +89,16 @@ export type Status = {
     llm_in_loop: boolean;
     last_run_at: string | null;
   };
+  collection: {
+    live_tokens: number;
+    live_snapshots: number;
+    live_posts: number;
+    deepest_history: number;
+    needed_to_observe: number;
+    observing_live: boolean;
+    last_chain_run_at: string | null;
+    last_x_run_at: string | null;
+  };
   providers: { name: string; configured: boolean; implemented: boolean; note: string | null }[];
   counts: Record<string, number>;
   server_time: string;

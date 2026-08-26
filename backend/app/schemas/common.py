@@ -83,6 +83,27 @@ class ResearchInfo(BaseModel):
     last_run_at: datetime | None
 
 
+class CollectionInfo(BaseModel):
+    """What the live collectors have gathered, separate from the demo dataset.
+
+    Shown even while DEMO_MODE is on, because the collectors run regardless and
+    a visitor should be able to see that real measurement is happening — and how
+    far it still is from being enough to research.
+    """
+
+    live_tokens: int
+    live_snapshots: int
+    live_posts: int
+    deepest_history: int
+    """Most measurements held for any single token."""
+    needed_to_observe: int
+    """Measurements one token needs before any detector can speak."""
+    observing_live: bool
+    """False while the pipeline still reads the fixture series."""
+    last_chain_run_at: datetime | None
+    last_x_run_at: datetime | None
+
+
 class CountsInfo(BaseModel):
     observations: int
     anomalies: int
@@ -105,6 +126,7 @@ class StatusResponse(BaseModel):
     memory: MemoryInfo
     pipeline: PipelineInfo
     research: ResearchInfo
+    collection: CollectionInfo
     providers: list[ProviderStatus]
     counts: CountsInfo
     server_time: datetime

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-
 import pytest
 
 
@@ -29,9 +27,11 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     assert body["mode"]["x_mode"] == "draft"
     assert body["mode"]["wallet_execution_enabled"] is False
     assert body["mode"]["external_content_is_untrusted"] is True
-    # The phase string moves every phase; what matters is that it names one
-    # rather than describing the system as finished.
-    assert re.match(r"^PHASE \d+ — ", body["phase"])
+    # The phase string describes the deployment as it is. What matters is that
+    # it says something concrete and is not empty — a stale or absent one is the
+    # system misdescribing itself on every page.
+    assert len(body["phase"]) > 20
+    assert body["phase"] == body["phase"].strip()
 
     # Every client is implemented; none is configured here. The notes must say
     # each one refuses, rather than implying a live feed.
@@ -129,3 +129,28 @@ async def test_pagination_envelope(client, path):
     assert body["offset"] == 0
     assert len(body["items"]) <= 1
     assert body["is_demo"] is True
+
+
+async def test_status_reports_live_collection_apart_from_the_demo_data(client):
+    """The collectors run while the site still serves fixtures. Their counts
+    must be visible and must not include a single demo row."""
+    collection = (await client.get("/api/status")).json()["collection"]
+
+    assert collection["observing_live"] is False, "demo mode is on in the test harness"
+    assert collection["live_tokens"] == 0
+    assert collection["live_snapshots"] == 0
+    assert collection["needed_to_observe"] > 1, "one measurement is never a trend"
+    assert collection["deepest_history"] == 0
+
+
+async def test_live_counts_exclude_demo_rows(client, session):
+    """The seeded fixtures are demo rows; none may be counted as live."""
+    from sqlalchemy import func, select
+
+    from app.models import Token
+
+    seeded = await session.scalar(select(func.count()).select_from(Token))
+    assert seeded > 0, "the harness seeded demo tokens"
+
+    collection = (await client.get("/api/status")).json()["collection"]
+    assert collection["live_tokens"] == 0

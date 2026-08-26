@@ -17,11 +17,15 @@ from app.models import (
     Hypothesis,
     MetricsSnapshot,
     ResearchSource,
+    SocialPost,
     SystemEvent,
+    Token,
+    TokenSnapshot,
 )
 from app.providers.registry import describe_providers
 from app.providers.source import get_observation_source
 from app.schemas.common import (
+    CollectionInfo,
     HealthResponse,
     LiveResponse,
     MemoryInfo,
@@ -70,9 +74,16 @@ AUTONOMY_LABELS = {
 }
 
 CURRENT_PHASE = (
-    "PHASE 6 — hypothesis, experiment and critic "
-    "(deterministic statistics; no model in the loop)"
+    "all phases built — observing real tokens, still serving the demo dataset "
+    "while history accumulates"
 )
+"""What the system is, right now.
+
+Not a phase number: every phase is built, and a stale "PHASE 6" here would be
+the system misdescribing itself on every page — which is the one thing it is
+not allowed to do. Change this when the deployment changes, not when a
+milestone is passed.
+"""
 
 
 async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> PipelineInfo:
@@ -107,6 +118,50 @@ async def describe_research(session: SessionDep, settings: SettingsDep) -> Resea
     )
 
 
+async def describe_collection(session: SessionDep, settings: SettingsDep) -> CollectionInfo:
+    """What the live collectors hold, counted apart from the fixtures."""
+    from app.services.chain import CHAIN_RUN_NAME
+    from app.services.social import COLLECTOR_RUN_NAME
+
+    live_tokens = (await session.scalars(select(Token).where(Token.is_demo.is_(False)))).all()
+
+    deepest = 0
+    for token in live_tokens:
+        count = int(
+            await session.scalar(
+                select(func.count())
+                .select_from(TokenSnapshot)
+                .where(TokenSnapshot.token_id == token.id)
+            )
+            or 0
+        )
+        deepest = max(deepest, count)
+
+    async def count_live(model) -> int:
+        return int(
+            await session.scalar(
+                select(func.count()).select_from(model).where(model.is_demo.is_(False))
+            )
+            or 0
+        )
+
+    async def last_run(name: str) -> datetime | None:
+        return await session.scalar(
+            select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == name)
+        )
+
+    return CollectionInfo(
+        live_tokens=len(live_tokens),
+        live_snapshots=await count_live(TokenSnapshot),
+        live_posts=await count_live(SocialPost),
+        deepest_history=deepest,
+        needed_to_observe=settings.observation_min_snapshots,
+        observing_live=not settings.demo_mode,
+        last_chain_run_at=await last_run(CHAIN_RUN_NAME),
+        last_x_run_at=await last_run(COLLECTOR_RUN_NAME),
+    )
+
+
 @router.get("/health", response_model=HealthResponse, include_in_schema=True)
 async def health(session: SessionDep, settings: SettingsDep) -> HealthResponse:
     try:
@@ -136,6 +191,7 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
         memory=describe_memory(session, settings),
         pipeline=await describe_pipeline(session, settings),
         research=await describe_research(session, settings),
+        collection=await describe_collection(session, settings),
         providers=describe_providers(settings),
         counts=await get_counts(session),
         server_time=datetime.now(UTC),
