@@ -17,10 +17,11 @@ RUN pip install --no-cache-dir -r requirements-postgres.txt
 
 COPY backend/ /app/
 COPY data/ /data/
+RUN chmod +x /app/start.sh
 
 # Not root. The process only ever reads the fixtures and talks to the database.
 RUN useradd --create-home --uid 10001 godgod && chown -R godgod:godgod /app /data
 USER godgod
 
 EXPOSE 8000
-CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["/app/start.sh"]
