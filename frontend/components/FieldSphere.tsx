@@ -39,6 +39,9 @@ const STATE_COLOR: Record<SystemStateName, [number, number, number]> = {
 
 const POINTS = 24000;
 
+/** Per-point brightness. Tuned against a screenshot, not by eye in code. */
+const INTENSITY = 0.5;
+
 const VERTEX = `#version 300 es
 precision highp float;
 
@@ -112,8 +115,8 @@ mat3 rotateY(float a) {
 void main() {
   vec3 dir = normalize(aPosition);
 
-  float n1 = snoise(dir * 1.4 + vec3(0.0, uTime * 0.12, 0.0));
-  float n2 = snoise(dir * 4.2 - vec3(uTime * 0.20, 0.0, uTime * 0.09));
+  float n1 = snoise(dir * 1.4 + vec3(0.0, uTime * 0.26, 0.0));
+  float n2 = snoise(dir * 4.2 - vec3(uTime * 0.42, 0.0, uTime * 0.19));
   float field = n1 * 0.6 + n2 * 0.4;
 
   // Novelty makes the surface boil, and barely moves it. Driving the radius
@@ -125,14 +128,22 @@ void main() {
   float shell = 1.0 - (1.0 - uCore) * pow(aSeed, 6.0);
   float radius = shell * (1.0 + field * uTurbulence * 0.05);
 
-  vec3 pos = rotateY(uTime * (0.05 + uActivity * 0.55)) * (dir * radius);
+  // The floor is what an idle system looks like, and 0.05 rad/s is a turn
+  // every two minutes — indistinguishable from frozen. Quiet has to be
+  // visibly quiet, not visibly broken. Activity still sets the rest.
+  vec3 pos = rotateY(uTime * (0.28 + uActivity * 0.75)) * (dir * radius);
 
   // Cheap perspective: no matrix stack, one divide.
   float z = pos.z * 0.5 + 1.9;
   vec2 projected = pos.xy / z;
 
   gl_Position = vec4(projected * 1.55, 0.0, 1.0);
-  gl_PointSize = uDpr * mix(0.9, 2.1, aSeed) / z * (uResolution.y / 520.0);
+  // uResolution.y is already the DPR-scaled height, so folding uDpr in as
+  // well counted it twice and produced sub-pixel points at dpr 1 — which is
+  // why the sphere looked like dust. Scale by canvas height alone.
+  // Little size variance: a wide spread reads as television snow and drowns
+  // the rim and the surface pattern, which are the parts carrying meaning.
+  gl_PointSize = mix(3.0, 4.2, aSeed) * (uResolution.y / 520.0) / z;
 
   vDepth = clamp((pos.z + 1.0) * 0.5, 0.0, 1.0);
   vInner = 1.0 - shell;
@@ -150,6 +161,7 @@ in float vRim;
 in float vBoil;
 
 uniform vec3 uColor;
+uniform float uIntensity;
 
 out vec4 fragColor;
 
@@ -164,10 +176,14 @@ void main() {
 
   // Additive blending stacks, so per-point alpha stays low and the glow comes
   // from accumulation. The rim term is what makes the silhouette read.
-  float weight = 1.0 + vInner * 2.2 + pow(vRim, 3.0) * 1.7;
-  float alpha = edge * depth * weight * mix(0.35, 1.0, vBoil) * 0.34;
+  // The rim is what makes a silhouette; pow 3 was too tight to see it.
+  float weight = 1.0 + vInner * 1.6 + pow(vRim, 1.8) * 2.6;
+  float alpha = edge * depth * weight * mix(0.18, 1.0, vBoil) * uIntensity;
 
-  fragColor = vec4(uColor * (1.0 + vInner * 0.25), alpha);
+  // Premultiplied output: the blend is ONE/ONE, so colour arrives already
+  // scaled by its own alpha and the browser composites it without dividing.
+  vec3 rgb = uColor * (1.0 + vInner * 0.25);
+  fragColor = vec4(rgb * alpha, alpha);
 }
 `;
 
@@ -208,10 +224,14 @@ export default function FieldSphere({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Premultiplied + ONE/ONE is the only combination that composites additive
+    // glow correctly over the page. With premultipliedAlpha:false the browser
+    // divides the accumulated colour by the accumulated alpha on composite,
+    // which crushed the whole sphere to almost nothing — seen in a screenshot.
     const gl = canvas.getContext("webgl2", {
       antialias: true,
       alpha: true,
-      premultipliedAlpha: false,
+      premultipliedAlpha: true,
     });
     if (!gl) {
       setUnsupported(true);
@@ -276,6 +296,7 @@ export default function FieldSphere({
     const uColor = gl.getUniformLocation(program, "uColor");
     const uResolution = gl.getUniformLocation(program, "uResolution");
     const uDpr = gl.getUniformLocation(program, "uDpr");
+    const uIntensity = gl.getUniformLocation(program, "uIntensity");
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = size * dpr;
@@ -283,7 +304,7 @@ export default function FieldSphere({
     gl.viewport(0, 0, canvas.width, canvas.height);
 
     gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.blendFunc(gl.ONE, gl.ONE);
     gl.disable(gl.DEPTH_TEST);
 
     const color = STATE_COLOR[state] ?? STATE_COLOR.IDLE;
@@ -293,6 +314,7 @@ export default function FieldSphere({
     gl.uniform1f(uActivity, activity);
     gl.uniform2f(uResolution, canvas.width, canvas.height);
     gl.uniform1f(uDpr, dpr);
+    gl.uniform1f(uIntensity, INTENSITY);
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
