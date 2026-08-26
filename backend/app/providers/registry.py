@@ -11,6 +11,20 @@ from app.core.config import Settings, get_settings
 from app.schemas.common import ProviderStatus
 
 
+def _x_note(settings: Settings) -> str:
+    """Read access only, and only when a token is present."""
+    if not settings.x_bearer_token:
+        return (
+            "Recent-search client implemented; no bearer token set, so nothing is "
+            "collected and the collector says so rather than reporting zero posts."
+        )
+    return (
+        f"Reading recent posts for {len(settings.x_search_terms)} queries, at most "
+        f"{settings.x_max_posts_per_run} posts per run. Publishing refuses: "
+        f"X_MODE={settings.x_mode}."
+    )
+
+
 def _model_note(settings: Settings) -> str:
     """What the model layer can actually do right now, in one sentence."""
     if not settings.anthropic_api_key:
@@ -48,8 +62,8 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
         ProviderStatus(
             name="x",
             configured=bool(settings.x_bearer_token),
-            implemented=False,
-            note="Interface only. Search/draft client lands in PHASE 7.",
+            implemented=True,
+            note=_x_note(settings),
         ),
         ProviderStatus(
             name="anthropic",

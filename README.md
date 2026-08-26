@@ -48,14 +48,15 @@ than a better one.
 | Embeddings | local deterministic hashing — **lexical, not semantic**, and reported as such |
 | Observation pipeline: ingest → filter → score → 10 anomaly detectors → store | implemented, deterministic |
 | Draft approval / rejection behind an operator token | implemented |
-| Publishing to X | deliberately refuses (501) — external integrations come last |
 | Frontend: 14 routes + public hypothesis, experiment, findings and memory pages | implemented |
 | Hypothesis engine: 6 templates, memory consulted before each question | implemented, deterministic |
 | Experiment engine: token-hour cohorts, two-proportion tests, strata, chronological split | implemented, deterministic |
 | Critic: 10 design checks + the gate blocking `SUPPORTED` without a `PASS` | implemented, deterministic |
-| Researcher / data scientist / critic / writer / reviewer *agents* (model-backed) | not implemented — scheduled last |
+| Observer / researcher / data scientist / critic *agents* (model-backed) | not implemented — the deterministic engines do that work |
 | Model client + writer and reviewer agents, behind a budget guard | implemented; refuse to run until a key, roles and prices are set |
-| Solana + X providers | interfaces only — scheduled last |
+| X: recent-search collector, rate-limit aware | implemented; needs a bearer token with search access |
+| Publishing to X | refuses, by design — V1 drafts, a human publishes |
+| Solana provider | interface only — scheduled last |
 | SSE live streaming: `GET /api/live/stream`, resumable by cursor | implemented |
 
 ### About the research engine

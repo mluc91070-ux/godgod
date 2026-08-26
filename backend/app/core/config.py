@@ -122,6 +122,28 @@ class Settings(BaseSettings):
     """Hard lifetime for one connection. The client reconnects with its cursor;
     a forgotten tab does not poll the database forever."""
 
+    # --- X (PHASE 7) ---------------------------------------------------
+    x_timeout_seconds: float = 30.0
+
+    x_search_terms: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["solana meme coin", "pump.fun"]
+    )
+    """Comma-separated search queries the collector runs.
+
+    Deliberately narrow: the recent-search quota is the binding constraint on
+    every paid tier, so a broad query buys noise with the budget that a specific
+    one spends on signal.
+    """
+
+    x_max_posts_per_run: int = 100
+    """Ceiling per collection run. The quota is monthly; a runaway loop that
+    spends it in an afternoon leaves the system blind for four weeks."""
+
+    x_min_likes: int = 0
+    x_exclude_reposts: bool = True
+    """A repost is amplification, not an independent observation. Counting them
+    as separate posts is how a single account looks like a movement."""
+
     # --- model calls --------------------------------------------------
     model_timeout_seconds: float = 60.0
 
@@ -159,9 +181,10 @@ class Settings(BaseSettings):
             raise ValueError("autonomy_level must be between 0 and 4")
         return v
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "x_search_terms", mode="before")
     @classmethod
-    def _split_origins(cls, v: object) -> object:
+    def _split_list(cls, v: object) -> object:
+        """Comma-separated in the environment; a list everywhere else."""
         if isinstance(v, str):
             return [item.strip() for item in v.split(",") if item.strip()]
         return v

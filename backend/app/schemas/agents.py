@@ -37,3 +37,21 @@ class ReviewOut(BaseModel):
     cost_usd: float | None = None
     error: str | None = None
     version: str
+
+
+class CollectionOut(BaseModel):
+    queries: int
+    fetched: int
+    stored: int
+    accounts_created: int
+    dropped: dict[str, int] = Field(default_factory=dict)
+    """Why a fetched post was not stored, by named reason."""
+    rate_limited: bool
+    """True when the quota stopped the run; `fetched` is then a floor."""
+    reset_at: str | None = None
+    error: str | None = None
+    duration_ms: int
+    complete: bool
+    """False when the run was cut short. Zero posts with complete=false is not
+    the same claim as zero posts with complete=true."""
+    llm_calls: int = 0

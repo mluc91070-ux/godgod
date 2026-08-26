@@ -30,6 +30,7 @@ backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
+backend/.venv/Scripts/python scripts/check_phase7.py           # x provider
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
 backend/.venv/Scripts/python scripts/check_agents.py           # model layer
@@ -217,13 +218,32 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.
 
+## X rules
+
+- **Read only.** `create_post` exists because the interface declares it, and it
+  raises. There is no argument, mode or flag in V1 that makes it post.
+- Every collected body goes through `sanitize_external_text` on the way in and
+  `wrap_untrusted` before any model sees it. A post that forges the fence
+  markers has them stripped; the test for that is not optional.
+- **A rate-limited run is not an empty run.** `CollectionReport.complete` is
+  false when the quota stopped it, when no token is configured, or when the API
+  errored. Reporting "0 posts" for any of those without that flag would be the
+  clearest possible violation of the one rule.
+- Every dropped post is counted under a named reason, same as the pipeline.
+- A post is linked to a token only on an exact address match. A `$SYMBOL` in a
+  post is not evidence about the row with that symbol, and a wrong link puts
+  fabricated social activity on a real token's record.
+- Collected rows are `is_demo=False` and never mix with fixtures.
+- The quota is the binding constraint: `X_MAX_POSTS_PER_RUN` is a ceiling per
+  run, and no test or gate ever makes a real request.
+
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
 5 experiment ✅ · 6 critic ✅ · 9 live terminal ✅ · 10 public research pages ✅,
 then
-the external integrations last: model calls ✅ (client, writer, reviewer, budget
-guard — needs a key to run) · 7 X provider · 8 Solana provider · 11 production.
+the external integrations: model calls ✅ · 7 X provider ✅ (both need a key to
+run) · 11 production ✅ (deployed). Remaining: 8 Solana provider.
 
 **External APIs come last by decision.** Until then, every engine is built against
 fixtures and deterministic logic, behind the provider interfaces, so wiring a key

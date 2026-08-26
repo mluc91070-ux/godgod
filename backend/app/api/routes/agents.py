@@ -13,8 +13,9 @@ from sqlalchemy import select
 from app.agents import review_draft, write_draft_for_result
 from app.api.deps import AdminDep, SessionDep, SettingsDep
 from app.models import ContentDraft, ExperimentResult
-from app.schemas.agents import BudgetOut, ReviewOut, WriterOut
+from app.schemas.agents import BudgetOut, CollectionOut, ReviewOut, WriterOut
 from app.services.budget import get_budget_status
+from app.services.social import collect_posts
 
 router = APIRouter(prefix="/api", tags=["agents"])
 
@@ -60,3 +61,17 @@ async def run_reviewer(
 
     outcome = await review_draft(session, draft_id, settings=settings)
     return ReviewOut(**outcome.as_dict())
+
+
+@router.post("/admin/x/collect", response_model=CollectionOut)
+async def run_collector(
+    session: SessionDep, settings: SettingsDep, admin: AdminDep
+) -> CollectionOut:
+    """Run each configured X search once and store what comes back.
+
+    Returns 200 with `complete: false` when the quota stopped the run or no
+    token is configured — a collector that returns zero posts for those reasons
+    must not look like one that found nothing.
+    """
+    report = await collect_posts(session, settings=settings)
+    return CollectionOut(**report.as_dict())

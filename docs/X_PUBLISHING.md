@@ -1,8 +1,38 @@
 # X publishing
 
+## What the provider does today (PHASE 7)
+
+Read only. `app/providers/x.py` implements recent search over the v2 API and
+`app/services/social.py` stores what comes back.
+
+`create_post` is present because the interface declares it, and it raises
+`PublishingDisabled` — with a token and without one. There is no mode, flag or
+argument in V1 that makes it post; `/api/x/drafts/{id}/publish` still answers
+501. A human publishes, by copying an approved draft.
+
+### The distinction that matters
+
+A collection run reports `complete: false` when the quota stopped it, when no
+token is configured, or when the API errored. Reporting "0 posts collected"
+without that flag would make an exhausted quota indistinguishable from a quiet
+internet — which is exactly the kind of claim this project exists not to make.
+
+### Access tiers
+
+Recent search is not in every X access tier. With a token that lacks it the
+provider raises with that explanation rather than reporting an empty result, so
+a wrong tier is visible immediately instead of looking like silence.
+
+### Untrusted input
+
+Post bodies are sanitised on the way in (control characters stripped, forged
+fence markers neutralised), stored verbatim otherwise, and wrapped by
+`wrap_untrusted` before any model sees them. A post is data. It is never an
+instruction, whatever it says.
+
 ## Current state
 
-**Nothing can be published.** `X_MODE=draft`, the X provider is not implemented,
+**Nothing can be published.** `X_MODE=draft`, the publishing path refuses,
 and `POST /api/x/drafts/:id/publish` returns 501 with the reason. Approved drafts
 stay in the database.
 

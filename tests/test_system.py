@@ -21,7 +21,7 @@ async def test_root_identity(client):
     assert body["role"] == "autonomous meme researcher"
 
 
-async def test_status_declares_mode_and_unimplemented_providers(client):
+async def test_status_declares_mode_and_what_each_provider_can_do(client):
     body = (await client.get("/api/status")).json()
 
     assert body["mode"]["demo_mode"] is True
@@ -33,16 +33,20 @@ async def test_status_declares_mode_and_unimplemented_providers(client):
     # rather than describing the system as finished.
     assert re.match(r"^PHASE \d+ — ", body["phase"])
 
-    # The chain providers ship last. The API must not claim otherwise.
+    # Solana ships last. The API must not claim otherwise.
     providers = {p["name"]: p for p in body["providers"]}
     assert set(providers) == {"solana", "x", "anthropic"}
     assert providers["solana"]["implemented"] is False
-    assert providers["x"]["implemented"] is False
 
-    # The model client exists; with no key set its note must say the agents refuse.
+    # The model and X clients exist; with nothing configured, their notes must
+    # say they refuse rather than implying a live feed.
     assert providers["anthropic"]["implemented"] is True
     assert providers["anthropic"]["configured"] is False
     assert "no API key" in providers["anthropic"]["note"]
+
+    assert providers["x"]["implemented"] is True
+    assert providers["x"]["configured"] is False
+    assert "no bearer token" in providers["x"]["note"]
 
     assert body["counts"]["observations"] > 0
 
