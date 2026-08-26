@@ -80,21 +80,38 @@ async def reject_draft(
     return draft
 
 
-@router.post("/x/drafts/{draft_id}/publish", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/x/drafts/{draft_id}/publish")
 async def publish_draft(
     session: SessionDep, settings: SettingsDep, admin: AdminDep, draft_id: str
 ) -> dict:
-    """Deliberately unimplemented in PHASE 1."""
+    """Publish one approved draft, if the deployment is configured to publish.
+
+    Answers 501 while `X_MODE` is anything other than "publish" — not because
+    the code is missing, but because a deployment that has not opted in has not
+    opted in. The response says which of the two it is.
+    """
+    from app.services.publish import publish_next
+
     await _get_draft(session, draft_id)
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail={
-            "error": "publishing is not implemented",
-            "x_mode": settings.x_mode,
-            "autonomy_level": settings.autonomy_level,
-            "note": "The X provider lands in PHASE 7. Approved drafts stay in the database.",
-        },
-    )
+
+    if settings.x_mode != "publish":
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail={
+                "error": "this deployment does not publish",
+                "x_mode": settings.x_mode,
+                "autonomy_level": settings.autonomy_level,
+                "note": (
+                    "The publishing path is implemented. Set X_MODE=publish and the "
+                    "four OAuth values to enable it; the drafts stay here until then."
+                ),
+            },
+        )
+
+    outcome = await publish_next(session, settings=settings, draft_id=draft_id)
+    if not outcome.published:
+        raise HTTPException(status_code=409, detail=outcome.as_dict())
+    return outcome.as_dict()
 
 
 @router.get("/tokens", response_model=Page[TokenOut])

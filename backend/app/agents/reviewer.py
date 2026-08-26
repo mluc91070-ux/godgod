@@ -101,7 +101,7 @@ def parse_verdict(text: str) -> tuple[str | None, str | None]:
     return verdict, str(reason) if reason else None
 
 
-async def _source_facts(session: AsyncSession, draft: ContentDraft) -> dict[str, Any]:
+async def source_facts(session: AsyncSession, draft: ContentDraft) -> dict[str, Any]:
     """The row the draft claims to describe, or an empty set of facts.
 
     An empty set is deliberately strict: with nothing to check against, every
@@ -152,7 +152,7 @@ async def review_draft(
     if draft is None:
         return ReviewOutcome(verdict="REJECT", reasons=["draft not found"])
 
-    facts = await _source_facts(session, draft)
+    facts = await source_facts(session, draft)
     if not facts:
         outcome = ReviewOutcome(
             verdict="REJECT",

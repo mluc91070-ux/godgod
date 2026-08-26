@@ -176,6 +176,22 @@ class Settings(BaseSettings):
     # --- X (PHASE 7) ---------------------------------------------------
     x_timeout_seconds: float = 30.0
 
+    x_api_key: str | None = None
+    x_api_secret: str | None = None
+    x_access_token: str | None = None
+    x_access_token_secret: str | None = None
+    """Posting needs user context; the bearer token can only read.
+
+    A deployment can hold a valid X_BEARER_TOKEN, on a paid tier, and still be
+    unable to publish a single post. These four are what writing requires.
+    """
+
+    x_min_minutes_between_posts: int = 45
+    """Floor between two published posts.
+
+    A research system that posts whenever it finishes a cycle is a bot, and it
+    exhausts a 500-post month in under a week."""
+
     x_search_terms: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["solana meme coin", "pump.fun"]
     )

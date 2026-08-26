@@ -66,7 +66,9 @@ async def test_rejection_stores_a_reason(client, admin_headers):
     assert body["rejection_reason"] == "too vague"
 
 
-async def test_publishing_is_refused_in_v1(client, admin_headers):
+async def test_publishing_is_refused_unless_the_deployment_opts_in(client, admin_headers):
+    """The refusal must say the deployment has not opted in, not that the code
+    is missing — those are different facts and only one of them is true now."""
     draft = await _draft_by_type(client, "FAILURE")
     response = await client.post(
         f"/api/x/drafts/{draft['id']}/publish", headers=admin_headers
@@ -74,7 +76,8 @@ async def test_publishing_is_refused_in_v1(client, admin_headers):
     assert response.status_code == 501
     detail = response.json()["detail"]
     assert detail["x_mode"] == "draft"
-    assert "PHASE 7" in detail["note"]
+    assert "X_MODE=publish" in detail["note"]
+    assert "not implemented" not in detail["note"].lower()
 
 
 async def test_token_page_shows_unknowns_as_null(client):

@@ -28,8 +28,10 @@ import httpx
 from app.core.config import Settings, get_settings
 from app.core.untrusted import sanitize_external_text
 from app.providers.base import ProviderNotConfigured, XProvider
+from app.providers.oauth1 import OAuth1Credentials, sign
 
 API_ROOT = "https://api.x.com/2"
+POST_URL = f"{API_ROOT}/tweets"
 
 SEARCH_FIELDS = {
     "tweet.fields": "created_at,lang,public_metrics,author_id,referenced_tweets",
@@ -292,16 +294,65 @@ class HttpXProvider(XProvider):
             "user-context OAuth rather than an app bearer token. Not implemented."
         )
 
-    async def create_post(self, text: str, reply_to: str | None = None) -> dict[str, Any]:
-        """Never posts in V1.
-
-        The check is on configuration, not on a caller's intention: there is no
-        argument that makes this publish while X_MODE is draft.
-        """
-        raise PublishingDisabled(
-            f"X_MODE={self._settings.x_mode} and autonomy level "
-            f"{self._settings.autonomy_level}. V1 drafts; a human publishes."
+    def _write_credentials(self) -> OAuth1Credentials:
+        return OAuth1Credentials(
+            consumer_key=self._settings.x_api_key or "",
+            consumer_secret=self._settings.x_api_secret or "",
+            access_token=self._settings.x_access_token or "",
+            access_token_secret=self._settings.x_access_token_secret or "",
         )
+
+    async def create_post(self, text: str, reply_to: str | None = None) -> dict[str, Any]:
+        """Publish one post. Refuses unless the deployment is configured to.
+
+        The gate is configuration, not a caller's intention: no argument to this
+        function makes it publish while X_MODE is anything other than "publish".
+        """
+        if self._settings.x_mode != "publish":
+            raise PublishingDisabled(
+                f"X_MODE={self._settings.x_mode}. Nothing is published until it "
+                "is set to 'publish'."
+            )
+
+        credentials = self._write_credentials()
+        if not credentials.complete:
+            raise ProviderNotConfigured(
+                "Posting needs user context: X_API_KEY, X_API_SECRET, "
+                "X_ACCESS_TOKEN and X_ACCESS_TOKEN_SECRET. The bearer token can "
+                "only read, whatever tier it is on."
+            )
+
+        payload: dict[str, Any] = {"text": text}
+        if reply_to:
+            payload["reply"] = {"in_reply_to_tweet_id": reply_to}
+
+        headers = {
+            "Authorization": sign(credentials, "POST", POST_URL),
+            "Content-Type": "application/json",
+            "User-Agent": "godgod-research/0.1",
+        }
+
+        try:
+            if self._client is not None:
+                response = await self._client.post(POST_URL, json=payload, headers=headers)
+            else:
+                async with httpx.AsyncClient(timeout=self._settings.x_timeout_seconds) as c:
+                    response = await c.post(POST_URL, json=payload, headers=headers)
+        except httpx.HTTPError as exc:
+            raise XCallFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        if response.status_code == 429:
+            raise XRateLimited()
+        if response.status_code in (401, 403):
+            raise ProviderNotConfigured(
+                f"X refused the write ({response.status_code}). The access token "
+                "needs write permission on the app, and the app needs it enabled."
+            )
+        if response.status_code not in (200, 201):
+            raise XCallFailed(f"HTTP {response.status_code}: {response.text[:300]}")
+
+        data = (response.json() or {}).get("data") or {}
+        return {"id": data.get("id"), "text": data.get("text", text)}
 
 
 _cache: dict[tuple, XProvider] = {}

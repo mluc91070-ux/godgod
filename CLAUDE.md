@@ -221,8 +221,18 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
 
 ## X rules
 
-- **Read only.** `create_post` exists because the interface declares it, and it
-  raises. There is no argument, mode or flag in V1 that makes it post.
+- **Publishing is off unless the deployment opts in.** `X_MODE` is the switch
+  and no argument to any function overrides it. Below autonomy level 3 a human
+  must approve each draft; that is a decision, never a default.
+- **Posting needs user context.** An app bearer token can read and cannot
+  write, whatever tier it is on — a deployment can hold a valid paid token and
+  still publish nothing. Writing needs the four OAuth 1.0a values.
+- The text is checked again at publish time. Approval happens earlier and the
+  body can change after it, so the last word belongs to `check_draft`.
+- Nothing is published twice: the check is a `published_posts` query, not a
+  flag someone can forget to set.
+- `X_MIN_MINUTES_BETWEEN_POSTS` is a floor. A system that posts whenever a
+  cycle finishes is a bot, and it spends a 500-post month in under a week.
 - Every collected body goes through `sanitize_external_text` on the way in and
   `wrap_untrusted` before any model sees it. A post that forges the fence
   markers has them stripped; the test for that is not optional.
