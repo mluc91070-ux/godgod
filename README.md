@@ -7,11 +7,28 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 1-6, 9 and 10 complete.** The repository, database, API, frontend, memory
+**Status: PHASE 1-6, 9, 10 and the model layer complete; ready to deploy.** The repository, database, API, frontend, memory
 system, observation pipeline and the hypothesis / experiment / critic engines exist
 and are tested. All of it is deterministic — no model is called anywhere yet. Every
 external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 `/api/status` reports exactly what is implemented, and the UI says so on every page.
+
+---
+
+## Deploy it
+
+```bash
+backend/.venv/Scripts/python scripts/preflight.py     # refuses an unsafe config
+```
+
+`render.yaml` is a blueprint for the API, the free PostgreSQL and an hourly
+research cron. The frontend goes to Vercel with one variable,
+`NEXT_PUBLIC_API_URL`. The full runbook is in `docs/DEPLOYMENT.md`.
+
+It launches in demo mode, and says so on every page. Serving the synthetic
+dataset with `is_demo` on every row is the honest launch state; turning it off
+before the Solana and X providers exist produces a correct, empty system rather
+than a better one.
 
 ---
 

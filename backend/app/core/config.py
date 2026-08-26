@@ -7,10 +7,10 @@ hard-coded anywhere else in the codebase.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 AutonomyLevel = Literal[0, 1, 2, 3, 4]
 
@@ -141,7 +141,15 @@ class Settings(BaseSettings):
 
     # --- api ----------------------------------------------------------
     api_prefix: str = "/api"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
+    """Comma-separated in the environment.
+
+    NoDecode is load-bearing: without it pydantic-settings JSON-decodes a list
+    field before any validator runs, and `CORS_ORIGINS=https://site.example`
+    crashes the process at startup instead of being read as one origin.
+    """
     admin_token: str | None = None
 
     @field_validator("autonomy_level")

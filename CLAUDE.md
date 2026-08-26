@@ -32,6 +32,7 @@ backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
 backend/.venv/Scripts/python scripts/check_agents.py           # model layer
+backend/.venv/Scripts/python scripts/preflight.py              # before any deploy
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
 backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
