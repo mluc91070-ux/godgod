@@ -88,7 +88,7 @@ class ModelProvider(ABC):
         prompt: str,
         role: str,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
+        effort: str | None = "low",
     ) -> ModelResponse: ...
 
 
@@ -111,6 +111,10 @@ class HttpModelProvider(ModelProvider):
 
     The system rule about untrusted content is prepended to every system prompt
     here rather than in each agent, so no agent can forget it.
+
+    Effort defaults to "low": every call this system makes writes or judges one
+    short post, and the deep reasoning a higher setting pays for is spent on a
+    task that does not need it.
     """
 
     name = "anthropic"
@@ -130,16 +134,23 @@ class HttpModelProvider(ModelProvider):
         prompt: str,
         role: str,
         max_tokens: int = 1024,
-        temperature: float = 0.0,
+        effort: str | None = "low",
     ) -> ModelResponse:
         model = model_for_role(self._settings, role)
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
-            "temperature": temperature,
             "system": f"{SYSTEM_RULE}\n\n{system}",
             "messages": [{"role": "user", "content": prompt}],
         }
+
+        # No `temperature`: current models reject it with a 400, not a warning —
+        # found by the first real call. Sampling is no longer a knob. `effort`
+        # is what decides how much thinking a request pays for, and every call
+        # this system makes writes or judges one short post.
+        if effort:
+            payload["output_config"] = {"effort": effort}
+
         headers = {
             "x-api-key": self._key,
             "anthropic-version": API_VERSION,

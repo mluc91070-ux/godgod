@@ -57,7 +57,7 @@ class FakeModel(ModelProvider):
         self.cost = cost
         self.calls: list[dict] = []
 
-    async def complete(self, *, system, prompt, role, max_tokens=1024, temperature=0.0):
+    async def complete(self, *, system, prompt, role, max_tokens=1024, effort="low"):
         self.calls.append(
             {"system": system, "prompt": prompt, "role": role, "max_tokens": max_tokens}
         )
@@ -655,3 +655,17 @@ def test_the_writer_prompt_forbids_claims_while_allowing_register() -> None:
     assert "not in the facts" in lowered, "the number rule must be stated"
     assert "where a price is going" in lowered
     assert "crypto-native" in lowered, "the register is deliberate, not an accident"
+
+
+def test_a_rate_may_be_written_to_two_decimals() -> None:
+    """The regression this exists for: the writer said 91.18% for a rate of
+    0.911764 — the truth, stated precisely — and the guard called it invented.
+    The check is for numbers that are not in the data, not for precision."""
+    facts = {"rate_control": 0.9117647058823529, "rate_exposed": 1.0}
+    for written in ("91%", "91.2%", "91.18%"):
+        assert ungrounded_numbers(f"retention {written} vs 100%", facts) == [], written
+
+
+def test_a_genuinely_invented_number_is_still_caught() -> None:
+    facts = {"rate_control": 0.9117647058823529}
+    assert ungrounded_numbers("retention 87.4%", facts) == ["87.4"]

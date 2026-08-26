@@ -84,18 +84,17 @@ def _variants(value: object) -> set[str]:
         return forms
     if isinstance(value, int | float):
         number = float(value)
-        forms.add(f"{number:g}")
-        forms.add(f"{number:.0f}")
-        forms.add(f"{number:.1f}")
-        forms.add(f"{number:.2f}")
-        forms.add(f"{abs(number):g}")
-        forms.add(f"{abs(number):.0f}")
-        forms.add(f"{abs(number):.1f}")
-        forms.add(f"{abs(number):.2f}")
-        # A rate of 0.42 is honestly written as 42%.
+        for candidate in (number, abs(number)):
+            forms.add(f"{candidate:g}")
+            for places in (0, 1, 2, 3, 4):
+                forms.add(f"{candidate:.{places}f}")
+        # A rate of 0.42 is honestly written as 42%. Two decimals included
+        # because the check exists to catch invented numbers, not real ones
+        # stated more precisely — 0.911764 written as 91.18% is the truth, and
+        # rejecting it taught the writer to be vaguer than the data.
         if 0.0 <= abs(number) <= 1.0:
-            forms.add(f"{abs(number) * 100:.0f}")
-            forms.add(f"{abs(number) * 100:.1f}")
+            for places in (0, 1, 2):
+                forms.add(f"{abs(number) * 100:.{places}f}")
         forms.add(f"{round(number)}")
     else:
         forms.update(numbers_in(str(value)))

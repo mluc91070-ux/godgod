@@ -137,7 +137,6 @@ async def write_draft_for_result(
         prompt=build_prompt(facts),
         input_summary=f"result {result.id} ({result.outcome}) of experiment #{experiment.seq}",
         max_tokens=400,
-        temperature=0.3,
         settings=settings,
         provider=provider,
         is_demo=bool(result.is_demo),

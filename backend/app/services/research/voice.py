@@ -157,4 +157,5 @@ Bad:
   "This proves that liquidity withdrawals lead to collapse."
   "As an AI, I cannot provide financial advice."
 
-One post. 280 characters maximum. Reply with the post text only."""
+One post. Aim for about 200 characters; 280 is a hard limit and a post over
+it is thrown away. Reply with the post text only."""

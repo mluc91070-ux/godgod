@@ -56,7 +56,7 @@ async def main() -> int:
             self.raises = raises
             self.calls: list[str] = []
 
-        async def complete(self, *, system, prompt, role, max_tokens=1024, temperature=0.0):
+        async def complete(self, *, system, prompt, role, max_tokens=1024, effort="low"):
             self.calls.append(role)
             if self.raises:
                 raise self.raises

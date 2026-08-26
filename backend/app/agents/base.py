@@ -88,8 +88,8 @@ async def run_agent(
     system: str,
     prompt: str,
     input_summary: str,
-    max_tokens: int = 512,
-    temperature: float = 0.0,
+    max_tokens: int = 4096,
+    effort: str | None = "low",
     settings: Settings | None = None,
     provider: ModelProvider | None = None,
     is_demo: bool = True,
@@ -152,7 +152,7 @@ async def run_agent(
             prompt=prompt,
             role=role,
             max_tokens=max_tokens,
-            temperature=temperature,
+            effort=effort,
         )
     except (ProviderNotConfigured, ModelCallFailed, ValueError) as exc:
         error = f"{type(exc).__name__}: {exc}"

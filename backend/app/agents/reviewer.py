@@ -188,8 +188,7 @@ async def review_draft(
             prompt=prompt,
             input_summary=f"draft {draft.id} against result {draft.source_id}",
             max_tokens=200,
-            temperature=0.0,
-            settings=settings,
+                settings=settings,
             provider=provider,
             is_demo=bool(draft.is_demo),
         )
