@@ -28,10 +28,12 @@ backend/.venv/Scripts/python scripts/seed_demo.py --force      # reload fixtures
 backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
+backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
 backend/.venv/Scripts/python scripts/backfill_embeddings.py    # after an embedder change
 backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
 cd backend && .venv/Scripts/python -m app.workers.observe [--backfill]
+cd backend && .venv/Scripts/python -m app.workers.research
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 cd backend && .venv/Scripts/python -m alembic upgrade head
 cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"
@@ -156,11 +158,29 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
   changes instead of nudging it to make a test pass.
 - Memory retrieval happens before hypothesis generation (enforced from PHASE 4).
 
+## Research rules
+
+- A hypothesis is written from a **template**, never from a model looking at the
+  data it is about to be tested on. A falsification condition invented after the
+  result is not a falsification condition.
+- Every template declares `expected_direction`. An effect in the opposite
+  direction falsifies; it never confirms.
+- Changing a threshold or an outcome definition means a new template key and a
+  bumped `DATASET_VERSION` — old results must stay interpretable.
+- The decision order in `experiments.evaluate` is deliberate: *too small to
+  judge* outranks *falsified*. Never reorder it to get a more interesting demo.
+- Every experiment stores `dataset_version` + `dataset_hash`. If a change makes
+  the hash move, say so; a silently different dataset is a different experiment.
+- Rows that cannot be built are counted in `Dataset.excluded` under a named
+  reason. Same rule as the pipeline: silent filtering hides an empty result.
+- `INCONCLUSIVE` is the expected output on the current data, and shipping five of
+  them is a correct outcome, not a bug to tune away.
+
 ## Phases
 
-PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ·
-5 experiment · 6 critic · 9 live terminal · 10 public research pages, then the
-external integrations last: 7 X provider · 8 Solana provider · model calls ·
+PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
+5 experiment ✅ · 6 critic ✅ · 9 live terminal · 10 public research pages, then
+the external integrations last: 7 X provider · 8 Solana provider · model calls ·
 11 production.
 
 **External APIs come last by decision.** Until then, every engine is built against

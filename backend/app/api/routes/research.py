@@ -6,7 +6,14 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import PageDep, SessionDep, SettingsDep, build_page, count_query
+from app.api.deps import (
+    AdminDep,
+    PageDep,
+    SessionDep,
+    SettingsDep,
+    build_page,
+    count_query,
+)
 from app.models import (
     Experiment,
     Hypothesis,
@@ -23,10 +30,24 @@ from app.schemas.research import (
     ObservationDetail,
     ObservationOut,
     PatternOut,
+    ResearchReportOut,
     TraceOut,
 )
+from app.services.research import run_research_cycle
 
 router = APIRouter(prefix="/api", tags=["research"])
+
+
+@router.post("/admin/research/run", response_model=ResearchReportOut)
+async def run_cycle(
+    session: SessionDep, settings: SettingsDep, admin: AdminDep
+) -> ResearchReportOut:
+    """Generate hypotheses from anomalies, test them, and let the critic rule.
+
+    Deterministic: templates, thresholds and statistics. `llm_calls` is 0.
+    """
+    report = await run_research_cycle(session, settings=settings)
+    return ResearchReportOut(**report.as_dict())
 
 
 @router.get("/observations", response_model=Page[ObservationOut])

@@ -32,8 +32,8 @@ decided by a threshold, a z-score or a SQL query is decided that way.
 | Models | `backend/app/models` | SQLAlchemy tables. |
 | DB | `backend/app/db` | Async engine, portable column types. |
 | Providers | `backend/app/providers` | Vendor-neutral Solana / X interfaces. |
-| Agents | `backend/app/agents` | PHASE 3–6. Empty today. |
-| Workers | `backend/app/workers` | Scheduled research cycles. PHASE 3+. |
+| Agents | `backend/app/agents` | Model-backed agents; scheduled last. Empty today. |
+| Workers | `backend/app/workers` | `observe` and `research` cycles, runnable from the CLI. |
 | Frontend | `frontend/` | Next.js app router, server components, no keys. |
 
 ## Data model
@@ -97,6 +97,46 @@ source has rather than the wall clock. A frozen dataset stays observable, and
 per anomaly, a memory entry when importance clears the floor, and one `AgentRun` row
 per cycle with `model=null` and `estimated_cost_usd=0.0` — because nothing was
 called, not because nothing was measured.
+
+## Research (PHASE 4-6)
+
+```
+anomalies ─▶ templates ─▶ hypothesis ─▶ build_dataset ─▶ evaluate ─▶ review ─▶ result
+                 │            │                                        │         │
+          memory searched  trace step                            critic checks  memory, draft, pattern
+```
+
+`app/services/research/` holds five modules with one job each:
+
+| Module | Responsibility |
+| --- | --- |
+| `templates.py` | six question templates: trigger, outcome, horizon, direction, threshold |
+| `dataset.py` | token-hour rows, strata, no-look-ahead, content hash, named exclusions |
+| `stats.py` | two-proportion z-test and Cohen's h, no scientific dependency |
+| `experiments.py` | the decision order, pooled and per-stratum comparison, stability |
+| `critic.py` | ten design checks and the `SUPPORTED` gate |
+| `cycle.py` | wires them together and writes hypothesis, experiment, trace, memory, draft |
+
+**Why templates and not a model.** The same reason detectors are not prompts: a
+hypothesis whose falsification condition was written by a model *after* seeing the
+data is not falsifiable. Templates fix the question and its threshold in advance,
+and are versioned so an old result stays interpretable. The model layer, when it
+arrives, proposes new templates for a human to accept — it does not judge the run.
+
+**Direction is part of the hypothesis.** `expected_direction` (+1 / −1) is compared
+against the observed difference. Without it, a hypothesis predicting a *decrease*
+would be confirmed by a large *increase*, which is how a system convinces itself it
+found something.
+
+**Where the sample is too small to speak.** `MIN_CELL = 30` per group. Below it the
+result is `INCONCLUSIVE` with the reason stated, ranked *above* the falsification
+check in the decision order so noise cannot masquerade as a rejection.
+
+**Output.** A `Hypothesis` (with the memory ids consulted before it was written), an
+`Experiment` (dataset version + hash + parameters), an `ExperimentResult` (metrics,
+p-value, effect size, all ten critic checks, limitations), trace steps for every
+stage, a `Memory` entry, a `Pattern` update, a templated `ContentDraft` marked
+`PENDING`, and one `AgentRun` with `model=null` and `estimated_cost_usd=0.0`.
 
 ## Memory (PHASE 2)
 
@@ -167,7 +207,7 @@ Write (operator token required): `/api/x/drafts/:id/approve`, `/reject`.
 
 ## Deferred by design
 
-SSE streaming (PHASE 9), the six agents (PHASE 3–6), the live providers and every
+SSE streaming (PHASE 9), the model-backed agents, the live providers and every
 model call (scheduled last, by decision). Each is reported as unimplemented by
 `/api/status` rather than stubbed with fake behaviour.
 

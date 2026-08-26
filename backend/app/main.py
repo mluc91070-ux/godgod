@@ -69,6 +69,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                     sum(report.anomalies_created for report in reports),
                 )
 
+    if settings.demo_mode and os.getenv("GODGOD_AUTO_RESEARCH", "1") == "1":
+        # Turn the anomalies the pipeline just found into questions, and test
+        # them. Skipped if a cycle has already run against this database.
+        from sqlalchemy import func, select
+
+        from app.models import AgentRun
+        from app.services.research import RESEARCH_RUN_NAME, run_research_cycle
+
+        async with get_sessionmaker()() as session:
+            already = await session.scalar(
+                select(func.count())
+                .select_from(AgentRun)
+                .where(AgentRun.agent_name == RESEARCH_RUN_NAME)
+            )
+            if not already:
+                report = await run_research_cycle(session, settings=settings)
+                logger.info("research cycle: %s", report.as_dict())
+
     logger.info(
         "GODGOD %s starting | demo=%s autonomy=%s x_mode=%s",
         settings.app_version,

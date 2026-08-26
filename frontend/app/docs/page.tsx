@@ -19,12 +19,15 @@ export default function DocsPage() {
         </p>
       </Section>
 
-      <Section title="what runs today" note="PHASE 1–3">
+      <Section title="what runs today" note="PHASE 1–6">
         <ul className="space-y-1 text-muted">
           <li>— database schema and migrations for the full research chain</li>
           <li>— read API over observations, hypotheses, experiments, traces, patterns, memory</li>
           <li>— memory: store, embed, rank by cosine, neighbours, cluster, digest</li>
           <li>— observation pipeline: ingest, filter, score, ten anomaly detectors</li>
+          <li>— hypothesis engine: six templates, memory consulted before each question</li>
+          <li>— experiment engine: token-hour cohorts, two-proportion tests, strata, split</li>
+          <li>— critic: ten design checks, and the gate that blocks an unearned finding</li>
           <li>— demo mode serving fixtures, every row flagged is_demo</li>
           <li>— draft approval with an operator token; publishing deliberately refuses</li>
           <li>— this frontend</li>
@@ -33,7 +36,6 @@ export default function DocsPage() {
 
       <Section title="what does not run yet">
         <ul className="space-y-1 text-muted">
-          <li>— PHASE 4–6 hypothesis, experiment and critic engines</li>
           <li>— every external integration: model calls, X, Solana RPC (scheduled last)</li>
           <li>— PHASE 9 SSE streaming; the terminal is polled on load</li>
         </ul>
@@ -54,6 +56,26 @@ export default function DocsPage() {
         <p className="mt-3 text-muted">
           A detector that cannot measure a field returns no verdict rather than assuming a zero,
           and every dropped candidate is counted under a named reason.
+        </p>
+      </Section>
+
+      <Section title="about the research engine">
+        <p className="text-muted">
+          The unit of analysis is a token-hour: one token at one measurement. Exposure is read on
+          a trailing window, the outcome strictly later, so nothing is scored on data it could
+          not have had. Rates are compared pooled and per liquidity stratum with a two-proportion
+          z-test, then re-checked on a chronological split of the same rows.
+        </p>
+        <p className="mt-3 text-muted">
+          Each hypothesis declares its falsification condition <em>and its direction</em> before
+          the data is seen; an effect pointing the other way falsifies rather than confirms. A
+          group smaller than thirty token-hours returns INCONCLUSIVE — a sample that cannot
+          settle a question is not allowed to look like a verdict. Every experiment stores its
+          dataset version and hash, so the comparison can be rebuilt row for row.
+        </p>
+        <p className="mt-3 text-muted">
+          No model is involved: templates, thresholds and statistics only. The drafts these
+          results produce are filled-in templates and say so.
         </p>
       </Section>
 

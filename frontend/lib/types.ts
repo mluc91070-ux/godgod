@@ -79,6 +79,16 @@ export type Status = {
     llm_in_loop: boolean;
     last_run_at: string | null;
   };
+  research: {
+    implemented: boolean;
+    hypothesis_templates: number;
+    critic_version: string;
+    critic_checks: string[];
+    min_group_size: number;
+    unit_of_analysis: string;
+    llm_in_loop: boolean;
+    last_run_at: string | null;
+  };
   providers: { name: string; configured: boolean; implemented: boolean; note: string | null }[];
   counts: Record<string, number>;
   server_time: string;

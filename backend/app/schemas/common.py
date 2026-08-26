@@ -69,6 +69,20 @@ class PipelineInfo(BaseModel):
     last_run_at: datetime | None
 
 
+class ResearchInfo(BaseModel):
+    """The hypothesis, experiment and critic engines."""
+
+    implemented: bool
+    hypothesis_templates: int
+    critic_version: str
+    critic_checks: list[str]
+    min_group_size: int
+    """Below this per group, a difference is reported but not judged."""
+    unit_of_analysis: str
+    llm_in_loop: bool
+    last_run_at: datetime | None
+
+
 class CountsInfo(BaseModel):
     observations: int
     anomalies: int
@@ -90,6 +104,7 @@ class StatusResponse(BaseModel):
     mode: ModeInfo
     memory: MemoryInfo
     pipeline: PipelineInfo
+    research: ResearchInfo
     providers: list[ProviderStatus]
     counts: CountsInfo
     server_time: datetime

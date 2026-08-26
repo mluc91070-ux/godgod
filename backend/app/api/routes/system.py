@@ -27,6 +27,7 @@ from app.schemas.common import (
     ModeInfo,
     Page,
     PipelineInfo,
+    ResearchInfo,
     StatusResponse,
 )
 from app.schemas.research import AgentOut, AgentRunOut, EventOut, MetricsResponse, SourceOut
@@ -34,6 +35,13 @@ from app.services.embeddings import get_embedding_provider
 from app.services.memory import dialect_name
 from app.services.observation.detectors import DETECTOR_NAMES
 from app.services.observation.pipeline import PIPELINE_RUN_NAME
+from app.services.research import (
+    CHECK_NAMES,
+    CRITIC_VERSION,
+    MIN_CELL,
+    RESEARCH_RUN_NAME,
+    TEMPLATES,
+)
 from app.services.state import get_counts, get_live, get_state
 
 
@@ -59,7 +67,10 @@ AUTONOMY_LABELS = {
     4: "FUTURE EXPERIMENTAL ACTIONS",
 }
 
-CURRENT_PHASE = "PHASE 3 — observation (filter, score, detect anomalies; no model in the loop)"
+CURRENT_PHASE = (
+    "PHASE 6 — hypothesis, experiment and critic "
+    "(deterministic statistics; no model in the loop)"
+)
 
 
 async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> PipelineInfo:
@@ -73,6 +84,22 @@ async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> Pipel
         source_is_demo=source.is_demo,
         window_hours=settings.observation_window_hours,
         detectors=sorted(DETECTOR_NAMES),
+        llm_in_loop=False,
+        last_run_at=last_run,
+    )
+
+
+async def describe_research(session: SessionDep, settings: SettingsDep) -> ResearchInfo:
+    last_run = await session.scalar(
+        select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == RESEARCH_RUN_NAME)
+    )
+    return ResearchInfo(
+        implemented=True,
+        hypothesis_templates=len(TEMPLATES),
+        critic_version=CRITIC_VERSION,
+        critic_checks=list(CHECK_NAMES),
+        min_group_size=MIN_CELL,
+        unit_of_analysis="token-hour",
         llm_in_loop=False,
         last_run_at=last_run,
     )
@@ -106,6 +133,7 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
         ),
         memory=describe_memory(session, settings),
         pipeline=await describe_pipeline(session, settings),
+        research=await describe_research(session, settings),
         providers=describe_providers(settings),
         counts=await get_counts(session),
         server_time=datetime.now(UTC),

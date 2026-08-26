@@ -7,11 +7,11 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 3 complete.** The repository, database, API, frontend, memory system
-and observation pipeline exist and are tested. The hypothesis, experiment and critic
-engines do not exist yet. Every external integration (Anthropic, X, Solana RPC) is
-deliberately scheduled last. `/api/status` reports exactly what is implemented, and
-the UI says so on every page.
+**Status: PHASE 6 complete.** The repository, database, API, frontend, memory
+system, observation pipeline and the hypothesis / experiment / critic engines exist
+and are tested. All of it is deterministic — no model is called anywhere yet. Every
+external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
+`/api/status` reports exactly what is implemented, and the UI says so on every page.
 
 ---
 
@@ -28,9 +28,29 @@ the UI says so on every page.
 | Draft approval / rejection behind an operator token | implemented |
 | Publishing to X | deliberately refuses (501) — external integrations come last |
 | Frontend: 13 routes + public experiment and memory pages | implemented |
-| Researcher / data scientist / critic / writer / reviewer agents | not implemented — PHASE 4–6 |
+| Hypothesis engine: 6 templates, memory consulted before each question | implemented, deterministic |
+| Experiment engine: token-hour cohorts, two-proportion tests, strata, chronological split | implemented, deterministic |
+| Critic: 10 design checks + the gate blocking `SUPPORTED` without a `PASS` | implemented, deterministic |
+| Researcher / data scientist / critic / writer / reviewer *agents* (model-backed) | not implemented — scheduled last |
 | Solana + X providers, model calls | interfaces only — scheduled last |
 | SSE live streaming | not implemented — PHASE 9 (terminal is polled on load) |
+
+### About the research engine
+
+```
+anomaly → memory search → hypothesis → dataset → experiment → critic → result → memory → draft
+```
+
+The unit of analysis is a **token-hour**. Exposure is read on a trailing window;
+the outcome strictly later. Each hypothesis declares its falsification condition
+*and its direction* before the data is seen, so an effect pointing the opposite way
+falsifies rather than confirms. A group under 30 token-hours returns `INCONCLUSIVE`
+— a sample that cannot settle a question is not allowed to look like a verdict.
+Every experiment stores the dataset version and a content hash of its exact rows.
+
+On the demo series this produces 5 hypotheses, 5 experiments and 5 `INCONCLUSIVE`
+results, with the critic reporting why: six tokens is not enough independent data.
+That is the honest answer, and it is the one published.
 
 ### About the observation pipeline
 
@@ -130,8 +150,8 @@ backend/app/
   schemas/     Pydantic response contracts
   services/    fixtures, seeding, derived state
   providers/   Solana / X abstractions (no vendor names)
-  agents/      PHASE 3–6
-  workers/     PHASE 3+
+  agents/      model-backed agents (scheduled last)
+  workers/     observe + research CLI cycles
 frontend/      Next.js app router, one route per public surface
 data/fixtures/ the only data source in demo mode
 docs/          architecture, methodology, identity, security, cost, publishing

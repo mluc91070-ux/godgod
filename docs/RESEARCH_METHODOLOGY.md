@@ -46,6 +46,65 @@ Biases to design against, and to state which apply:
 - **selection** — the label built from the same window used to find the anomaly
 - **multiple testing** — trying enough splits that one becomes significant
 
+## What PHASE 4-6 actually implements
+
+The engines are deterministic: templates, thresholds and statistics. No model is
+called, and `llm_calls` on every research run is `0`.
+
+**Unit of analysis: the token-hour.** One token at one measurement. Exposure is
+evaluated on the trailing window ending at that hour; the outcome is read
+strictly `horizon_hours` later. A row whose outcome cannot be measured is
+excluded under a named reason, never defaulted.
+
+**Six question templates** (`app/services/research/templates.py`), one per anomaly
+type that has a testable follow-up. Each declares its population, sample
+definition, timeframe, baseline, expected result, falsification condition,
+`min_effect_pp`, and — the part that makes falsification real — an
+`expected_direction` of `+1` or `-1`.
+
+> Without a declared direction a hypothesis is unfalsifiable in practice: an
+> effect pointing the opposite way to the prediction would otherwise count as a
+> confirmation as long as it was large enough. The engine therefore compares
+> `difference_pp × expected_direction` against the threshold, and an effect in
+> the wrong direction is *rejected*, not celebrated.
+
+**The comparison.** Exposed against control, pooled and per liquidity stratum,
+with a two-proportion z-test (`app/services/research/stats.py`, normal
+approximation, no dependency). Effect size is reported as Cohen's h. The same
+rows are then split chronologically and the sign of the difference is compared
+across halves. A sign that reverses across strata falsifies.
+
+**Decision order** (`experiments.evaluate`), applied in this order and no other:
+
+1. empty dataset → `INCONCLUSIVE` ("nothing was tested")
+2. one empty group → `INCONCLUSIVE`
+3. smallest group under `MIN_CELL` (30 token-hours) → `INCONCLUSIVE`
+4. falsification condition met → `REJECTED`
+5. `p > 0.05` → `INCONCLUSIVE` ("not distinguishable from noise")
+6. otherwise → `SUPPORTED`
+
+Step 3 sits *above* step 4 on purpose. A group of one row can satisfy a
+falsification rule by accident; calling that `REJECTED` would dress noise up as a
+verdict. The result says so in words: the falsification rule is not applied to a
+sample that cannot support it.
+
+**Reproducibility.** Every experiment stores `dataset_version`
+(`token-hours-v1`) and `dataset_hash` — a SHA-256 over the sorted rows, stable
+under row order and sensitive to any changed outcome — plus the parameters and
+features used. Two runs producing the same hash compared the same data.
+
+**The ten critic checks** (`critic-checks-v1`): `sample_size`, `independence`,
+`look_ahead_bias`, `data_leakage`, `survivorship_bias`, `selection_bias`,
+`confounding`, `stability`, `multiple_testing`, `data_quality`. Every check runs
+on every result and its verdict is stored, so a reader sees what was inspected
+rather than a single word.
+
+**Known limitation, stated rather than hidden:** token-hours from the same token
+are not independent observations, so the effective sample is smaller than the row
+count. The `independence` check reports this on every result built from fewer
+than ten distinct tokens, which — on the current synthetic series — is all of
+them. This is why the demo produces `INCONCLUSIVE` and not findings.
+
 ## The critic gate
 
 Verdicts: `PASS`, `FAIL`, `NEEDS_MORE_DATA`.

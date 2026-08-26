@@ -23,6 +23,22 @@ class AnomalyOut(ORMModel):
     is_demo: bool
 
 
+class ResearchReportOut(ORMModel):
+    """Outcome of one research cycle."""
+
+    hypotheses_created: int = 0
+    experiments_run: int = 0
+    supported: int = 0
+    rejected: int = 0
+    inconclusive: int = 0
+    memories_written: int = 0
+    drafts_created: int = 0
+    patterns_updated: int = 0
+    skipped: dict[str, int] = Field(default_factory=dict)
+    duration_ms: int = 0
+    llm_calls: int = 0
+
+
 class RunReportOut(ORMModel):
     """Outcome of one or more pipeline cycles."""
 
