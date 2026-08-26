@@ -63,7 +63,7 @@ export default async function MemoryDetailPage({ params }: Props) {
               <li key={neighbour.id} className="border-b border-line pb-3">
                 <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-widest text-muted">
                   <Tag value={neighbour.memory_type} />
-                  <span className="text-lime">{fmt(score, 3)}</span>
+                  <span className="text-amber">{fmt(score, 3)}</span>
                   <Link href={`/memory/${neighbour.id}`} className="hover:text-bone">
                     open →
                   </Link>
@@ -85,7 +85,7 @@ export default async function MemoryDetailPage({ params }: Props) {
           <ul className="mt-4 space-y-1 text-[11px]">
             {cluster.data.items.map(({ memory: item, score }) => (
               <li key={item.id} className="flex gap-3">
-                <span className="w-12 text-lime">{fmt(score, 3)}</span>
+                <span className="w-12 text-amber">{fmt(score, 3)}</span>
                 <span className="w-24 text-muted">{item.memory_type.toLowerCase()}</span>
                 <span className="min-w-0 flex-1 truncate text-muted">
                   {item.summary ?? item.content}

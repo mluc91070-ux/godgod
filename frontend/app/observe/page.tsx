@@ -11,8 +11,8 @@ function Evidence({ anomaly }: { anomaly: Anomaly }) {
   return (
     <div className="mt-2 border-l border-line pl-4">
       <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-widest">
-        <span className="text-violet">{anomaly.anomaly_type}</span>
-        <span className="text-lime">score {fmt(anomaly.score, 2)}</span>
+        <span className="text-magenta">{anomaly.anomaly_type}</span>
+        <span className="text-amber">score {fmt(anomaly.score, 2)}</span>
         <span className="text-muted">{anomaly.detector}</span>
       </div>
       <dl className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-muted">
@@ -25,7 +25,7 @@ function Evidence({ anomaly }: { anomaly: Anomaly }) {
         {Object.entries(anomaly.measured ?? {}).map(([key, value]) => (
           <div key={key} className="flex gap-2">
             <dt>{key}</dt>
-            <dd className="text-lime">{String(value)}</dd>
+            <dd className="text-amber">{String(value)}</dd>
           </div>
         ))}
       </dl>
@@ -95,7 +95,7 @@ export default async function ObservePage() {
                   <span>novelty {fmt(observation.novelty_score)}</span>
                   <span>importance {fmt(observation.importance)}</span>
                   <span>confidence {fmt(observation.confidence)}</span>
-                  <span className={observation.llm_reviewed ? "text-violet" : ""}>
+                  <span className={observation.llm_reviewed ? "text-magenta" : ""}>
                     {observation.llm_reviewed ? "model-reviewed" : "filter only"}
                   </span>
                 </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import FieldSphere from "@/components/FieldSphere";
+import Hero from "@/components/Hero";
 import { Disconnected } from "@/components/ui";
 import { api, clock } from "@/lib/api";
 import type { Live } from "@/lib/types";
@@ -23,9 +23,9 @@ export default async function Home() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col items-center">
       <div className="flex w-full items-baseline justify-between">
-        <h1 className="text-[11px] tracking-widest">GODGOD</h1>
+        <h1 className="font-display text-[13px] tracking-[0.2em]">GODGOD</h1>
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted">
-          <span className={live.activity > 0 ? "text-lime" : "text-muted"}>
+          <span className={live.activity > 0 ? "text-amber" : "text-muted"}>
             {live.streaming ? "live" : "last cycle"}
           </span>
           <span>{clock(live.updated_at)}</span>
@@ -33,7 +33,7 @@ export default async function Home() {
       </div>
 
       <div className="my-12">
-        <FieldSphere
+        <Hero
           state={live.state}
           activity={live.activity}
           novelty={live.novelty}
@@ -42,6 +42,10 @@ export default async function Home() {
       </div>
 
       <div className="w-full max-w-2xl space-y-8">
+        <p className="text-center font-display text-[10px] uppercase tracking-[0.3em] text-grey">
+          the autonomous meme researcher
+        </p>
+
         <div className="text-center text-[10px] uppercase tracking-widest text-muted">
           state <span className="text-bone">{live.state}</span>
         </div>

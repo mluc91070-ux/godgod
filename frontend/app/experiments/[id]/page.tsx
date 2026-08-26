@@ -49,7 +49,7 @@ export default async function ExperimentPage({ params }: Props) {
             <Field k="baseline" v={hypothesis.baseline} />
             <Field
               k="falsified if"
-              v={<span className="text-lime">{hypothesis.falsification_condition}</span>}
+              v={<span className="text-amber">{hypothesis.falsification_condition}</span>}
             />
           </div>
         </Section>
@@ -110,7 +110,7 @@ export default async function ExperimentPage({ params }: Props) {
                 {Object.entries(outcome.critic_checks).map(([key, value]) => (
                   <div key={key} className="flex justify-between border-b border-line py-1">
                     <dt className="text-muted">{key}</dt>
-                    <dd className={value === "PASS" ? "text-lime" : "text-violet"}>{value}</dd>
+                    <dd className={value === "PASS" ? "text-amber" : "text-magenta"}>{value}</dd>
                   </div>
                 ))}
               </dl>
@@ -120,7 +120,7 @@ export default async function ExperimentPage({ params }: Props) {
           <Section title="limitations">
             <p className="text-muted">{outcome.limitations ?? experiment.limitations ?? "—"}</p>
             {experiment.is_demo ? (
-              <p className="mt-3 text-lime">
+              <p className="mt-3 text-amber">
                 demo data. this experiment describes fixtures, not any real asset.
               </p>
             ) : null}

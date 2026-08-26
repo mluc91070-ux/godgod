@@ -74,7 +74,7 @@ export default async function HypothesesPage({ searchParams }: Props) {
                   </div>
                   <p className="mt-2 grid grid-cols-[5rem_1fr] gap-4 text-[11px] text-muted">
                     <span>falsified if</span>
-                    <span className="text-lime">{hypothesis.falsification_condition}</span>
+                    <span className="text-amber">{hypothesis.falsification_condition}</span>
                   </p>
                   <p className="mt-1 grid grid-cols-[5rem_1fr] gap-4 text-[11px] text-muted">
                     <span>confidence</span>

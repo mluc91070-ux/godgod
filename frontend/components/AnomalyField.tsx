@@ -16,14 +16,14 @@ import type { SystemStateName } from "@/lib/types";
  */
 
 const STATE_COLOR: Record<SystemStateName, string> = {
-  IDLE: "#6f6f78",
-  OBSERVING: "#ededea",
-  ANALYZING: "#7b5cff",
-  HYPOTHESIZING: "#7b5cff",
-  TESTING: "#c9f227",
-  REJECTED: "#7b5cff",
-  SUPPORTED: "#c9f227",
-  LEARNING: "#ededea",
+  IDLE: "#a0a0a0",
+  OBSERVING: "#f2f2f2",
+  ANALYZING: "#ff2cf0",
+  HYPOTHESIZING: "#ff2cf0",
+  TESTING: "#ff6a00",
+  REJECTED: "#ff2cf0",
+  SUPPORTED: "#ff6a00",
+  LEARNING: "#f2f2f2",
 };
 
 type Props = {

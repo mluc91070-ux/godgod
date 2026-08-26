@@ -33,7 +33,7 @@ export default async function TokenPage() {
             <Field k="liquidity" v={fmtUsd(godgod.liquidity_usd)} />
             <Field k="holders" v={fmtInt(godgod.holders)} />
             {godgod.is_demo ? (
-              <p className="mt-4 text-lime">
+              <p className="mt-4 text-amber">
                 demo placeholder. this row describes no real asset.
               </p>
             ) : null}

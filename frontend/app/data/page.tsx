@@ -55,7 +55,7 @@ export default async function DataPage() {
                       {provider.configured ? "configured" : "not configured"}
                     </span>
                     <span className="text-muted"> · </span>
-                    <span className={provider.implemented ? "text-lime" : "text-muted"}>
+                    <span className={provider.implemented ? "text-amber" : "text-muted"}>
                       {provider.implemented ? "implemented" : "not implemented"}
                     </span>
                     {provider.note ? (

@@ -11,7 +11,7 @@ export default async function StatusBar() {
   if (!result.ok) {
     return (
       <div className="flex flex-wrap items-center gap-4 border-b border-line px-6 py-2 text-[10px] uppercase tracking-widest text-muted">
-        <span className="text-violet">api unreachable</span>
+        <span className="text-magenta">api unreachable</span>
         <span className="normal-case tracking-normal">{result.error}</span>
       </div>
     );
@@ -22,7 +22,7 @@ export default async function StatusBar() {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-line px-6 py-2 text-[10px] uppercase tracking-widest text-muted">
       {mode.demo_mode ? (
-        <span className="border border-lime/50 px-2 py-[1px] text-lime">demo mode</span>
+        <span className="border border-amber/50 px-2 py-[1px] text-amber">demo mode</span>
       ) : (
         <span className="border border-line px-2 py-[1px] text-bone">live</span>
       )}

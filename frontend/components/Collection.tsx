@@ -47,7 +47,7 @@ export default function Collection({ status }: { status: Status }) {
             </span>
           </div>
           <div className="mt-2 h-[3px] w-full bg-line">
-            <div className="h-full bg-lime" style={{ width: `${ratio * 100}%` }} />
+            <div className="h-full bg-amber" style={{ width: `${ratio * 100}%` }} />
           </div>
           <p className="mt-3 text-[11px] text-muted">
             a detector needs {c.needed_to_observe} measurements of the same token before it can

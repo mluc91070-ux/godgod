@@ -53,7 +53,7 @@ export default async function HypothesisPage({ params }: Props) {
       <Section title="how it can be wrong" note="written before the data was seen">
         <Field
           k="falsified if"
-          v={<span className="text-lime">{hypothesis.falsification_condition}</span>}
+          v={<span className="text-amber">{hypothesis.falsification_condition}</span>}
         />
         <Field k="expected" v={hypothesis.expected_result} />
         <Field k="baseline" v={hypothesis.baseline} />
@@ -88,7 +88,7 @@ export default async function HypothesisPage({ params }: Props) {
           <ul className="space-y-3">
             {recalled.map((memory) => (
               <li key={memory.id}>
-                <Link href={`/memory/${memory.id}`} className="text-muted hover:text-lime">
+                <Link href={`/memory/${memory.id}`} className="text-muted hover:text-amber">
                   <span className="text-[10px] uppercase tracking-widest">
                     {memory.memory_type}
                   </span>{" "}
@@ -109,7 +109,7 @@ export default async function HypothesisPage({ params }: Props) {
               <li key={experiment.id}>
                 <Link
                   href={`/experiments/${experiment.id}`}
-                  className="grid grid-cols-[1fr_6rem_7rem] items-center gap-4 py-3 hover:text-lime"
+                  className="grid grid-cols-[1fr_6rem_7rem] items-center gap-4 py-3 hover:text-amber"
                 >
                   <span>{experiment.title}</span>
                   <span className="text-[11px] text-muted">
@@ -126,7 +126,7 @@ export default async function HypothesisPage({ params }: Props) {
       </Section>
 
       {hypothesis.is_demo ? (
-        <p className="text-[11px] text-lime">
+        <p className="text-[11px] text-amber">
           demo data. this question was asked of fixtures, not of any real asset.
         </p>
       ) : null}

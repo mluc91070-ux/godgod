@@ -92,7 +92,7 @@ export default async function FindingsPage({ searchParams }: Props) {
                   <li key={result.id} className="py-4">
                     <Link
                       href={`/experiments/${result.experiment_id}`}
-                      className="block hover:text-lime"
+                      className="block hover:text-amber"
                     >
                       {titles.get(result.experiment_id) ?? "experiment"}
                     </Link>

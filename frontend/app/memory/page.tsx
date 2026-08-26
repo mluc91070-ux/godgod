@@ -51,7 +51,7 @@ export default async function MemoryPage({ searchParams }: Props) {
         />
         <button
           type="submit"
-          className="text-[10px] uppercase tracking-widest text-muted hover:text-lime"
+          className="text-[10px] uppercase tracking-widest text-muted hover:text-amber"
         >
           search
         </button>
@@ -102,7 +102,7 @@ export default async function MemoryPage({ searchParams }: Props) {
             <article key={memory.id} className="border-t border-line pt-4">
               <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-widest text-muted">
                 <Tag value={memory.memory_type} />
-                {query ? <span className="text-lime">score {fmt(score, 3)}</span> : null}
+                {query ? <span className="text-amber">score {fmt(score, 3)}</span> : null}
                 <span>confidence {fmt(memory.confidence)}</span>
                 <span>{fmtTime(memory.created_at)}</span>
                 {memory.access_count > 0 ? <span>recalled {memory.access_count}×</span> : null}

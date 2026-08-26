@@ -40,7 +40,7 @@ export default async function AgentsPage() {
               <h2 className="tracking-widest">{agent.name}</h2>
               <span
                 className={`border px-2 py-[2px] text-[10px] tracking-widest ${
-                  agent.implemented ? "border-lime/40 text-lime" : "border-line text-muted"
+                  agent.implemented ? "border-amber/40 text-amber" : "border-line text-muted"
                 }`}
               >
                 {agent.implemented ? "implemented" : "not implemented"}

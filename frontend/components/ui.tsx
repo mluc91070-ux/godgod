@@ -34,13 +34,13 @@ export function Field({ k, v }: { k: string; v: ReactNode }) {
 }
 
 const STATUS_TONE: Record<string, string> = {
-  SUPPORTED: "text-lime border-lime/40",
-  REJECTED: "text-violet border-violet/40",
-  CONFIRMED: "text-lime border-lime/40",
-  PASS: "text-lime border-lime/40",
-  FAIL: "text-violet border-violet/40",
-  APPROVED: "text-lime border-lime/40",
-  PUBLISHED: "text-lime border-lime/40",
+  SUPPORTED: "text-amber border-amber/40",
+  REJECTED: "text-magenta border-magenta/40",
+  CONFIRMED: "text-amber border-amber/40",
+  PASS: "text-amber border-amber/40",
+  FAIL: "text-magenta border-magenta/40",
+  APPROVED: "text-amber border-amber/40",
+  PUBLISHED: "text-amber border-amber/40",
   INCONCLUSIVE: "text-muted border-line",
   NEEDS_MORE_DATA: "text-muted border-line",
 };

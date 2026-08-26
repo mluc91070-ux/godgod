@@ -26,15 +26,16 @@ import type { SystemStateName } from "@/lib/types";
  * it falls back to the 2D canvas field rather than showing nothing.
  */
 
+/** Charter palette: bone #F2F2F2, grey #A0A0A0, magenta #FF2CF0, amber #FF6A00. */
 const STATE_COLOR: Record<SystemStateName, [number, number, number]> = {
-  IDLE: [0.44, 0.44, 0.47],
-  OBSERVING: [0.93, 0.93, 0.92],
-  ANALYZING: [0.48, 0.36, 1.0],
-  HYPOTHESIZING: [0.48, 0.36, 1.0],
-  TESTING: [0.79, 0.95, 0.15],
-  REJECTED: [0.48, 0.36, 1.0],
-  SUPPORTED: [0.79, 0.95, 0.15],
-  LEARNING: [0.93, 0.93, 0.92],
+  IDLE: [0.63, 0.63, 0.63],
+  OBSERVING: [0.95, 0.95, 0.95],
+  ANALYZING: [1.0, 0.17, 0.94],
+  HYPOTHESIZING: [1.0, 0.17, 0.94],
+  TESTING: [1.0, 0.42, 0.0],
+  REJECTED: [1.0, 0.17, 0.94],
+  SUPPORTED: [1.0, 0.42, 0.0],
+  LEARNING: [0.95, 0.95, 0.95],
 };
 
 const POINTS = 24000;

@@ -6,8 +6,8 @@ import { clock } from "@/lib/api";
 import type { StreamEvent } from "@/lib/types";
 
 const LEVEL_COLOR: Record<string, string> = {
-  WARN: "text-violet",
-  ERROR: "text-violet",
+  WARN: "text-magenta",
+  ERROR: "text-magenta",
 };
 
 const MAX_ROWS = 500;
@@ -97,7 +97,7 @@ export default function LiveTerminal({
           <span
             className={
               connection === "open"
-                ? "inline-block h-[6px] w-[6px] bg-lime"
+                ? "inline-block h-[6px] w-[6px] bg-amber"
                 : "inline-block h-[6px] w-[6px] bg-muted"
             }
             aria-hidden
@@ -126,7 +126,7 @@ export default function LiveTerminal({
                 </span>
                 <span className="text-muted">
                   {event.message}
-                  {event.replayed ? null : <span className="ml-2 text-lime">new</span>}
+                  {event.replayed ? null : <span className="ml-2 text-amber">new</span>}
                 </span>
               </li>
             ))}
