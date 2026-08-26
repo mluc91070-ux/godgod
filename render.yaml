@@ -27,9 +27,9 @@ services:
     dockerContext: .
     healthCheckPath: /health
     # Migrations run before the first request, never on import.
-    dockerCommand: >
-      sh -c "alembic upgrade head &&
-             python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # No `sh -c` wrapper: Render already runs this through a shell, and wrapping
+    # it again turns the whole line into one command name (exit 127).
+    dockerCommand: alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
