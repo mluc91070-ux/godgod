@@ -93,19 +93,27 @@ async def main() -> int:
 
     # -- measurements are measured, or absent ------------------------------
     def pair(liquidity, volume, symbol="TOK"):
+        # h1 is what a snapshot stores; h24 only answers "is this traded at all".
         return {
             "chainId": "solana",
             "baseToken": {"address": address, "symbol": symbol, "name": "A Token"},
             "priceUsd": "1.0",
             "liquidity": {"usd": liquidity} if liquidity is not None else {},
-            "volume": {"h24": volume} if volume is not None else {},
-            "txns": {"h24": {"buys": 3, "sells": 2}},
+            "volume": {"h1": volume, "h24": None if volume is None else volume * 8}
+            if volume is not None
+            else {},
+            "txns": {"h1": {"buys": 3, "sells": 2}},
         }
 
     folded = _from_pair(address, [pair(30_000.0, 1_000.0), pair(20_000.0, 500.0)])
     failures += not check(
         "liquidity and volume are summed across pools",
         folded.liquidity_usd == 50_000.0 and folded.volume_usd == 1_500.0,
+    )
+    failures += not check(
+        "the stored volume is the hourly window, not the daily one",
+        folded.volume_usd == 1_500.0 and folded.volume_24h_usd == 12_000.0,
+        "consecutive 24h readings overlap by 96% and hide every spike",
     )
     absent = _from_pair(address, [pair(None, None)])
     failures += not check(
@@ -156,13 +164,14 @@ async def main() -> int:
                 raise self._raises
             return HolderDistribution(top10_share=self._top10, accounts_seen=20, supply=100.0)
 
-    def measurement(liquidity=50_000.0, volume=120_000.0):
+    def measurement(liquidity=50_000.0, volume=120_000.0, volume_24h=None):
         return MarketSnapshot(
             address=address,
             symbol="TOK",
             name="A Token",
             liquidity_usd=liquidity,
             volume_usd=volume,
+            volume_24h_usd=volume_24h if volume_24h is not None else volume * 8,
             transactions=5,
             buys=3,
             sells=2,
@@ -192,7 +201,9 @@ async def main() -> int:
         parked = await collect_chain(
             session,
             settings=settings,
-            market=FakeMarket(measurement(liquidity=1_800_000_000.0, volume=102.0)),
+            market=FakeMarket(
+                measurement(liquidity=1_800_000_000.0, volume=0.0, volume_24h=102.0)
+            ),
             chain=FakeChain(),
             as_of=datetime(2026, 8, 26, 10, tzinfo=UTC),
         )

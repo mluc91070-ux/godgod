@@ -68,8 +68,11 @@ def pair(
         "priceUsd": "0.0125",
         "marketCap": 900_000,
         "liquidity": {"usd": liquidity} if liquidity is not None else {},
-        "volume": {"h24": volume} if volume is not None else {},
-        "txns": {"h24": {"buys": buys, "sells": sells}},
+        # h1 is what a snapshot stores; h24 only feeds the activity floor.
+        "volume": {"h1": volume, "h24": None if volume is None else volume * 8}
+        if volume is not None
+        else {},
+        "txns": {"h1": {"buys": buys, "sells": sells}},
         "pairCreatedAt": 1_756_000_000_000,
     }
 
@@ -130,6 +133,7 @@ def snapshot(address=ADDRESS, liquidity=50_000.0, volume=120_000.0) -> MarketSna
         market_cap_usd=900_000.0,
         liquidity_usd=liquidity,
         volume_usd=volume,
+        volume_24h_usd=None if volume is None else volume * 8,
         transactions=50,
         buys=30,
         sells=20,
@@ -366,7 +370,7 @@ async def test_unreported_volume_is_its_own_reason(session, chain_settings) -> N
     assert report.dropped == {"volume_not_reported": 1}
 
 
-async def test_the_same_hour_is_not_measured_twice(session, chain_settings) -> None:
+async def test_the_same_slot_is_not_measured_twice(session, chain_settings) -> None:
     at = datetime(2026, 8, 26, 12, tzinfo=UTC)
     first = await collect_chain(
         session, settings=chain_settings, market=FakeMarket(snapshot()),
@@ -378,7 +382,7 @@ async def test_the_same_hour_is_not_measured_twice(session, chain_settings) -> N
     )
     assert first.snapshots_stored == 1
     assert second.snapshots_stored == 0
-    assert second.dropped["already_measured_this_hour"] == 1
+    assert second.dropped["already_measured_this_slot"] == 1
 
 
 async def test_a_failing_rpc_costs_the_distribution_not_the_measurement(
@@ -608,3 +612,62 @@ async def test_go_live_deletes_demo_rows_but_does_not_flip_the_mode(
 
     live = (await session.scalars(select(TokenModel).where(TokenModel.is_demo.is_(False)))).all()
     assert live, "the real measurements survived"
+
+
+# -- the measurement matches the cadence ----------------------------------
+
+
+def test_volume_is_the_hourly_figure_not_the_daily_one() -> None:
+    """Snapshots are hourly. Two consecutive readings of a 24h rolling volume
+    overlap by 96%, so a spike is smeared across a day and the detector looking
+    for one never sees it. The window has to match the sampling rate."""
+    p = pair()
+    p["volume"] = {"h24": 240_000.0, "h6": 60_000.0, "h1": 10_000.0}
+    p["txns"] = {"h24": {"buys": 900, "sells": 300}, "h1": {"buys": 40, "sells": 12}}
+
+    result = _from_pair(ADDRESS, [p])
+    assert result.volume_usd == pytest.approx(10_000.0), "hourly volume"
+    assert result.volume_24h_usd == pytest.approx(240_000.0), "daily kept for the floor"
+    assert result.buys == 40
+    assert result.sells == 12
+    assert result.transactions == 52
+
+
+async def test_the_activity_floor_uses_the_daily_figure(session, chain_settings) -> None:
+    """'Is this token traded at all' is a question about the token, not about
+    this particular hour. A quiet hour must not evict an active token."""
+    quiet_hour = MarketSnapshot(
+        address=ADDRESS,
+        symbol="TOK",
+        liquidity_usd=50_000.0,
+        volume_usd=40.0,
+        volume_24h_usd=500_000.0,
+        transactions=2,
+        created_at=datetime(2026, 8, 1, tzinfo=UTC),
+    )
+    report = await collect_chain(
+        session,
+        settings=chain_settings,
+        market=FakeMarket(quiet_hour),
+        chain=FakeChain(),
+        commit=False,
+    )
+    assert report.snapshots_stored == 1, "a quiet hour on an active token is still a row"
+    row = await session.scalar(select(TokenSnapshot))
+    assert row.volume_usd == pytest.approx(40.0)
+
+
+async def test_a_token_nobody_trades_is_still_dropped(session, chain_settings) -> None:
+    dead = MarketSnapshot(
+        address=ADDRESS,
+        symbol="DEAD",
+        liquidity_usd=1_800_000_000.0,
+        volume_usd=0.0,
+        volume_24h_usd=102.0,
+        created_at=datetime(2026, 8, 1, tzinfo=UTC),
+    )
+    report = await collect_chain(
+        session, settings=chain_settings, market=FakeMarket(dead),
+        chain=FakeChain(), commit=False,
+    )
+    assert report.dropped == {"below_volume_floor": 1}

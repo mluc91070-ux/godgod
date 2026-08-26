@@ -43,7 +43,9 @@ from app.providers.market import (
 from app.providers.solana import RpcCallFailed, get_solana_provider
 
 CHAIN_RUN_NAME = "chain-collector"
-SNAPSHOT_SOURCE = "live-market-v1"
+SNAPSHOT_SOURCE = "live-market-v2"
+"""v2 stores one-hour volume and trade counts instead of twenty-four hour
+ones. Rows from v1 are not comparable with these and keep their own tag."""
 
 
 @dataclass
@@ -135,7 +137,13 @@ async def collect_chain(
     market = market or get_market_provider(settings)
     chain = chain or get_solana_provider(settings)
     started = utcnow()
-    observed_at = as_utc(as_of) or datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+    # Snapshots are keyed to the quarter hour. Meme markets move in minutes,
+    # so hourly sampling both loses the shape of a move and makes the system
+    # take six hours to say anything at all.
+    now = datetime.now(UTC)
+    observed_at = as_utc(as_of) or now.replace(
+        minute=(now.minute // 15) * 15, second=0, microsecond=0
+    )
     report = ChainReport()
 
     candidates: list[MarketSnapshot] = []
@@ -165,17 +173,19 @@ async def collect_chain(
         if snapshot.liquidity_usd < settings.chain_min_liquidity_usd:
             report.drop("below_liquidity_floor")
             continue
-        if snapshot.volume_usd is None:
+        # The floor asks "is this token traded at all", which is a question about
+        # the token rather than about this hour, so it uses the 24h figure.
+        if snapshot.volume_24h_usd is None:
             report.drop("volume_not_reported")
             continue
-        if snapshot.volume_usd < settings.chain_min_volume_usd:
+        if snapshot.volume_24h_usd < settings.chain_min_volume_usd:
             # A deep pool nobody trades in is a parked balance, not a market.
             report.drop("below_volume_floor")
             continue
 
         token = await _get_or_create_token(session, snapshot, report)
         if await _already_measured(session, token.id, observed_at):
-            report.drop("already_measured_this_hour")
+            report.drop("already_measured_this_slot")
             continue
 
         # The RPC is asked only for what the market data cannot supply. A

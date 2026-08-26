@@ -1,6 +1,7 @@
 name: collect and research
 
-# The hourly loop, run from here rather than a paid scheduler.
+# The collection loop, every fifteen minutes, run from here rather than a
+# paid scheduler.
 #
 #   measure real tokens  ->  observe  ->  hypothesise, test, criticise
 #
@@ -17,7 +18,7 @@ name: collect and research
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "2,17,32,47 * * * *"
   workflow_dispatch:
 
 jobs:

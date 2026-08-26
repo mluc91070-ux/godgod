@@ -40,6 +40,10 @@ class MarketSnapshot:
     market_cap_usd: float | None = None
     liquidity_usd: float | None = None
     volume_usd: float | None = None
+    """Traded in the last hour, matching the snapshot cadence."""
+    volume_24h_usd: float | None = None
+    """Kept for the liquidity floor, which is a question about the token
+    overall rather than about this hour."""
     transactions: int | None = None
     buys: int | None = None
     sells: int | None = None
@@ -144,7 +148,13 @@ def _from_pair(address: str, pairs: list[dict[str, Any]]) -> MarketSnapshot | No
         return int(value) if value is not None else None
 
     created_ms = _number(deepest.get("pairCreatedAt"))
-    txns_24h = lambda pair: (pair.get("txns") or {}).get("h24") or {}  # noqa: E731
+
+    # The one-hour window, not the twenty-four hour one, because snapshots are
+    # taken hourly. Two consecutive readings of a 24h rolling figure overlap by
+    # 96%, so a volume spike is smeared across a day and the detector that
+    # looks for one would never see it. The measurement has to match the
+    # cadence it is sampled at.
+    txns_1h = lambda pair: (pair.get("txns") or {}).get("h1") or {}  # noqa: E731
 
     return MarketSnapshot(
         address=address,
@@ -155,16 +165,17 @@ def _from_pair(address: str, pairs: list[dict[str, Any]]) -> MarketSnapshot | No
         price_usd=_number(deepest.get("priceUsd")),
         market_cap_usd=_number(deepest.get("marketCap") or deepest.get("fdv")),
         liquidity_usd=total(lambda pair: _number((pair.get("liquidity") or {}).get("usd"))),
-        volume_usd=total(lambda pair: _number((pair.get("volume") or {}).get("h24"))),
-        buys=total_int(lambda pair: _int(txns_24h(pair).get("buys"))),
-        sells=total_int(lambda pair: _int(txns_24h(pair).get("sells"))),
+        volume_usd=total(lambda pair: _number((pair.get("volume") or {}).get("h1"))),
+        volume_24h_usd=total(lambda pair: _number((pair.get("volume") or {}).get("h24"))),
+        buys=total_int(lambda pair: _int(txns_1h(pair).get("buys"))),
+        sells=total_int(lambda pair: _int(txns_1h(pair).get("sells"))),
         transactions=total_int(
             lambda pair: (
                 None
-                if _int(txns_24h(pair).get("buys")) is None
-                and _int(txns_24h(pair).get("sells")) is None
-                else (_int(txns_24h(pair).get("buys")) or 0)
-                + (_int(txns_24h(pair).get("sells")) or 0)
+                if _int(txns_1h(pair).get("buys")) is None
+                and _int(txns_1h(pair).get("sells")) is None
+                else (_int(txns_1h(pair).get("buys")) or 0)
+                + (_int(txns_1h(pair).get("sells")) or 0)
             )
         ),
         created_at=(
