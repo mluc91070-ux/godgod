@@ -48,6 +48,7 @@ from app.services.research.critic import CRITIC_VERSION, hypothesis_status, revi
 from app.services.research.dataset import DATASET_VERSION, build_dataset
 from app.services.research.experiments import ExperimentOutcome, evaluate
 from app.services.research.templates import TEMPLATES_BY_ANOMALY, TEMPLATES_BY_KEY
+from app.services.research.voice import inconclusive, rejected, supported
 
 RESEARCH_RUN_NAME = "research-pipeline"
 DRAFT_SOURCE = "templated-v1"
@@ -307,25 +308,35 @@ async def generate_hypotheses(
 def _draft_body(
     hypothesis: Hypothesis, experiment: Experiment, outcome: ExperimentOutcome, verdict: str
 ) -> tuple[str, ContentType]:
-    number = f"#{hypothesis.seq:03d}"
+    """The post, written from the result.
+
+    Phrasing is chosen deterministically from the experiment id, so the same
+    result always says the same thing. Rotating it randomly would mean the
+    account phrases identical data two different ways, which is a small lie and
+    the kind this project does not get to tell.
+    """
+    number = f"{hypothesis.seq:03d}"
     difference = outcome.metrics.get("difference_pp")
+    key = experiment.id
 
     if outcome.outcome == str(ResultOutcome.REJECTED):
-        return (
-            f"hypothesis {number}\n\nrejected.\n\n{outcome.summary.split('.')[0].lower()}.",
-            ContentType.FAILURE,
-        )
+        reason = outcome.summary.split(":", 1)[-1].split(".")[0].strip().lower()
+        return rejected(number, difference, reason, key), ContentType.FAILURE
+
     if outcome.outcome == str(ResultOutcome.SUPPORTED):
         return (
-            f"hypothesis {number}\n\nsupported, with the critic's objections attached.\n\n"
-            f"{difference:+.1f} points, p={outcome.p_value}.",
+            supported(number, difference, outcome.p_value, key),
             ContentType.RESULT,
         )
+
     return (
-        f"experiment #{experiment.seq:06d}\n\n"
-        f"{difference:+.1f} points.\n\n"
-        f"critic: {verdict.lower().replace('_', ' ')}.\n\n"
-        "i can't tell yet.",
+        inconclusive(
+            number,
+            difference,
+            n_exposed=outcome.metrics.get("n_exposed"),
+            small_sample=bool(outcome.metrics.get("sample_too_small_to_judge")),
+            key=key,
+        ),
         ContentType.EXPERIMENT,
     )
 

@@ -126,13 +126,34 @@ Layers:
 - Adding a paid dependency or infrastructure without checking `docs/COST_CONTROL.md`.
 - Using the most expensive model for a task a cheap one handles.
 
-## Voice (applies to UI copy and drafts)
+## Voice
 
-Curious, analytical, calm, concise, skeptical, occasionally philosophical.
-Lowercase, short lines. Never a corporate chatbot, never crypto Twitter.
+Lowercase, short lines, fragments. Blunt and funny, mostly at its own expense —
+a system more interested in being wrong than in being right. It knows what the
+timeline sounds like and is deliberately the opposite of it: dry, not hyped.
 
-Good: "i found an anomaly." / "i don't have enough data." / "i was wrong."
-Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
+**The register is crypto-native. The claims are not.** That split is the whole
+design, and `agents/guards.py` enforces exactly it:
+
+- Slang passes. "lfg", "gm", "degen", "ngmi" are register, not assertions.
+- `MARKET_CLAIMS` never passes — "bullish", a price target, "100x", "buy now".
+  Each asserts something no experiment here has run, and a disclaimer glued to
+  the end does not make the sentence true.
+- Advice, price predictions, links, and certainty about an inconclusive result
+  never pass either.
+- Every number must appear in the row being described. This is the mechanical
+  form of the one rule and does not depend on a model behaving.
+
+Good: "i was wrong. hypothesis 41 said withdrawal predicts collapse. it doesn't.
+-8.4 points, wrong direction." / "inconclusive is a result. it just isn't a good
+tweet."
+
+Bad: "Exciting update! 🚀" / "This proves…" / "As an AI…" / anything with a price
+in the future tense.
+
+Phrasing variants in `services/research/voice.py` are chosen by hashing the
+experiment id, never at random: the same result must always say the same thing,
+or the account is telling two stories about one dataset.
 
 ## Observation rules
 

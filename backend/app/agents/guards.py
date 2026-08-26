@@ -7,6 +7,11 @@ fails them is not saved — it is recorded as a failed run with the reasons.
 The important one is `ungrounded_numbers`: every number in a draft must appear
 in the row it claims to describe. That is the mechanical form of the project's
 one rule, and it does not depend on the model behaving.
+
+**Register is not policed here; claims are.** Slang, jokes and crypto-native
+phrasing pass. "bullish", a price target and "you should buy" do not, because
+those assert something no experiment ran. The line is not how it sounds — it is
+whether the sentence claims more than the data supports.
 """
 
 from __future__ import annotations
@@ -17,32 +22,35 @@ from dataclasses import dataclass, field
 MAX_DRAFT_CHARS = 280
 """One post. Longer than this is not a draft, it is an essay."""
 
-BANNED_PHRASES = (
-    "lfg",
-    "to the moon",
-    "moon shot",
+MARKET_CLAIMS = (
     "bullish",
     "bearish",
-    "gm ",
-    "wagmi",
-    "ngmi",
-    "degen",
-    "ape in",
+    "to the moon",
+    "moon shot",
     "next 100x",
     "100x",
     "guaranteed",
-    "financial advice",
-    "not financial advice",
+    "price target",
     "buy now",
     "sell now",
-    "price target",
+    "financial advice",
+    "not financial advice",
+)
+"""Claims about where a price is going, or advice about acting on it.
+
+Banned regardless of register. These are not style — each one asserts
+something no experiment here has ever tested, and a disclaimer glued to the end
+does not make the sentence true.
+"""
+
+VOICE_FAILURES = (
     "as an ai",
     "as a language model",
     "hey everyone",
+    "in conclusion",
+    "it is important to note",
 )
-"""Crypto-twitter register and disclaimers-in-place-of-thought. Both are voice
-failures, and the second is also an admission that the sentence should not
-have been written."""
+"""Not slang — the opposite. An assistant apologising for existing."""
 
 ADVICE_PATTERNS = (
     re.compile(r"\byou should (buy|sell|hold|swap|ape)\b", re.I),
@@ -144,9 +152,12 @@ def check_draft(text: str, facts: dict[str, object], *, outcome: str | None = No
         reasons.append(f"{len(stripped)} characters, over the {MAX_DRAFT_CHARS} limit")
 
     lowered = f" {stripped.lower()} "
-    for phrase in BANNED_PHRASES:
+    for phrase in MARKET_CLAIMS:
         if phrase in lowered:
-            reasons.append(f"contains banned phrase {phrase.strip()!r}")
+            reasons.append(f"claims something about price: {phrase.strip()!r}")
+    for phrase in VOICE_FAILURES:
+        if phrase in lowered:
+            reasons.append(f"reads as an assistant, not as itself: {phrase.strip()!r}")
 
     for pattern in ADVICE_PATTERNS:
         if pattern.search(stripped):

@@ -305,14 +305,34 @@ def test_a_draft_stating_an_invented_number_is_refused() -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "lfg, this one is bullish.",
+        "this one is bullish.",
         "you should buy this before it moves.",
+        "it is going to pump.",
         "read more at https://example.com",
         "as an ai, i cannot be sure.",
+        "guaranteed 100x from here.",
     ],
 )
-def test_voice_and_advice_failures_are_refused(text: str) -> None:
+def test_claims_about_price_are_refused(text: str) -> None:
+    """What is banned is the claim, not the register."""
     assert check_draft(text, {}).ok is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "lfg, i was wrong again.",
+        "gm. killed one of my own hypotheses today.",
+        "degen hours. no signal.",
+        "ngmi, apparently. inconclusive.",
+        "this one's a shrug. ape at your own peril, i have no idea.",
+    ],
+)
+def test_slang_alone_is_allowed(text: str) -> None:
+    """The register is crypto-native on purpose. Only the claims are policed —
+    a post is allowed to sound like the timeline while refusing to lie to it."""
+    check = check_draft(text, {})
+    assert check.ok, check.reasons
 
 
 def test_certainty_about_an_inconclusive_result_is_refused() -> None:
@@ -582,3 +602,56 @@ async def test_the_writer_endpoint_404s_on_an_unknown_result(client, admin_heade
         headers=admin_headers,
     )
     assert response.status_code == 404
+
+
+# -- the voice ------------------------------------------------------------
+
+
+def test_the_same_result_always_phrases_itself_the_same_way() -> None:
+    """Rotating phrasing at random would mean the account says two different
+    things about identical data. Small, but exactly the kind of lie this
+    project does not get to tell."""
+    from app.services.research.voice import inconclusive
+
+    args = ("041", 8.4)
+    kwargs = {"n_exposed": 72, "small_sample": False, "key": "experiment-abc"}
+    assert inconclusive(*args, **kwargs) == inconclusive(*args, **kwargs)
+
+
+def test_different_results_do_not_all_sound_identical() -> None:
+    from app.services.research.voice import inconclusive
+
+    posts = {
+        inconclusive("041", 8.4, n_exposed=72, small_sample=False, key=f"exp-{i}")
+        for i in range(12)
+    }
+    assert len(posts) > 3, "twelve results should not produce one sentence"
+
+
+@pytest.mark.parametrize("outcome", ["REJECTED", "INCONCLUSIVE", "SUPPORTED"])
+def test_every_voice_variant_survives_its_own_checks(outcome: str) -> None:
+    """The voice is not allowed to write something the guards would refuse."""
+    from app.services.research.voice import inconclusive, rejected, supported
+
+    facts = {"hypothesis_number": 41, "difference_pp": 8.4, "n_exposed": 72, "p_value": 0.031}
+    for index in range(20):
+        key = f"exp-{index}"
+        if outcome == "REJECTED":
+            text = rejected("041", 8.4, "the effect points the other way", key)
+        elif outcome == "SUPPORTED":
+            text = supported("041", 8.4, 0.031, key)
+        else:
+            text = inconclusive("041", 8.4, n_exposed=72, small_sample=False, key=key)
+
+        check = check_draft(text, facts, outcome=outcome)
+        assert check.ok, f"{key}: {check.reasons}\n{text}"
+        assert len(text) <= 280, f"{key} is {len(text)} characters"
+
+
+def test_the_writer_prompt_forbids_claims_while_allowing_register() -> None:
+    from app.services.research.voice import WRITER_SYSTEM
+
+    lowered = WRITER_SYSTEM.lower()
+    assert "not in the facts" in lowered, "the number rule must be stated"
+    assert "where a price is going" in lowered
+    assert "crypto-native" in lowered, "the register is deliberate, not an accident"
