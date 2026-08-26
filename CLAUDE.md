@@ -25,6 +25,7 @@ system as it actually is.
 backend/.venv/Scripts/python -m pytest                         # tests
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 backend/.venv/Scripts/python scripts/seed_demo.py --force      # reload fixtures
+backend/.venv/Scripts/python scripts/check_all.py              # every gate, isolated
 backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
@@ -98,7 +99,10 @@ Layers:
 - Security invariants in `tests/test_security.py` are not optional: they fail the
   build if a wallet-execution symbol or an unwrapped external-content path
   appears.
-- Run the phase gate before claiming a phase is done.
+- Run the phase gate before claiming a phase is done. Gates assert exact
+  counts, so each needs a clean database — `scripts/check_all.py` gives every
+  gate its own, and running them by hand in one shell will produce false
+  failures from the previous gate's rows.
 
 ## Security rules
 

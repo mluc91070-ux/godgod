@@ -8,6 +8,7 @@ frontend is free, the API is the only paid line.
 ```bash
 # 1. everything still holds
 backend/.venv/Scripts/python -m pytest
+backend/.venv/Scripts/python scripts/check_all.py
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 cd frontend && npm run typecheck && npm run build && cd ..
 
@@ -144,12 +145,6 @@ backend/.venv/Scripts/python -m pytest
 backend/.venv/Scripts/python -m ruff check backend tests scripts
 cd frontend && npm run typecheck && npm run build
 
-backend/.venv/Scripts/python scripts/check_phase1.py    # foundation
-backend/.venv/Scripts/python scripts/check_phase2.py    # memory
-backend/.venv/Scripts/python scripts/check_phase3.py    # observation
-backend/.venv/Scripts/python scripts/check_phase4.py    # hypothesis, experiment, critic
-backend/.venv/Scripts/python scripts/check_phase9.py    # live stream
-backend/.venv/Scripts/python scripts/check_phase10.py   # public pages
-backend/.venv/Scripts/python scripts/check_agents.py    # model layer
+backend/.venv/Scripts/python scripts/check_all.py       # all seven gates
 backend/.venv/Scripts/python scripts/preflight.py       # the deploy config itself
 ```
