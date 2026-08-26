@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, func, or_, select, text
+from sqlalchemy import Float, Select, func, or_, select, text, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -175,6 +175,22 @@ async def store_memory(
     return StoreResult(memory=memory, created=True)
 
 
+def cosine_distance_expression(query_vector: list[float]):
+    """The pgvector `<=>` distance, as an expression that can be labelled.
+
+    A bare `text()` clause carries no type, so it cannot be used as a SELECT
+    column or labelled — which is exactly how the ranking path broke on its
+    first real deploy, long after the build looked fine. `type_coerce` gives it
+    a type without changing the SQL, and the vector stays a bound parameter
+    rather than being interpolated into the statement.
+    """
+    literal = "[" + ",".join(f"{value:.7f}" for value in query_vector) + "]"
+    return type_coerce(
+        text("memories.embedding <=> CAST(:qvec AS vector)").bindparams(qvec=literal),
+        Float(),
+    )
+
+
 async def _rank_postgres(
     session: AsyncSession,
     query_vector: list[float],
@@ -187,13 +203,12 @@ async def _rank_postgres(
 ) -> tuple[list[MemoryHit], int]:
     """pgvector ordering.
 
-    Unverified on the development machine (no PostgreSQL available there);
-    the Python path below is the one covered by tests. Both are exercised by
-    the same public function, so a Postgres deployment exercises this branch
-    on its first search.
+    First executed by the first production deploy, which is where the original
+    version broke. The Python path below stays the one covered by tests on a
+    machine without PostgreSQL; both are reached through the same public
+    function, so a Postgres deployment exercises this one on its first search.
     """
-    literal = "[" + ",".join(f"{value:.7f}" for value in query_vector) + "]"
-    distance = text("memories.embedding <=> CAST(:qvec AS vector)").bindparams(qvec=literal)
+    distance = cosine_distance_expression(query_vector)
 
     stmt = select(Memory, distance.label("distance")).where(
         Memory.embedding.is_not(None),

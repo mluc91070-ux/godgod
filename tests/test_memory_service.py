@@ -178,3 +178,25 @@ async def test_digest_of_an_empty_type_is_empty_not_invented(session, seeded):
     assert digest.total == 0
     assert digest.by_type == {}
     assert digest.recurring_terms == []
+
+
+def test_the_pgvector_distance_expression_can_be_labelled_and_ordered_by():
+    """The regression this test exists for cost a production deploy.
+
+    `text("... <=> ...")` has no type, so `.label()` raised NotImplementedError
+    the first time a real PostgreSQL took that branch — after the image built,
+    after the migrations ran, at the first search. Nothing on a SQLite machine
+    reaches it, so the expression is checked here directly.
+    """
+    from sqlalchemy import column, select
+    from sqlalchemy.dialects import postgresql
+
+    from app.services.memory import cosine_distance_expression
+
+    distance = cosine_distance_expression([0.1, 0.2, 0.3])
+    statement = select(column("id"), distance.label("distance")).order_by(distance)
+    sql = str(statement.compile(dialect=postgresql.dialect()))
+
+    assert "<=>" in sql
+    assert "AS distance" in sql
+    assert "0.1000000" not in sql, "the vector must be bound, not interpolated"
