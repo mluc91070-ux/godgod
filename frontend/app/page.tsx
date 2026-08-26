@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import AnomalyField from "@/components/AnomalyField";
+import FieldSphere from "@/components/FieldSphere";
 import { Disconnected } from "@/components/ui";
 import { api, clock } from "@/lib/api";
 import type { Live } from "@/lib/types";
@@ -33,7 +33,7 @@ export default async function Home() {
       </div>
 
       <div className="my-12">
-        <AnomalyField
+        <FieldSphere
           state={live.state}
           activity={live.activity}
           novelty={live.novelty}

@@ -261,6 +261,24 @@ Bad: "Hey everyone!" / "LFG" / "This is bullish" / "As an AI…"
   per token; nothing fires until `OBSERVATION_MIN_SNAPSHOTS` of them exist. That
   silence is correct — a system that watched a token for an hour saw no trend.
 
+## Visualisation rules
+
+- Every visual parameter is bound to a real value: rotation to activity,
+  surface turbulence to novelty, core radius to confidence, colour to state.
+  **Nothing is random and nothing is decorative.** A frozen system draws a
+  frozen sphere, and if flat numbers look boring that is the visualisation
+  telling the truth.
+- No 3D library. `FieldSphere` is raw WebGL because three.js would be six times
+  the whole frontend's weight for one component. If a future effect genuinely
+  needs a library, weigh it against the bundle first.
+- A shader that fails to compile logs the driver's message and falls back to
+  the 2D field. Never fall back silently: a working fallback behind a broken
+  shader means nobody ever finds out.
+- Render it before shipping it. The first version was a uniform point volume
+  and drew fog, not a sphere; the second aliased its seed hash against the
+  golden angle and drew a spiral. Both were obvious in a still image and
+  invisible in the code.
+
 ## Phases
 
 PHASE 1 foundation ✅ · 2 memory ✅ · 3 observation ✅ · 4 hypothesis ✅ ·
