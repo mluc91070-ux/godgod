@@ -1,5 +1,31 @@
 # Deployment
 
+## What is deployed
+
+| | |
+| --- | --- |
+| Frontend | https://godgod.vercel.app (Vercel, free) |
+| API | https://godgod-api.onrender.com (Render, free) |
+| Database | Render PostgreSQL 16 + pgvector, Frankfurt, free plan |
+| Research cycle | `.github/workflows/research.yml`, hourly |
+
+Two things about the free tiers that will bite if nobody writes them down:
+
+- **The free database expires 30 days after creation** (2026-09-25 for the
+  current one). Render deletes it. Upgrade it, or export and recreate, before
+  then — `pg_dump` against the external connection string is enough.
+- **The free web instance spins down when idle** and takes ~30 s to answer the
+  first request afterwards. The hourly research workflow wakes it as a side
+  effect, so it is usually warm.
+
+### Verified against the live deployment
+
+`/health`, `/api/status`, every public page, the SSE stream, the admin research
+endpoint (and its 401 without a token), and — the branch that had never run
+anywhere — **pgvector ranking**, which `/api/memory/search` now reports as
+`vector-cosine/pgvector`. It broke on the first deploy and the fix is in
+`cosine_distance_expression`.
+
 ## Launch runbook
 
 Roughly 30 minutes, and it costs nothing to start: the database is free, the

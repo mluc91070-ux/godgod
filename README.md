@@ -7,7 +7,9 @@ break its own results, and publishes what it found — including what failed.
 
 It is not a trading bot. There is no wallet execution anywhere in this codebase.
 
-**Status: PHASE 1-6, 9, 10 and the model layer complete; ready to deploy.** The repository, database, API, frontend, memory
+**Live:** [godgod.vercel.app](https://godgod.vercel.app) · API [godgod-api.onrender.com](https://godgod-api.onrender.com/api/status)
+
+**Status: PHASE 1-6, 9, 10 and the model layer complete, deployed.** The repository, database, API, frontend, memory
 system, observation pipeline and the hypothesis / experiment / critic engines exist
 and are tested. All of it is deterministic — no model is called anywhere yet. Every
 external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
@@ -21,7 +23,9 @@ external integration (Anthropic, X, Solana RPC) is deliberately scheduled last.
 backend/.venv/Scripts/python scripts/preflight.py     # refuses an unsafe config
 ```
 
-`render.yaml` is a blueprint for the API and a free PostgreSQL. The frontend
+It is deployed: API and PostgreSQL on Render, frontend on Vercel, the hourly
+research cycle on GitHub Actions. `render.yaml` is a blueprint for the API and a
+free PostgreSQL. The frontend
 goes to Vercel with one variable, `NEXT_PUBLIC_API_URL`. The hourly research
 cycle runs from GitHub Actions rather than a paid scheduler. Total to launch:
 nothing. The full runbook is in `docs/DEPLOYMENT.md`.
