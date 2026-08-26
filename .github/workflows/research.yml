@@ -1,6 +1,12 @@
-name: research cycle
+name: collect and research
 
-# The research worker, run from here rather than a paid scheduler.
+# The hourly loop, run from here rather than a paid scheduler.
+#
+#   measure real tokens  ->  observe  ->  hypothesise, test, criticise
+#
+# The chain collector is what builds history. A single measurement proves
+# nothing; the observation pipeline needs OBSERVATION_MIN_SNAPSHOTS of them
+# before any detector will speak, so the first hours are deliberately quiet.
 #
 # It calls the deployed API, so it also wakes a free-tier instance that has
 # spun down. Everything it triggers is idempotent: a question already asked is
@@ -35,6 +41,24 @@ jobs:
         env:
           API_URL: ${{ secrets.GODGOD_API_URL }}
         run: curl -fsS --retry 5 --retry-all-errors --retry-delay 10 "$API_URL/health"
+
+      - name: measure real tokens
+        if: steps.config.outputs.ready == 'true'
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+          ADMIN_TOKEN: ${{ secrets.GODGOD_ADMIN_TOKEN }}
+        run: |
+          curl -fsS --max-time 300 -X POST "$API_URL/api/admin/chain/collect"             -H "X-Admin-Token: $ADMIN_TOKEN" | tee chain.json
+          python -c "import json;d=json.load(open('chain.json'));print(f\"chain: {d['snapshots_stored']} measurements of {d['candidates']} candidates, complete={d['complete']}, dropped={d['dropped']}\")" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: run one observation pass
+        if: steps.config.outputs.ready == 'true'
+        env:
+          API_URL: ${{ secrets.GODGOD_API_URL }}
+          ADMIN_TOKEN: ${{ secrets.GODGOD_ADMIN_TOKEN }}
+        run: |
+          curl -fsS --max-time 300 -X POST "$API_URL/api/admin/observe/run"             -H "X-Admin-Token: $ADMIN_TOKEN" | tee observe.json
+          python -c "import json;d=json.load(open('observe.json'));print(f\"observe: {d['observations_created']} observations, {d['anomalies_created']} anomalies, dropped={d['dropped']}\")" >> "$GITHUB_STEP_SUMMARY"
 
       - name: run one research cycle
         if: steps.config.outputs.ready == 'true'
