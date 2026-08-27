@@ -29,8 +29,10 @@ PAGES: dict[str, tuple[str, ...]] = {
     "/hypotheses": ("/api/hypotheses",),
     "/experiments": ("/api/experiments",),
     "/findings": ("/api/results",),
-    # /research is static: it cites published work and reads no endpoint.
+    # Static pages: they explain the system and read no endpoint.
     "/research": (),
+    "/about": (),
+    "/docs": (),
     "/patterns": ("/api/patterns",),
     "/agents": ("/api/agents",),
     "/data": ("/api/sources", "/api/metrics"),
@@ -82,8 +84,11 @@ async def main() -> int:
         failures += not check(f"{detail} exists", (FRONTEND / detail).exists())
 
     # -- every page is reachable from the nav -----------------------------
+    # Read the hrefs themselves rather than the route arrays: the home link
+    # lives on the logo, and a check that only sees array literals reports a
+    # page as unreachable while it is sitting in the top-left corner.
     nav = (FRONTEND / "components/Nav.tsx").read_text(encoding="utf-8")
-    linked = set(re.findall(r'\["(/[^"]*)"', nav))
+    linked = set(re.findall(r'"(/[^"]*)"', nav)) | set(re.findall(r'href="(/[^"]*)"', nav))
     missing = set(PAGES) - linked
     failures += not check("every page is in the nav", not missing, ", ".join(sorted(missing)))
 
