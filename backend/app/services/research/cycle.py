@@ -657,7 +657,12 @@ async def run_research_cycle(
             status="OK",
             estimated_cost_usd=0.0,
             started_at=started,
-            is_demo=True,
+            # Was hardcoded `True`, written when fixtures were the only thing
+            # this cycle ever read. Live, it labelled real research runs as
+            # demo while the hypotheses those same runs produced were correctly
+            # marked real — the run log and the artefacts disagreeing about
+            # what happened.
+            is_demo=settings.demo_mode,
         )
     )
 

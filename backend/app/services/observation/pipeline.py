@@ -122,16 +122,39 @@ class ObservationPipeline:
     # -- ingestion ---------------------------------------------------------
 
     async def _upsert_token(self, session: AsyncSession, ref: TokenRef) -> Token:
+        """Fill what is missing. Never rewrite what the collector recorded.
+
+        This once assigned every field on every run, including `source`. That
+        was harmless while fixtures were the only writer of tokens, and became
+        a silent data loss the moment this pipeline started running live every
+        quarter hour: it read the collector's own tokens back through
+        `DatabaseObservationSource` and stamped `source = "database-live"` over
+        the sampling frame that said whether the token came from the promotion
+        feed or from a completed bonding curve. Measured on production: 144 of
+        144 tokens had lost their frame, so every experiment that stratifies on
+        it had nothing to stratify on.
+
+        `TokenRef` carries no frame, so there is nothing here to write it back
+        with. The rule is therefore the same one the collector follows — the
+        frame is written once, by whoever created the row.
+        """
         token = await session.scalar(select(Token).where(Token.address == ref.address))
         if token is None:
-            token = Token(address=ref.address, is_demo=self.source.is_demo)
+            token = Token(
+                address=ref.address,
+                is_demo=self.source.is_demo,
+                # Only a creator names the frame. For a fixture replay that is
+                # the fixture; for a live run the collector got here first and
+                # this branch is never taken.
+                source=self.source.name,
+            )
             session.add(token)
-        token.symbol = ref.symbol
-        token.name = ref.name
-        token.decimals = ref.decimals
-        token.launch_time = ref.launch_time
-        token.launchpad = ref.launchpad
-        token.source = self.source.name
+        # Fill-if-empty: a later run may learn a symbol the first one lacked,
+        # but must not replace a recorded value with a null or a newer guess.
+        for attribute in ("symbol", "name", "decimals", "launch_time", "launchpad"):
+            learned = getattr(ref, attribute, None)
+            if learned is not None and getattr(token, attribute, None) is None:
+                setattr(token, attribute, learned)
         await session.flush()
         return token
 

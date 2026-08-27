@@ -174,3 +174,105 @@ async def test_everything_the_pipeline_writes_is_flagged_demo(session, backfille
         rows = (await session.scalars(select(model))).all()
         assert rows
         assert all(row.is_demo for row in rows), f"{model.__tablename__} came from fixtures"
+
+
+async def test_the_sampling_frame_survives_an_observation_run(session, settings) -> None:
+    """The pipeline reads the collector's tokens. It must not rewrite them.
+
+    Measured in production: after the loop started running observation live
+    every quarter hour, 144 of 144 tokens read as `database-live` instead of
+    the frame that found them. The frame is the whole basis for stratifying an
+    experiment by population, so losing it is not cosmetic — it silently
+    empties every comparison that depends on it.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from app.providers.source import DatabaseObservationSource
+    from app.services.chain import PROMOTED
+
+    token = Token(
+        address="FrameSurvives1111",
+        symbol="FRM",
+        name="a promoted token",
+        source=PROMOTED,
+        is_demo=False,
+    )
+    session.add(token)
+    await session.flush()
+
+    # Without measurements the pipeline never reaches the upsert, so this is
+    # what makes the test exercise the path that lost the frame.
+    now = datetime.now(UTC)
+    for index in range(8):
+        session.add(
+            TokenSnapshot(
+                token_id=token.id,
+                observed_at=now - timedelta(minutes=15 * (8 - index)),
+                liquidity_usd=40_000.0,
+                volume_usd=90_000.0,
+                source="test",
+                is_demo=False,
+            )
+        )
+    await session.flush()
+
+    report = await ObservationPipeline(
+        source=DatabaseObservationSource(session), settings=settings
+    ).run(session)
+    await session.refresh(token)
+
+    assert report.subjects_examined == 1  # the token really went through
+    assert token.source == PROMOTED
+
+
+async def test_a_known_field_is_never_replaced_by_a_null(session, settings) -> None:
+    """A later run that learned less must not erase what an earlier one knew."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.providers.source import ObservationSource, TokenRef
+
+    now = datetime.now(UTC)
+    series = [
+        {
+            "observed_at": now - timedelta(minutes=15 * (8 - index)),
+            "liquidity_usd": 40_000.0,
+            "volume_usd": 90_000.0,
+        }
+        for index in range(8)
+    ]
+
+    class Forgetful(ObservationSource):
+        name = "forgetful"
+        is_demo = False
+
+        async def list_tokens(self):
+            return [
+                TokenRef(
+                    address="KeepsItsName111",
+                    symbol=None,
+                    name=None,
+                    decimals=None,
+                    launch_time=None,
+                    launchpad=None,
+                )
+            ]
+
+        async def get_snapshots(self, address, *, since=None, until=None):
+            return list(series)
+
+        async def get_posts(self, address=None, *, since=None, until=None):
+            return []
+
+        async def latest_timestamp(self):
+            return now
+
+    token = Token(address="KeepsItsName111", symbol="KEEP", name="a name", is_demo=False)
+    session.add(token)
+    await session.flush()
+
+    report = await ObservationPipeline(source=Forgetful(), settings=settings).run(session)
+    await session.refresh(token)
+
+    assert report.subjects_examined == 1
+    assert token.symbol == "KEEP"
+    assert token.name == "a name"

@@ -224,3 +224,32 @@ async def test_status_reports_the_research_engine_honestly(client):
     assert research["hypothesis_templates"] > 0
     assert research["critic_checks"]
     assert research["unit_of_analysis"] == "token-hour"
+
+
+async def test_a_live_run_is_not_logged_as_a_demo_run(session, settings) -> None:
+    """The run log and the artefacts must agree about what happened.
+
+    This flag was hardcoded `True`. In production it labelled every real
+    research run as demo while the hypotheses those same runs wrote were
+    correctly marked real, so the run log said the site had never researched
+    anything.
+    """
+    settings.demo_mode = False
+    await run_research_cycle(session, settings=settings)
+
+    runs = (
+        await session.scalars(select(AgentRun).where(AgentRun.agent_name == RESEARCH_RUN_NAME))
+    ).all()
+    assert runs
+    assert all(run.is_demo is False for run in runs)
+
+
+async def test_a_demo_run_still_says_demo(session, settings) -> None:
+    settings.demo_mode = True
+    await run_research_cycle(session, settings=settings)
+
+    runs = (
+        await session.scalars(select(AgentRun).where(AgentRun.agent_name == RESEARCH_RUN_NAME))
+    ).all()
+    assert runs
+    assert all(run.is_demo is True for run in runs)

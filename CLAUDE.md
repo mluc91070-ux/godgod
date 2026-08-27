@@ -311,6 +311,14 @@ or the account is telling two stories about one dataset.
   which one found it. It is written once and never rewritten: a token that
   entered as promoted stays promoted, or the population of every past
   experiment changes retroactively and invisibly.
+- **Only whoever created the row names the frame, and only once.** Every other
+  writer fills what is missing and touches nothing else. This is not theory:
+  `ObservationPipeline._upsert_token` assigned every field on every run — fine
+  while fixtures were the only thing creating tokens, silent data loss once the
+  scheduler ran it live every quarter hour, because it read the collector's own
+  tokens back through `DatabaseObservationSource` and stamped
+  `source = "database-live"` over all 144 of them. An upsert that reads a row it
+  did not create is a fill-if-empty, never an assignment.
 - **A migration is read, never inferred.** `bonding_curve_state = "complete"`
   only when the launchpad said so, and `migrated_to_dex` only when the payload
   named a pool. A high market cap is not a completed curve.
@@ -328,6 +336,10 @@ or the account is telling two stories about one dataset.
 - Live rows are `is_demo=False` and never mix with fixtures. The observation
   source is chosen by `DEMO_MODE`, and without a session it returns fixtures
   rather than silently serving them to a production pipeline.
+- **`is_demo` on an `agent_runs` row is derived, never a literal.** The research
+  cycle hardcoded `is_demo=True` and so logged every real run as demo while the
+  hypotheses those same runs wrote were correctly marked real — the run log and
+  the artefacts disagreeing about what the system had done.
 - The collector cannot fabricate history. Its first run stores one measurement
   per token; nothing fires until `OBSERVATION_MIN_SNAPSHOTS` of them exist. That
   silence is correct — a system that watched a token for an hour saw no trend.
