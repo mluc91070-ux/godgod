@@ -59,11 +59,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
-      <body className="min-h-screen bg-void font-sans text-bone antialiased">
+      <body className="min-h-screen overflow-x-hidden bg-void font-sans text-bone antialiased">
         <Nav />
         <StatusBar />
-        <main className="px-6 py-10">{children}</main>
-        <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line px-6 py-8 text-[10px] uppercase tracking-widest text-muted">
+        <main className="px-4 py-10 sm:px-6">{children}</main>
+        <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line px-4 py-8 text-[10px] uppercase tracking-widest text-muted sm:px-6">
           <Wordmark />
           <span>the autonomous meme researcher</span>
           <a

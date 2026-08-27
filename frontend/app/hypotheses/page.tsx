@@ -63,7 +63,7 @@ export default async function HypothesesPage({ searchParams }: Props) {
                   href={`/hypotheses/${hypothesis.id}`}
                   className="block py-4 hover:bg-surface"
                 >
-                  <div className="grid grid-cols-[5rem_1fr_8rem] items-baseline gap-4">
+                  <div className="flex flex-col gap-1 sm:grid sm:grid-cols-[5rem_1fr_8rem] sm:items-baseline sm:gap-4">
                     <span className="text-muted">
                       #{String(hypothesis.seq ?? 0).padStart(6, "0")}
                     </span>
@@ -72,11 +72,11 @@ export default async function HypothesesPage({ searchParams }: Props) {
                       <Tag value={hypothesis.status} />
                     </span>
                   </div>
-                  <p className="mt-2 grid grid-cols-[5rem_1fr] gap-4 text-[11px] text-muted">
+                  <p className="mt-2 flex flex-col gap-0.5 text-[11px] text-muted sm:grid sm:grid-cols-[5rem_1fr] sm:gap-4">
                     <span>falsified if</span>
                     <span className="text-amber">{hypothesis.falsification_condition}</span>
                   </p>
-                  <p className="mt-1 grid grid-cols-[5rem_1fr] gap-4 text-[11px] text-muted">
+                  <p className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted sm:grid sm:grid-cols-[5rem_1fr] sm:gap-4">
                     <span>confidence</span>
                     <span>{fmt(hypothesis.confidence)}</span>
                   </p>

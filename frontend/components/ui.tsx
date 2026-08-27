@@ -26,7 +26,7 @@ export function Section({
 
 export function Field({ k, v }: { k: string; v: ReactNode }) {
   return (
-    <div className="grid grid-cols-[minmax(0,11rem)_1fr] gap-4 border-b border-line py-2">
+    <div className="flex flex-col gap-1 border-b border-line py-2 sm:grid sm:grid-cols-[minmax(0,11rem)_1fr] sm:gap-4">
       <div className="text-muted">{k}</div>
       <div className="min-w-0 break-words">{v ?? "—"}</div>
     </div>

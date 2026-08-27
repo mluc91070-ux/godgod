@@ -10,7 +10,7 @@ export default async function StatusBar() {
 
   if (!result.ok) {
     return (
-      <div className="flex flex-wrap items-center gap-4 border-b border-line px-6 py-2 text-[10px] uppercase tracking-widest text-muted">
+      <div className="flex flex-wrap items-center gap-4 border-b border-line px-4 py-2 text-[10px] uppercase tracking-widest text-muted sm:px-6">
         <span className="text-magenta">api unreachable</span>
         <span className="normal-case tracking-normal">{result.error}</span>
       </div>
@@ -20,7 +20,7 @@ export default async function StatusBar() {
   const { mode, state, phase, version } = result.data;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-line px-6 py-2 text-[10px] uppercase tracking-widest text-muted">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-line px-4 py-2 text-[10px] uppercase tracking-widest text-muted sm:px-6">
       {mode.demo_mode ? (
         <span className="border border-amber/50 px-2 py-[1px] text-amber">demo mode</span>
       ) : (
@@ -38,7 +38,7 @@ export default async function StatusBar() {
       <span>
         wallet execution <span className="text-bone">off</span>
       </span>
-      <span className="normal-case tracking-normal text-muted">{phase}</span>
+      <span className="min-w-0 normal-case tracking-normal text-muted">{phase}</span>
       <span className="ml-auto">v{version}</span>
     </div>
   );

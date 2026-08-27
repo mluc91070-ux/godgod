@@ -119,7 +119,7 @@ export default function LiveTerminal({
         ) : (
           <ol className="space-y-1">
             {rows.map((event) => (
-              <li key={event.id} className="grid grid-cols-[5.5rem_11rem_1fr] gap-3">
+              <li key={event.id} className="grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-0.5 sm:grid-cols-[5.5rem_11rem_1fr]">
                 <span className="text-muted">{clock(event.occurred_at)}</span>
                 <span className={LEVEL_COLOR[event.level] ?? "text-bone"}>
                   {event.event_type}

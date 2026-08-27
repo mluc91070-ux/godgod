@@ -109,7 +109,7 @@ export default async function HypothesisPage({ params }: Props) {
               <li key={experiment.id}>
                 <Link
                   href={`/experiments/${experiment.id}`}
-                  className="grid grid-cols-[1fr_6rem_7rem] items-center gap-4 py-3 hover:text-amber"
+                  className="flex flex-col gap-1 py-3 hover:text-amber sm:grid sm:grid-cols-[1fr_6rem_7rem] sm:items-center sm:gap-4"
                 >
                   <span>{experiment.title}</span>
                   <span className="text-[11px] text-muted">

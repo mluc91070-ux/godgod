@@ -136,7 +136,7 @@ export default async function ExperimentPage({ params }: Props) {
         <Section title={`trace #${String(trace.seq ?? 0).padStart(6, "0")}`} note="immutable">
           <ol className="space-y-2">
             {trace.steps.map((step) => (
-              <li key={step.id} className="grid grid-cols-[8rem_9rem_1fr] gap-3">
+              <li key={step.id} className="flex flex-col gap-0.5 sm:grid sm:grid-cols-[8rem_9rem_1fr] sm:gap-3">
                 <span className="text-muted">{fmtTime(step.occurred_at).slice(11)}</span>
                 <span className="text-[10px] uppercase tracking-widest text-bone">{step.kind}</span>
                 <span className="text-muted">{step.summary}</span>

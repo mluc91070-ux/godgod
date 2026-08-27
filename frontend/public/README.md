@@ -1,5 +1,12 @@
 # Brand assets
 
+**Caching.** Files here are served by Next with `max-age=0, must-revalidate` by
+default, because their names carry no content hash — for the 830KB hero video
+that meant a blocking round trip on every visit. `next.config.mjs` gives the
+video and poster a day of freshness with a week of stale-while-revalidate, and
+the icons a week with a month. Replacing a file reaches everyone within that
+window without renaming it.
+
 Generated from the charter mark, not hand-drawn twice. The geometry lives in
 `components/Mark.tsx`; `scripts/build_brand.py` renders the raster versions from
 the same numbers, so the tab icon and the in-page logo cannot drift apart.

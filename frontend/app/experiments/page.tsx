@@ -23,7 +23,7 @@ export default async function ExperimentsPage() {
           <Link
             key={experiment.id}
             href={`/experiments/${experiment.id}`}
-            className="grid grid-cols-[5rem_1fr_7rem_7rem] items-center gap-4 py-4 hover:bg-surface"
+            className="flex flex-col gap-1 py-4 hover:bg-surface sm:grid sm:grid-cols-[5rem_1fr_7rem_7rem] sm:items-center sm:gap-4"
           >
             <span className="text-muted">
               #{String(experiment.seq ?? 0).padStart(6, "0")}

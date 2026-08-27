@@ -36,7 +36,7 @@ const PRIMARY: [string, string][] = [
 
 export default function Nav() {
   return (
-    <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line px-6 py-4">
+    <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line px-4 py-4 sm:px-6">
       <Link
         href="/"
         className="flex items-center gap-2.5 text-bone transition-colors hover:text-magenta"
@@ -45,7 +45,7 @@ export default function Nav() {
         <span className="font-display text-[13px] tracking-[0.2em]">GODGOD</span>
       </Link>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="order-3 flex min-w-0 flex-wrap gap-x-4 gap-y-1 sm:order-none">
         {RESEARCH.map(([href, label]) => (
           <Link
             key={href}
@@ -57,7 +57,7 @@ export default function Nav() {
         ))}
       </div>
 
-      <div className="ml-auto flex flex-wrap items-center gap-2">
+      <div className="order-2 ml-auto flex min-w-0 flex-wrap items-center gap-2 sm:order-none">
         {PRIMARY.map(([href, label]) => (
           <Link
             key={href}
