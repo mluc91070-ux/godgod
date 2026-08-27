@@ -100,6 +100,14 @@ class CollectionInfo(BaseModel):
     Two populations, kept apart because they are not the same one. A result
     that holds in one and not the other is a result about the sampling frame.
     """
+    tokens_unrecorded_frame: int
+    """Measured before the sampling frame was recorded at all.
+
+    These are not promoted-by-default. The collector had one population when
+    they were stored and did not write down which, so the honest value is
+    "unrecorded" — not a label assigned retroactively to make three numbers
+    add up.
+    """
     migrations_available: bool
     """False when no launchpad is configured, so an empty migrated cohort is
     distinguishable from one nothing ever looked for."""

@@ -93,6 +93,7 @@ export type Status = {
     live_tokens: number;
     tokens_promoted: number;
     tokens_migrated: number;
+    tokens_unrecorded_frame: number;
     migrations_available: boolean;
     live_snapshots: number;
     live_posts: number;

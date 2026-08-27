@@ -62,6 +62,9 @@ export default function Collection({ status }: { status: Status }) {
         {c.migrations_available
           ? "two sampling frames, kept apart. a result that holds in one and not the other is a result about the frame, not about the market."
           : "migrations are not being read, so the dash is 'not measured', not 'none found'."}
+        {c.tokens_unrecorded_frame > 0
+          ? ` ${fmtInt(c.tokens_unrecorded_frame)} more were measured before the frame was recorded at all — they are not counted as either, because nobody wrote down which.`
+          : null}
       </p>
 
       {!c.observing_live ? (

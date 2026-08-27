@@ -156,6 +156,9 @@ async def describe_collection(session: SessionDep, settings: SettingsDep) -> Col
         live_tokens=len(live_tokens),
         tokens_promoted=sum(1 for token in live_tokens if token.source == PROMOTED),
         tokens_migrated=sum(1 for token in live_tokens if token.source == MIGRATED),
+        tokens_unrecorded_frame=sum(
+            1 for token in live_tokens if token.source not in (PROMOTED, MIGRATED)
+        ),
         migrations_available=bool(
             settings.launchpad_migrations and settings.launchpad_api_url
         ),
