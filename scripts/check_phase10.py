@@ -29,6 +29,8 @@ PAGES: dict[str, tuple[str, ...]] = {
     "/hypotheses": ("/api/hypotheses",),
     "/experiments": ("/api/experiments",),
     "/findings": ("/api/results",),
+    # /research is static: it cites published work and reads no endpoint.
+    "/research": (),
     "/patterns": ("/api/patterns",),
     "/agents": ("/api/agents",),
     "/data": ("/api/sources", "/api/metrics"),

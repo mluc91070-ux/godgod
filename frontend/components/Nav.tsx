@@ -10,6 +10,7 @@ const ROUTES: [string, string][] = [
   ["/hypotheses", "hypotheses"],
   ["/experiments", "experiments"],
   ["/findings", "findings"],
+  ["/research", "research"],
   ["/patterns", "patterns"],
   ["/agents", "agents"],
   ["/data", "data"],
