@@ -92,6 +92,17 @@ class CollectionInfo(BaseModel):
     """
 
     live_tokens: int
+    tokens_promoted: int
+    """Found by the promotion feed — tokens somebody paid to place."""
+    tokens_migrated: int
+    """Found by a completed bonding curve — nobody paid for placement.
+
+    Two populations, kept apart because they are not the same one. A result
+    that holds in one and not the other is a result about the sampling frame.
+    """
+    migrations_available: bool
+    """False when no launchpad is configured, so an empty migrated cohort is
+    distinguishable from one nothing ever looked for."""
     live_snapshots: int
     live_posts: int
     deepest_history: int

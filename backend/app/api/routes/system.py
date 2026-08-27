@@ -150,8 +150,15 @@ async def describe_collection(session: SessionDep, settings: SettingsDep) -> Col
             select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == name)
         )
 
+    from app.services.chain import MIGRATED, PROMOTED
+
     return CollectionInfo(
         live_tokens=len(live_tokens),
+        tokens_promoted=sum(1 for token in live_tokens if token.source == PROMOTED),
+        tokens_migrated=sum(1 for token in live_tokens if token.source == MIGRATED),
+        migrations_available=bool(
+            settings.launchpad_migrations and settings.launchpad_api_url
+        ),
         live_snapshots=await count_live(TokenSnapshot),
         live_posts=await count_live(SocialPost),
         deepest_history=deepest,

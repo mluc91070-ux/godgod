@@ -36,7 +36,7 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     # Every client is implemented; none is configured here. The notes must say
     # each one refuses, rather than implying a live feed.
     providers = {p["name"]: p for p in body["providers"]}
-    assert set(providers) == {"solana", "market", "x", "anthropic"}
+    assert set(providers) == {"solana", "market", "launchpad", "x", "anthropic"}
     assert all(p["configured"] is False for p in providers.values())
 
     assert providers["solana"]["implemented"] is True

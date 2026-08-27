@@ -38,6 +38,32 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       </div>
 
+      {/* Two populations, and a total alone would hide which one grew. */}
+      <div className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+        <div className="flex justify-between border-b border-line py-1">
+          <span className="text-muted">promoted — someone paid to place it</span>
+          <span>{fmtInt(c.tokens_promoted)}</span>
+        </div>
+        <div className="flex justify-between border-b border-line py-1">
+          <span className="text-muted">migrated — a bonding curve that filled</span>
+          <span>
+            {c.migrations_available ? (
+              fmtInt(c.tokens_migrated)
+            ) : (
+              <span className="text-grey" title="no launchpad configured">
+                —
+              </span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-[11px] text-muted">
+        {c.migrations_available
+          ? "two sampling frames, kept apart. a result that holds in one and not the other is a result about the frame, not about the market."
+          : "migrations are not being read, so the dash is 'not measured', not 'none found'."}
+      </p>
+
       {!c.observing_live ? (
         <div className="mt-5">
           <div className="flex justify-between text-[10px] uppercase tracking-widest text-muted">

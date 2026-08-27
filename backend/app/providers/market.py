@@ -82,6 +82,11 @@ class MarketProvider(ABC):
     @abstractmethod
     async def discover(self, limit: int = 30) -> list[MarketSnapshot]: ...
 
+    @abstractmethod
+    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]: ...
+    """Measure a known set of tokens. Addresses the market has never seen
+    are simply absent from the result — never returned as an empty measurement."""
+
 
 class NullMarketProvider(MarketProvider):
     """What runs with no market url. Refuses rather than reporting zeroes."""
@@ -99,6 +104,9 @@ class NullMarketProvider(MarketProvider):
         raise ProviderNotConfigured("MARKET_API_URL is not set")
 
     async def discover(self, limit: int = 30) -> list[MarketSnapshot]:
+        raise ProviderNotConfigured("MARKET_API_URL is not set")
+
+    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]:
         raise ProviderNotConfigured("MARKET_API_URL is not set")
 
 
@@ -273,9 +281,22 @@ class HttpMarketProvider(MarketProvider):
             if address not in unique:
                 unique.append(address)
 
-        snapshots: list[MarketSnapshot] = []
-        for batch_start in range(0, min(len(unique), limit), 25):
-            batch = unique[batch_start : batch_start + 25]
+        snapshots = await self.snapshots(unique[:limit])
+        snapshots.sort(key=lambda item: item.volume_usd or 0.0, reverse=True)
+        return snapshots[:limit]
+
+    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]:
+        """Measure a known set of tokens, in batches the endpoint accepts.
+
+        Twenty-five per request is the documented ceiling. A token the market
+        has no pair for produces no row at all, which is the honest answer:
+        absent is not zero liquidity.
+        """
+        results: list[MarketSnapshot] = []
+        for start in range(0, len(addresses), 25):
+            batch = addresses[start : start + 25]
+            if not batch:
+                continue
             payload = await self._get(f"/tokens/v1/solana/{','.join(batch)}")
             pairs = payload if isinstance(payload, list) else (payload.get("pairs") or [])
             grouped: dict[str, list[dict[str, Any]]] = {}
@@ -283,14 +304,12 @@ class HttpMarketProvider(MarketProvider):
                 address = (pair.get("baseToken") or {}).get("address")
                 if address:
                     grouped.setdefault(address, []).append(pair)
-            snapshots.extend(
+            results.extend(
                 snapshot
                 for address, group in grouped.items()
                 if (snapshot := _from_pair(address, group)) is not None
             )
-
-        snapshots.sort(key=lambda item: item.volume_usd or 0.0, reverse=True)
-        return snapshots[:limit]
+        return results
 
 
 _cache: dict[tuple, MarketProvider] = {}

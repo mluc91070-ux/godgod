@@ -164,6 +164,47 @@ class Settings(BaseSettings):
     nothing ever happens to.
     """
 
+    launchpad_api_url: str | None = None
+    """Where completed bonding curves are read from.
+
+    A URL rather than a vendor name, same rule as SOLANA_RPC_URL and
+    MARKET_API_URL. Unset means migrations are unavailable and every token
+    keeps `bonding_curve_state` NULL — never "unmigrated" by default.
+    """
+
+    launchpad_timeout_seconds: float = 20.0
+
+    launchpad_migrations: bool = True
+    """Add recently migrated tokens to each collection run.
+
+    A second sampling frame, and deliberately a different one: the promotion
+    feed is tokens somebody paid to show, this is tokens that filled a curve.
+    Every token records which frame found it, because a result that holds in
+    one and not the other is a result about the frame, not about the market.
+    """
+
+    launchpad_max_tokens: int = 25
+    """Migrations added per run, on top of the promotion feed. Capped because
+    the market API is then asked to measure each of them."""
+
+    launchpad_min_liquidity_usd: float = 1_000.0
+    """A far lower floor than the promotion feed's, and deliberately so.
+
+    The $10k floor exists to reject a parked balance: a deep pool nobody
+    trades. A token that migrated twenty minutes ago cannot be a parked
+    balance, and applying the same floor to it rejects the opposite thing.
+    Measured on a live run: of 25 fresh migrations, the $10k floor dropped 21
+    — including one 18 minutes old doing $343k of volume on a $6k pool, which
+    is precisely the event this system exists to study.
+
+    This floor only rejects a pool with nothing left in it.
+    """
+
+    launchpad_min_volume_usd: float = 25_000.0
+    """Same question as the promotion feed's floor — is anything happening —
+    and the same answer, so the same number. On a token under an hour old the
+    24h figure is simply everything that has traded since it launched."""
+
     chain_discover: bool = True
     """Read the promotion feed instead of searching by name.
 

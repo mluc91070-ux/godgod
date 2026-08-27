@@ -283,6 +283,24 @@ or the account is telling two stories about one dataset.
 - Discovery reads the promotion feed, not a name search — searching by name on
   a permissionless chain returns clones of whatever was typed. Being promoted is
   a sampling frame, not evidence, and experiments record it as their population.
+- **Two frames, kept apart.** `promotion-feed` is tokens somebody paid to place;
+  `launchpad-migration` is tokens whose bonding curve filled. Both are measured
+  by the same market provider into identical rows, and `Token.source` records
+  which one found it. It is written once and never rewritten: a token that
+  entered as promoted stays promoted, or the population of every past
+  experiment changes retroactively and invisibly.
+- **A migration is read, never inferred.** `bonding_curve_state = "complete"`
+  only when the launchpad said so, and `migrated_to_dex` only when the payload
+  named a pool. A high market cap is not a completed curve.
+- **The floors are per-frame, because they answer different questions.** The
+  $10k liquidity floor rejects a parked balance — a deep pool nobody trades.
+  A token twenty minutes past migration cannot be one, and that floor rejects it
+  for the opposite reason. Measured live: it dropped 21 of 25 fresh migrations,
+  including one at 18 minutes doing $343k of volume on a $6k pool. Migrations
+  use `LAUNCHPAD_MIN_LIQUIDITY_USD`, which only rejects an emptied pool.
+- A launchpad that is down costs that cohort, not the run: `launchpad_error` is
+  named apart from `error`. A launchpad that is *unconfigured* is a decision,
+  and is recorded as `launchpad_not_configured` rather than passing silently.
 - Failures are named apart when the fix differs: `holder_distribution_rate_limited`
   needs a dedicated RPC url, `holder_distribution_unavailable` needs any url.
 - Live rows are `is_demo=False` and never mix with fixtures. The observation

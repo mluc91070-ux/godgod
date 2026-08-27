@@ -37,6 +37,23 @@ def _market_note(settings: Settings) -> str:
     )
 
 
+def _launchpad_note(settings: Settings) -> str:
+    if not settings.launchpad_migrations:
+        return "Migrations are switched off. No token is marked as migrated."
+    if not settings.launchpad_api_url:
+        return (
+            "Bonding curve states are not read: LAUNCHPAD_API_URL is unset, so "
+            "every token keeps bonding_curve_state NULL rather than being "
+            "assumed unmigrated."
+        )
+    return (
+        f"Reading completed curves, at most {settings.launchpad_max_tokens} per "
+        f"run, measured above ${settings.launchpad_min_liquidity_usd:,.0f} "
+        "liquidity — a lower floor than the promotion feed, because a token "
+        "minutes past migration is thin by construction, not parked."
+    )
+
+
 def _x_note(settings: Settings) -> str:
     """Read access only, and only when a token is present."""
     if not settings.x_bearer_token:
@@ -90,6 +107,12 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
             configured=bool(settings.market_api_url),
             implemented=True,
             note=_market_note(settings),
+        ),
+        ProviderStatus(
+            name="launchpad",
+            configured=bool(settings.launchpad_api_url),
+            implemented=True,
+            note=_launchpad_note(settings),
         ),
         ProviderStatus(
             name="x",

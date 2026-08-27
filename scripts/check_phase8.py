@@ -32,7 +32,7 @@ async def main() -> int:
     from app.core.config import get_settings
     from app.core.untrusted import CLOSE
     from app.db.session import dispose_engine, get_engine, get_sessionmaker
-    from app.models import AgentRun, Base, TokenSnapshot
+    from app.models import AgentRun, Base, Token, TokenSnapshot
     from app.providers.base import NotImplementedYet, ProviderNotConfigured
     from app.providers.market import MarketSnapshot, NullMarketProvider, _from_pair
     from app.providers.solana import (
@@ -50,6 +50,10 @@ async def main() -> int:
     settings.chain_min_liquidity_usd = 10_000.0
     settings.chain_min_volume_usd = 25_000.0
     settings.chain_max_tokens = 10
+    settings.launchpad_migrations = False
+    settings.launchpad_api_url = None
+    settings.launchpad_min_liquidity_usd = 1_000.0
+    settings.launchpad_min_volume_usd = 25_000.0
 
     address = "So11111111111111111111111111111111111111112"
 
@@ -154,6 +158,10 @@ async def main() -> int:
         async def get_snapshot(self, addr):
             return next((s for s in self._snapshots if s.address == addr), None)
 
+        async def snapshots(self, addresses):
+            wanted = set(addresses)
+            return [s for s in self._snapshots if s.address in wanted]
+
     class FakeChain:
         def __init__(self, top10=0.42, raises=None):
             self._top10 = top10
@@ -209,7 +217,7 @@ async def main() -> int:
         )
         failures += not check(
             "a deep pool nobody trades in is dropped",
-            parked.snapshots_stored == 0 and "below_volume_floor" in parked.dropped,
+            parked.snapshots_stored == 0 and "below_volume_floor_promotion" in parked.dropped,
         )
 
         throttled_run = await collect_chain(
@@ -248,13 +256,119 @@ async def main() -> int:
             f"{len(runs)} runs",
         )
 
+        # -- the migration frame ------------------------------------------
+        from app.providers.launchpad import LaunchpadCallFailed, MigratedToken
+        from app.services.chain import MIGRATED, PROMOTED
+
+        class FakeLaunchpad:
+            implemented = True
+
+            def __init__(self, *items, raises=None):
+                self._items = list(items)
+                self._raises = raises
+
+            async def recent_migrations(self, limit=30):
+                if self._raises:
+                    raise self._raises
+                return self._items[:limit]
+
+        mig_address = "MigratedGateAddress1111111111111111111111pump"
+        settings.launchpad_migrations = True
+        settings.launchpad_api_url = "https://launchpad.example"
+
+        def thin(addr):
+            # $6k of liquidity, $343k of volume: measured on a real migration
+            # eighteen minutes old. The promotion floor would reject it.
+            return MarketSnapshot(
+                address=addr,
+                symbol="MIG",
+                name="A Migrated Token",
+                liquidity_usd=6_000.0,
+                volume_usd=343_000.0,
+                volume_24h_usd=343_000.0,
+                transactions=5,
+                buys=3,
+                sells=2,
+            )
+
+        migrated = await collect_chain(
+            session,
+            settings=settings,
+            market=FakeMarket(thin(mig_address)),
+            chain=FakeChain(),
+            launchpad=FakeLaunchpad(
+                MigratedToken(address=mig_address, symbol="MIG", pool="POOL999")
+            ),
+            as_of=datetime(2026, 8, 26, 9, 0, tzinfo=UTC),
+        )
+        failures += not check(
+            "a thin fresh migration passes the per-frame floor",
+            migrated.snapshots_stored == 1 and migrated.migrations_seen == 1,
+            f"stored {migrated.snapshots_stored}, seen {migrated.migrations_seen}",
+        )
+
+        mig_token = await session.scalar(
+            select(Token).where(Token.address == mig_address)
+        )
+        failures += not check(
+            "the sampling frame is recorded on the token",
+            mig_token is not None
+            and mig_token.source == MIGRATED
+            and mig_token.bonding_curve_state == "complete"
+            and mig_token.migrated_to_dex == "POOL999",
+        )
+
+        promoted_token = await session.scalar(
+            select(Token).where(Token.address == address)
+        )
+        failures += not check(
+            "a promoted token is never marked as migrated",
+            promoted_token is not None
+            and promoted_token.source == PROMOTED
+            and promoted_token.bonding_curve_state is None
+            and promoted_token.migrated_to_dex is None,
+        )
+
+        no_pair = await collect_chain(
+            session,
+            settings=settings,
+            market=FakeMarket(),
+            chain=FakeChain(),
+            launchpad=FakeLaunchpad(MigratedToken(address="NoPairYet111", symbol="NP")),
+            as_of=datetime(2026, 8, 26, 9, 15, tzinfo=UTC),
+        )
+        failures += not check(
+            "a migration with no market pair is counted, not invented",
+            no_pair.snapshots_stored == 0
+            and no_pair.dropped.get("migration_not_yet_on_market") == 1,
+        )
+
+        lp_down = await collect_chain(
+            session,
+            settings=settings,
+            market=FakeMarket(),
+            chain=FakeChain(),
+            launchpad=FakeLaunchpad(raises=LaunchpadCallFailed("HTTP 530")),
+            as_of=datetime(2026, 8, 26, 9, 30, tzinfo=UTC),
+        )
+        failures += not check(
+            "a launchpad failure is reported, not absorbed",
+            lp_down.error is None
+            and lp_down.launchpad_error is not None
+            and lp_down.as_dict()["complete"] is False,
+        )
+
+        settings.launchpad_migrations = False
         source = DatabaseObservationSource(session)
         tokens = await source.list_tokens()
         snapshots = await source.get_snapshots(address)
+        # Two tokens by now: one from each sampling frame. Both are read back
+        # by the same source, which is the point — a migrated token and a
+        # promoted one produce identical rows and stay comparable.
         failures += not check(
             "the pipeline can read back what the collector wrote",
-            len(tokens) == 1 and len(snapshots) >= 2,
-            f"{len(snapshots)} measurements",
+            len(tokens) == 2 and len(snapshots) >= 2,
+            f"{len(tokens)} tokens, {len(snapshots)} measurements",
         )
         failures += not check(
             "no holder count appears on the way back out",

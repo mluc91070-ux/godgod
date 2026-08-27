@@ -86,6 +86,10 @@ async def chain_settings(settings):
     settings.chain_max_tokens = 10
     settings.chain_min_liquidity_usd = 10_000.0
     settings.chain_min_volume_usd = 25_000.0
+    # The migration frame is exercised in test_chain_migrations.py. Off here so
+    # these tests keep asserting on the exact drop dictionary of the promotion
+    # frame, which is what they are about.
+    settings.launchpad_migrations = False
     return settings
 
 
@@ -109,6 +113,10 @@ class FakeMarket:
 
     async def get_snapshot(self, address):
         return next((s for s in self._snapshots if s.address == address), None)
+
+    async def snapshots(self, addresses):
+        wanted = set(addresses)
+        return [s for s in self._snapshots if s.address in wanted]
 
 
 class FakeChain:
@@ -329,7 +337,7 @@ async def test_a_token_below_the_floor_is_dropped_by_name(session, chain_setting
         commit=False,
     )
     assert report.snapshots_stored == 0
-    assert report.dropped == {"below_liquidity_floor": 1}
+    assert report.dropped == {"below_liquidity_floor_promotion": 1}
 
 
 async def test_a_token_with_unreported_liquidity_is_dropped_separately(
@@ -356,7 +364,7 @@ async def test_a_deep_pool_nobody_trades_in_is_dropped(session, chain_settings) 
         commit=False,
     )
     assert report.snapshots_stored == 0
-    assert report.dropped == {"below_volume_floor": 1}
+    assert report.dropped == {"below_volume_floor_promotion": 1}
 
 
 async def test_unreported_volume_is_its_own_reason(session, chain_settings) -> None:
@@ -670,4 +678,4 @@ async def test_a_token_nobody_trades_is_still_dropped(session, chain_settings) -
         session, settings=chain_settings, market=FakeMarket(dead),
         chain=FakeChain(), commit=False,
     )
-    assert report.dropped == {"below_volume_floor": 1}
+    assert report.dropped == {"below_volume_floor_promotion": 1}

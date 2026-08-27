@@ -91,6 +91,9 @@ export type Status = {
   };
   collection: {
     live_tokens: number;
+    tokens_promoted: number;
+    tokens_migrated: number;
+    migrations_available: boolean;
     live_snapshots: number;
     live_posts: number;
     deepest_history: number;
