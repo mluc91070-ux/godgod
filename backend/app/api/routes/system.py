@@ -22,6 +22,7 @@ from app.models import (
     Token,
     TokenSnapshot,
 )
+from app.models.base import as_utc
 from app.providers.registry import describe_providers
 from app.providers.source import get_observation_source
 from app.schemas.common import (
@@ -73,17 +74,40 @@ AUTONOMY_LABELS = {
     4: "FUTURE EXPERIMENTAL ACTIONS",
 }
 
-CURRENT_PHASE = (
-    "all phases built — observing real tokens, still serving the demo dataset "
-    "while history accumulates"
-)
-"""What the system is, right now.
+async def describe_phase(session: SessionDep, settings: SettingsDep) -> str:
+    """What the system is, right now — derived, never written down.
 
-Not a phase number: every phase is built, and a stale "PHASE 6" here would be
-the system misdescribing itself on every page — which is the one thing it is
-not allowed to do. Change this when the deployment changes, not when a
-milestone is passed.
-"""
+    This line appears on every page, so a stale version of it is the system
+    misdescribing itself everywhere at once. It said "still serving the demo
+    dataset" for the first eight minutes after the demo dataset was deleted,
+    which is exactly the failure a hardcoded status string invites: the
+    deployment changed and the sentence did not.
+
+    So it is computed from the two facts that actually determine it — whether
+    fixtures are being served, and how much real history exists. A dataset
+    hours old cannot produce a conclusive result, and saying so is not modesty:
+    it is the reason every result currently reads INCONCLUSIVE.
+    """
+    if settings.demo_mode:
+        return (
+            "all phases built — measuring real tokens, still serving the demo "
+            "dataset while history accumulates"
+        )
+
+    earliest = await session.scalar(
+        select(func.min(TokenSnapshot.observed_at)).where(TokenSnapshot.is_demo.is_(False))
+    )
+    if earliest is None:
+        return "all phases built — researching real tokens, no measurement stored yet"
+
+    hours = max(0, int((datetime.now(UTC) - as_utc(earliest)).total_seconds() // 3600))
+    if hours < 48:
+        span = f"{hours} hours" if hours != 1 else "1 hour"
+        return (
+            f"all phases built — researching real tokens on {span} of history, "
+            "which is too little to conclude anything yet"
+        )
+    return f"all phases built — researching real tokens on {hours // 24} days of history"
 
 
 async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> PipelineInfo:
@@ -209,7 +233,7 @@ async def status_endpoint(
         name=settings.app_name,
         version=settings.app_version,
         environment=settings.environment,
-        phase=CURRENT_PHASE,
+        phase=await describe_phase(session, settings),
         state=str(await get_state(session)),
         mode=ModeInfo(
             demo_mode=settings.demo_mode,
