@@ -23,17 +23,20 @@ to the WebGL field if the video fails to decode at all.
 
 Built from `TEASER.mp4` (1280×720, 15s, 9.5MB) by:
 
-1. **Cropping to square.** The sphere is centred, so a 720×720 centre crop
-   loses nothing, and the hero slot is 1:1.
+1. **Keeping the native 16:9.** An earlier version cropped to a square, which
+   looked tidy and cut about five hundred pixels off each side — by the end of
+   the loop the sphere and its cabling span x=30 to x=1279 of the frame, so a
+   square crop removes the half of the composition that gives it scale.
+   Measured, then fixed.
 2. **Boomerang, opening on the close-up.** The source is an approach: it starts
    on a distant speck and ends on a full-frame sphere, so a hard loop would
-   jump. Reversed-then-forward runs close → far → close, which is seamless at
-   both ends — measured at 0.02/255 mean difference across the seam. The order
-   matters: forward-then-reversed is equally seamless but opens on the darkest
-   frame, and a visitor's first impression is a black square.
-3. **Re-encoding.** 9.5MB → 505KB MP4 / 420KB WebM at 640×640, CRF 30. Every
-   visitor downloads this; the original was nineteen times heavier for a
-   picture nobody can tell apart at this size.
+   jump. Reversed-then-forward runs close → far → close, seamless at both ends
+   — 0.02/255 mean difference across the seam. The order matters:
+   forward-then-reversed is equally seamless but opens on the darkest frame,
+   and a visitor's first impression is a black square.
+3. **Re-encoding at full resolution.** 9.5MB → 989KB MP4 / 812KB WebM at
+   1280×720, CRF 28, with faststart so playback begins before the download
+   finishes.
 
 To rebuild from a new source, the steps are above and `ffmpeg` is all it takes.
 

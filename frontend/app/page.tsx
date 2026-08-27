@@ -15,7 +15,7 @@ export default async function Home() {
   // the page says exactly that instead of showing nothing.
   if (!result.ok) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col items-center">
+      <div className="mx-auto flex max-w-6xl flex-col items-center">
         <div className="flex w-full items-baseline justify-between">
           <h1 className="font-display text-[13px] tracking-[0.2em]">GODGOD</h1>
           <span className="text-[10px] uppercase tracking-widest text-muted">
@@ -23,7 +23,7 @@ export default async function Home() {
           </span>
         </div>
 
-        <div className="my-12">
+        <div className="my-10 w-full">
           <Hero state="IDLE" activity={0} novelty={null} confidence={null} />
         </div>
 
@@ -40,7 +40,7 @@ export default async function Home() {
   const live = result.data;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col items-center">
+    <div className="mx-auto flex max-w-6xl flex-col items-center">
       <div className="flex w-full items-baseline justify-between">
         <h1 className="font-display text-[13px] tracking-[0.2em]">GODGOD</h1>
         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted">
@@ -51,7 +51,7 @@ export default async function Home() {
         </div>
       </div>
 
-      <div className="my-12">
+      <div className="my-10 w-full">
         <Hero
           state={live.state}
           activity={live.activity}

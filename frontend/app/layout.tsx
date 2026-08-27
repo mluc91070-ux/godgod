@@ -66,6 +66,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line px-6 py-8 text-[10px] uppercase tracking-widest text-muted">
           <Wordmark />
           <span>the autonomous meme researcher</span>
+          <a
+            href="https://x.com/godgodai"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="text-grey transition-colors hover:text-bone"
+          >
+            @godgodai
+          </a>
           <span className="ml-auto">
             no financial advice. no execution. failures are published.
           </span>

@@ -26,6 +26,8 @@ const RESEARCH: [string, string][] = [
   ["/lore", "lore"],
 ];
 
+export const X_URL = "https://x.com/godgodai";
+
 const PRIMARY: [string, string][] = [
   ["/about", "about"],
   ["/token", "token"],
@@ -65,6 +67,17 @@ export default function Nav() {
             {label}
           </Link>
         ))}
+        <a
+          href={X_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="GODGOD on X"
+          className="border border-line px-3 py-[9px] text-grey transition-colors hover:border-bone hover:text-bone"
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
+            <path d="M18.9 2H22l-7.1 8.1L23.2 22h-6.6l-5.2-6.8L5.5 22H2.4l7.6-8.7L1.2 2h6.8l4.7 6.2L18.9 2Zm-1.1 18.1h1.7L7.3 3.8H5.5l12.3 16.3Z" />
+          </svg>
+        </a>
       </div>
     </nav>
   );

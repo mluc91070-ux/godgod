@@ -8,15 +8,16 @@ import type { SystemStateName } from "@/lib/types";
 /**
  * The sphere at the top of the page.
  *
- * Plays the rendered loop, and falls back to the live WebGL field if the video
- * fails for any reason — a codec the browser will not decode, a blocked
- * request, a corrupt file. The fallback is the same component the page used
- * before the video existed, so the failure costs nothing.
+ * Rendered at the video's native 16:9 and at the full width of the column. An
+ * earlier version cropped it to a square, which looked tidy and cut about five
+ * hundred pixels off each side — by the end of the loop the sphere and its
+ * cabling span almost the entire frame, so a square crop removes the half of
+ * the composition that gives it scale.
  *
- * The two are not the same thing and the page does not pretend otherwise. The
- * video is a fixed loop: it cannot represent state, so it is `aria-hidden` and
- * the real numbers live in the text underneath. The WebGL field *is* bound to
- * activity, novelty and confidence.
+ * Falls back to the live WebGL field if the video will not decode. The two are
+ * not the same thing: the video is a fixed loop and cannot represent state, so
+ * it is `aria-hidden` and the numbers underneath stay the evidence. The field
+ * *is* bound to activity, novelty and confidence.
  */
 
 type Props = {
@@ -24,29 +25,28 @@ type Props = {
   activity: number;
   novelty: number | null;
   confidence: number | null;
-  size?: number;
 };
 
-export default function Hero({ state, activity, novelty, confidence, size = 520 }: Props) {
+export default function Hero({ state, activity, novelty, confidence }: Props) {
   const [failed, setFailed] = useState(false);
 
   if (failed) {
     return (
-      <FieldSphere
-        state={state}
-        activity={activity}
-        novelty={novelty}
-        confidence={confidence}
-        size={size}
-      />
+      <div className="flex justify-center">
+        <FieldSphere
+          state={state}
+          activity={activity}
+          novelty={novelty}
+          confidence={confidence}
+          size={520}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative w-full">
       <video
-        width={size}
-        height={size}
         autoPlay
         muted
         loop
@@ -54,10 +54,10 @@ export default function Hero({ state, activity, novelty, confidence, size = 520 
         preload="metadata"
         poster="/sphere-poster.jpg"
         aria-hidden
-        className="h-full w-full object-contain"
+        className="aspect-video w-full object-cover"
         onError={() => setFailed(true)}
       >
-        {/* VP9 first: same picture, a fifth smaller. */}
+        {/* VP9 first: same picture, ~20% lighter. */}
         <source src="/sphere.webm" type="video/webm" />
         <source src="/sphere.mp4" type="video/mp4" />
       </video>

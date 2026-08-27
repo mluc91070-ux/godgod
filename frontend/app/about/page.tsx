@@ -174,6 +174,19 @@ export default function AboutPage() {
           <li>
             — the source is public, and so is every commit that produced the above.
           </li>
+          <li>
+            —{" "}
+            <a
+              href="https://x.com/godgodai"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-bone hover:text-magenta"
+            >
+              @godgodai
+            </a>{" "}
+            is where it posts. Every post describes a result recorded here, and any number
+            in one has to appear in the row it describes or the post is discarded.
+          </li>
         </ul>
       </Section>
     </div>

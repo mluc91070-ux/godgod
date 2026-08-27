@@ -14,6 +14,7 @@ more faithful for having kept every stroke.
 
 from __future__ import annotations
 
+import math
 import struct
 import sys
 from io import BytesIO
@@ -31,25 +32,48 @@ MAGENTA = (255, 44, 240)
 
 
 def draw_mark(size: int, stroke: float, *, simplified: bool, colour=BONE) -> Image.Image:
-    """Supersampled, then downscaled: Pillow draws no antialiased lines."""
+    """The charter mark, measured off the reference render.
+
+    Circle r=0.39 of the box, split by a ±5° gap top and bottom where the
+    vertical passes; horizontal spokes from 0.17R to 0.84R staying inside the
+    circle; diagonals from 0.20R to 1.21R punching through it. That asymmetry
+    is what stops it reading as a wheel.
+
+    Supersampled then downscaled: Pillow draws no antialiased lines.
+    """
     scale = 8
     s = size * scale
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     c = s / 2
-    r = s * (0.40 if simplified else 0.38)
-    rx = r * 0.86
+    r = s * 0.39
     w = max(1, int(stroke * scale))
-    diag = r * 1.16 * (2**-0.5)
+    gap = 5
 
-    d.ellipse([c - rx, c - r, c + rx, c + r], outline=colour, width=w)
-    d.line([c, c - r * 1.12, c, c + r * 1.12], fill=colour, width=w)
-    d.line([c - diag, c - diag, c + diag, c + diag], fill=colour, width=w)
-    d.line([c + diag, c - diag, c - diag, c + diag], fill=colour, width=w)
+    box = [c - r, c - r, c + r, c + r]
+    d.arc(box, 90 + gap, 270 - gap, fill=colour, width=w)
+    d.arc(box, 270 + gap, 90 - gap, fill=colour, width=w)
+
+    d.line([c, c - r, c, c + r], fill=colour, width=w)
+
+    def spoke(angle: float, start: float, end: float) -> None:
+        t = math.radians(angle)
+        d.line(
+            [
+                c + start * math.cos(t), c + start * math.sin(t),
+                c + end * math.cos(t), c + end * math.sin(t),
+            ],
+            fill=colour,
+            width=w,
+        )
+
+    for angle in (45, 135, 225, 315):
+        spoke(angle, r * 0.2, r * 1.21)
+
     if not simplified:
-        gap = s * 0.03
-        d.line([c - rx, c, c - gap, c], fill=colour, width=w)
-        d.line([c + gap, c, c + rx, c], fill=colour, width=w)
+        spoke(0, r * 0.17, r * 0.84)
+        spoke(180, r * 0.17, r * 0.84)
+
     return img.resize((size, size), Image.LANCZOS)
 
 
