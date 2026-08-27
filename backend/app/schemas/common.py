@@ -119,6 +119,14 @@ class CollectionInfo(BaseModel):
     """Measurements one token needs before any detector can speak."""
     observing_live: bool
     """False while the pipeline still reads the fixture series."""
+    scheduler_running: bool
+    """Whether the in-process collection loop is actually alive.
+
+    Read from the running task, not from the setting that asked for it. A flag
+    saying "enabled" while the loop died would be the worst kind of claim here:
+    a silent gap in history that looks like a quiet market.
+    """
+    scheduler_interval_seconds: int | None
     last_chain_run_at: datetime | None
     last_x_run_at: datetime | None
 

@@ -100,6 +100,8 @@ export type Status = {
     deepest_history: number;
     needed_to_observe: number;
     observing_live: boolean;
+    scheduler_running: boolean;
+    scheduler_interval_seconds: number | null;
     last_chain_run_at: string | null;
     last_x_run_at: string | null;
   };

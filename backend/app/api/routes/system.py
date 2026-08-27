@@ -118,7 +118,22 @@ async def describe_research(session: SessionDep, settings: SettingsDep) -> Resea
     )
 
 
-async def describe_collection(session: SessionDep, settings: SettingsDep) -> CollectionInfo:
+def _scheduler_running(request: Request) -> bool:
+    """Is the loop alive, right now.
+
+    `done()` is checked as well as existence: a task that raised out of its own
+    error handling is still attached to the app and would otherwise report as
+    running while collecting nothing.
+    """
+    from app.workers.scheduler import SCHEDULER_TASK_ATTR
+
+    task = getattr(request.app.state, SCHEDULER_TASK_ATTR, None)
+    return task is not None and not task.done()
+
+
+async def describe_collection(
+    request: Request, session: SessionDep, settings: SettingsDep
+) -> CollectionInfo:
     """What the live collectors hold, counted apart from the fixtures."""
     from app.services.chain import CHAIN_RUN_NAME
     from app.services.social import COLLECTOR_RUN_NAME
@@ -167,6 +182,10 @@ async def describe_collection(session: SessionDep, settings: SettingsDep) -> Col
         deepest_history=deepest,
         needed_to_observe=settings.observation_min_snapshots,
         observing_live=not settings.demo_mode,
+        scheduler_running=_scheduler_running(request),
+        scheduler_interval_seconds=(
+            settings.scheduler_interval_seconds if settings.scheduler_enabled else None
+        ),
         last_chain_run_at=await last_run(CHAIN_RUN_NAME),
         last_x_run_at=await last_run(COLLECTOR_RUN_NAME),
     )
@@ -183,7 +202,9 @@ async def health(session: SessionDep, settings: SettingsDep) -> HealthResponse:
 
 
 @router.get("/api/status", response_model=StatusResponse)
-async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusResponse:
+async def status_endpoint(
+    request: Request, session: SessionDep, settings: SettingsDep
+) -> StatusResponse:
     return StatusResponse(
         name=settings.app_name,
         version=settings.app_version,
@@ -201,7 +222,7 @@ async def status_endpoint(session: SessionDep, settings: SettingsDep) -> StatusR
         memory=describe_memory(session, settings),
         pipeline=await describe_pipeline(session, settings),
         research=await describe_research(session, settings),
-        collection=await describe_collection(session, settings),
+        collection=await describe_collection(request, session, settings),
         providers=describe_providers(settings),
         counts=await get_counts(session),
         server_time=datetime.now(UTC),

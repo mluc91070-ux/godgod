@@ -91,6 +91,23 @@ export default function Collection({ status }: { status: Status }) {
         last chain collection {fmtTime(c.last_chain_run_at)}
         {c.last_x_run_at ? ` · last social collection ${fmtTime(c.last_x_run_at)}` : null}
       </p>
+
+      {/* Read from the running task, not from the setting that asked for it.
+          A loop that died looks exactly like a market where nothing happened,
+          so it has to be visible rather than inferred from a stale timestamp. */}
+      <p className="mt-1 text-[11px] text-muted">
+        {c.scheduler_running ? (
+          <>
+            measuring on its own clock, every{" "}
+            {Math.round((c.scheduler_interval_seconds ?? 900) / 60)} minutes
+          </>
+        ) : (
+          <span className="text-amber">
+            the internal collection loop is not running — measurements depend on an
+            external schedule, which is best-effort and skips
+          </span>
+        )}
+      </p>
     </section>
   );
 }
