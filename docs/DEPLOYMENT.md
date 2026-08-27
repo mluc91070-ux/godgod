@@ -5,15 +5,17 @@
 | | |
 | --- | --- |
 | Frontend | https://godgod.vercel.app (Vercel, free) |
-| API | https://godgod-api.onrender.com (Render, free) |
+| API | https://godgod-api.onrender.com (Render Starter, $7/mo — never sleeps) |
 | Database | Render PostgreSQL 16 + pgvector, Frankfurt, free plan |
 | Research cycle | `.github/workflows/research.yml`, hourly |
 
 Two things about the free tiers that will bite if nobody writes them down:
 
-- **The free database expires 30 days after creation** (2026-09-25 for the
-  current one). Render deletes it. Upgrade it, or export and recreate, before
-  then — `pg_dump` against the external connection string is enough.
+- **The free database expires 2026-09-25.** Render deletes it, with no warning
+  beyond the date. This is the one outstanding bill: the web service is paid,
+  the database is not. Either upgrade it or `pg_dump` the external connection
+  string and recreate elsewhere before that date — everything the system has
+  observed, hypothesised and remembered lives there.
 - **The free web instance spins down when idle** and takes 30-60s to answer the
   first request afterwards. Pages fetch server-side, so this used to hold the
   whole render open until Vercel gave up — a visitor saw a site that never
@@ -24,11 +26,11 @@ Two things about the free tiers that will bite if nobody writes them down:
     and the hero intact.
   - `.github/workflows/keepalive.yml` pings `/health` every ten minutes.
 
-  **The ping is a mitigation, not a fix.** GitHub's scheduler is best-effort
-  and skips runs under load — measured gaps of 317 and 93 minutes against a
-  15-minute cron on the research workflow. The fix is Render's paid instance,
-  which never sleeps: $7/month, and the `plan: free` line in `render.yaml`
-  becomes `plan: starter`.
+  **The web service now runs on Starter and does not sleep**, which is the
+  actual fix — GitHub's scheduler is best-effort and skipped runs by 317 and 93
+  minutes against a 15-minute cron, so the ping alone was never going to be
+  enough. Both the timeout and the ping stay: they are what keeps a bad minute
+  from becoming a blank page, whatever the plan.
 
 ### Verified against the live deployment
 

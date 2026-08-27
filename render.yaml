@@ -19,10 +19,10 @@ services:
   - type: web
     name: godgod-api
     runtime: docker
-    # Free to launch. A free instance spins down when idle and takes ~30s to
-    # wake; the hourly GitHub Actions workflow wakes it as a side effect of
-    # running the research cycle. Move to `starter` when that stops being funny.
-    plan: free
+    # Starter, not free: a free instance sleeps after ~15 minutes idle and takes
+    # 30-60s to wake. Pages fetch server-side, so that showed up as a site that
+    # would not load. The keepalive ping was a mitigation; this is the fix.
+    plan: starter
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
