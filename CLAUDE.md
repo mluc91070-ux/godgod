@@ -207,6 +207,28 @@ or the account is telling two stories about one dataset.
 - `INCONCLUSIVE` is the expected output on the current data, and shipping five of
   them is a correct outcome, not a bug to tune away.
 
+## Scheduling rules
+
+- **The application keeps its own time in production.** `SCHEDULER_ENABLED`
+  starts an in-process loop aligned to the wall clock, because an external cron
+  was measured delivering 8 runs in 11 hours against a 15-minute schedule —
+  gaps of 208, 162 and 124 minutes. A skipped collection is not a late one: a
+  detector needs several measurements of the *same* token, so history that was
+  never collected is never recoverable.
+- Ticks align to the clock, never to process start. A flat sleep from boot puts
+  every measurement late in its quarter-hour slot and shifts the whole series
+  on each restart.
+- The GitHub workflow stays as a backstop. The two cannot collide — one
+  measurement per token per slot, and the second attempt is counted as
+  `already_measured_this_slot`.
+- The loop is off by default so tests and scripts never start one, and it
+  refuses to start twice: two loops double every request and halve the budget.
+- A failing cycle is logged with its traceback and the next tick still fires.
+  `CancelledError` is re-raised, never absorbed, or shutdown hangs.
+- While `DEMO_MODE` is on the loop collects but does not observe or research:
+  re-deriving the synthetic dataset every quarter hour produces nothing. Real
+  history still accumulates underneath, which is the point of demo mode.
+
 ## Stream rules
 
 - The stream is a cursor over `system_events.seq`, not a second source of truth.

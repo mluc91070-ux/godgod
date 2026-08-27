@@ -164,6 +164,26 @@ class Settings(BaseSettings):
     nothing ever happens to.
     """
 
+    scheduler_enabled: bool = False
+    """Let the application keep its own time instead of an external cron.
+
+    Off by default so tests, local runs and one-off scripts never start a
+    background loop. On in production, where the instance is always-on.
+
+    It exists because GitHub Actions' scheduler is best-effort and was measured
+    on this repository delivering eight runs in eleven hours against a
+    fifteen-minute cron — gaps of 208, 162 and 124 minutes. A skipped run is
+    not a late run: a detector needs several measurements of the *same* token,
+    so history that is never collected is never recoverable.
+
+    The GitHub workflow stays as a backstop. The two cannot collide — the
+    collector stores one measurement per token per quarter hour.
+    """
+
+    scheduler_interval_seconds: int = 900
+    """Matches the collector's quarter-hour slot. A shorter interval would
+    spend requests to land in a slot already measured."""
+
     launchpad_api_url: str | None = None
     """Where completed bonding curves are read from.
 

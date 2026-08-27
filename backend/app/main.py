@@ -94,7 +94,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.autonomy_level,
         settings.x_mode,
     )
+    from app.workers import scheduler
+
+    scheduler.start(app)
     yield
+    await scheduler.stop(app)
     await dispose_engine()
 
 
