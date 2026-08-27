@@ -64,6 +64,13 @@ class ChainOut(BaseModel):
     snapshots_stored: int
     distributions_measured: int
     """Tokens whose top-10 holder share the RPC could compute. The rest are null."""
+    migrations_seen: int = 0
+    """Completed bonding curves the launchpad reported this run."""
+    migrations_measured: int = 0
+    """Of those, the ones the market could actually measure. A gap means tokens
+    that migrated but have no pair yet — a real state, counted in `dropped`."""
+    launchpad_error: str | None = None
+    """Named apart from `error`: one frame can fail while the other works."""
     dropped: dict[str, int] = Field(default_factory=dict)
     error: str | None = None
     duration_ms: int
