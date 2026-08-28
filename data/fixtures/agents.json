@@ -1,30 +1,29 @@
 {
   "_meta": {
     "is_demo": false,
-    "note": "Agent roster. This is configuration, not demo data: it describes the intended architecture. 'implemented' means a model-backed agent exists and runs. The writer and the reviewer do; the other four roles are covered by deterministic engines under app/services, which is not the same thing and is not claimed as such.",
-    "dataset_version": "roster-v1"
+    "note": "Agent roster. This is configuration, not demo data: it describes the intended architecture. 'implemented' means a model-backed agent exists and runs; 'stage' says how. model = settled. beta = the model calls run and are still being watched. deterministic = an engine under app/services does the job with no model at all, which is not the same claim and is not made as one. The researcher and the data scientist stay deterministic on purpose: a hypothesis is written from a template rather than by a model reading the data it is about to be tested on, and the statistics are arithmetic. A model in either place would not be a better agent, it would be a worse guarantee.",
+    "dataset_version": "roster-v2"
   },
   "agents": [
     {
       "name": "observer",
-      "role": "Collects and normalizes raw signals",
-      "question": "What happened?",
+      "role": "Reads an anomaly the detectors already found",
+      "question": "What does this measurement look like?",
       "inputs": [
-        "solana rpc (read-only)",
-        "x search",
-        "token/social fixtures"
+        "Anomaly",
+        "Observation payload",
+        "detector thresholds"
       ],
       "outputs": [
-        "Observation",
-        "Anomaly"
+        "observation.payload.observer_reading"
       ],
       "allowed_tools": [
-        "solana_provider.read",
-        "x_provider.read",
-        "db.write:observations"
+        "db.read",
+        "db.write:observations.payload"
       ],
       "model_role": "MODEL_FAST",
-      "implemented": false
+      "implemented": true,
+      "stage": "beta"
     },
     {
       "name": "researcher",
@@ -44,7 +43,8 @@
         "db.write:hypotheses"
       ],
       "model_role": "MODEL_REASONING",
-      "implemented": false
+      "implemented": false,
+      "stage": "deterministic"
     },
     {
       "name": "data_scientist",
@@ -65,7 +65,8 @@
         "compute"
       ],
       "model_role": "MODEL_REASONING",
-      "implemented": false
+      "implemented": false,
+      "stage": "deterministic"
     },
     {
       "name": "critic",
@@ -77,14 +78,15 @@
         "dataset metadata"
       ],
       "outputs": [
-        "critic verdict PASS | FAIL | NEEDS_MORE_DATA"
+        "critic verdict PASS | NEEDS_MORE_DATA | FAIL (stricter only)"
       ],
       "allowed_tools": [
         "db.read",
         "db.write:experiment_results.critic_*"
       ],
       "model_role": "MODEL_CRITIC",
-      "implemented": false
+      "implemented": true,
+      "stage": "beta"
     },
     {
       "name": "writer",
@@ -104,7 +106,8 @@
         "db.write:content_drafts"
       ],
       "model_role": "MODEL_WRITER",
-      "implemented": true
+      "implemented": true,
+      "stage": "model"
     },
     {
       "name": "reviewer",
@@ -122,7 +125,8 @@
         "db.write:content_drafts.reviewer_*"
       ],
       "model_role": "MODEL_CRITIC",
-      "implemented": true
+      "implemented": true,
+      "stage": "model"
     }
   ]
 }

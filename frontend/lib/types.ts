@@ -322,6 +322,7 @@ export type AgentInfo = {
   model_role: string | null;
   enabled: boolean;
   implemented: boolean;
+  stage: "model" | "beta" | "deterministic";
 };
 
 export type Source = {

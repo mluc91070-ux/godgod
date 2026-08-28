@@ -10,14 +10,16 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
-from app.agents import review_draft, write_draft_for_result
+from app.agents import critique_result, read_anomaly, review_draft, write_draft_for_result
 from app.api.deps import AdminDep, SessionDep, SettingsDep
-from app.models import ContentDraft, ExperimentResult, Token, TokenSnapshot
+from app.models import Anomaly, ContentDraft, ExperimentResult, Token, TokenSnapshot
 from app.schemas.agents import (
     BudgetOut,
     ChainOut,
     CollectionOut,
+    CriticOut,
     GoLiveOut,
+    ObserverOut,
     ReviewOut,
     WriterOut,
 )
@@ -69,6 +71,44 @@ async def run_reviewer(
 
     outcome = await review_draft(session, draft_id, settings=settings)
     return ReviewOut(**outcome.as_dict())
+
+
+@router.post("/admin/agents/critic/run", response_model=CriticOut)
+async def run_critic(
+    session: SessionDep, settings: SettingsDep, admin: AdminDep, result_id: str
+) -> CriticOut:
+    """Ask the model why one recorded result might be wrong.
+
+    The deterministic verdict is already stored and is the floor: this can make
+    it harsher and cannot make it lighter. A model answer that tries to is
+    recorded under `dropped` rather than applied.
+    """
+    exists = await session.scalar(
+        select(ExperimentResult.id).where(ExperimentResult.id == result_id)
+    )
+    if exists is None:
+        raise HTTPException(status_code=404, detail="result not found")
+
+    outcome = await critique_result(session, result_id, settings=settings)
+    return CriticOut(**outcome.as_dict())
+
+
+@router.post("/admin/agents/observer/run", response_model=ObserverOut)
+async def run_observer(
+    session: SessionDep, settings: SettingsDep, admin: AdminDep, anomaly_id: str
+) -> ObserverOut:
+    """Put one already-detected anomaly into a sentence.
+
+    Detection stays deterministic. This adds a reading to an anomaly that has
+    already fired, and refuses to store one that cites a number the detector
+    did not record.
+    """
+    exists = await session.scalar(select(Anomaly.id).where(Anomaly.id == anomaly_id))
+    if exists is None:
+        raise HTTPException(status_code=404, detail="anomaly not found")
+
+    outcome = await read_anomaly(session, anomaly_id, settings=settings)
+    return ObserverOut(**outcome.as_dict())
 
 
 @router.post("/admin/x/collect", response_model=CollectionOut)

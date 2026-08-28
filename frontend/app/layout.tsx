@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Exo_2, Orbitron } from "next/font/google";
 
-import { Wordmark } from "@/components/Mark";
+import Footer from "@/components/Footer";
 import Nav from "@/components/Nav";
 import StatusBar from "@/components/StatusBar";
 import "@/styles/globals.css";
@@ -63,21 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <StatusBar />
         <main className="px-4 py-10 sm:px-6">{children}</main>
-        <footer className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-line px-4 py-8 text-[10px] uppercase tracking-widest text-muted sm:px-6">
-          <Wordmark />
-          <span>the autonomous meme researcher</span>
-          <a
-            href="https://x.com/godgodai"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-grey transition-colors hover:text-bone"
-          >
-            @godgodai
-          </a>
-          <span className="ml-auto">
-            no financial advice. no execution. failures are published.
-          </span>
-        </footer>
+        <Footer />
       </body>
     </html>
   );

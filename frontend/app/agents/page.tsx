@@ -14,23 +14,43 @@ export default async function AgentsPage() {
       <div className="flex items-baseline justify-between">
         <Label>agents</Label>
         <span className="text-[10px] text-muted">
-          {result.data.filter((agent) => agent.implemented).length} of {result.data.length}{" "}
-          implemented
+          {result.data.filter((agent) => agent.implemented).length} of {result.data.length} have a
+          model behind them
         </span>
       </div>
 
       <p className="mt-4 max-w-2xl text-muted">
         each agent answers exactly one question and holds only the tools that question requires.
-        an agent marked <span className="text-bone">not implemented</span> does not run — the
-        roster describes the architecture, not a capability.
+        the badge says how the job is done today, not how important it is.
+      </p>
+
+      <dl className="mt-4 max-w-2xl space-y-1 text-muted">
+        <div className="flex gap-3">
+          <dt className="w-24 shrink-0 text-amber">model</dt>
+          <dd>a model call runs, and its answer is checked before anything is stored.</dd>
+        </div>
+        <div className="flex gap-3">
+          <dt className="w-24 shrink-0 text-magenta">beta</dt>
+          <dd>the same, recently added and still being watched.</dd>
+        </div>
+        <div className="flex gap-3">
+          <dt className="w-24 shrink-0">deterministic</dt>
+          <dd>no model at all — an engine under app/services does it.</dd>
+        </div>
+      </dl>
+
+      <p className="mt-4 max-w-2xl text-muted">
+        the last two are deliberate, not unfinished. a hypothesis is written from a template so
+        that nothing reads the data before deciding what to claim about it, and the statistics
+        have one right answer. a model in either place would trade a guarantee for a sentence.
       </p>
 
       <p className="mt-3 max-w-2xl text-muted">
-        the writer and the reviewer have a model behind them. the other four do not: their work
-        is done by deterministic engines under <code className="text-bone">app/services</code>,
-        which is a different thing and is not counted as an agent here. every model call is
-        recorded with its tokens and its cost, and refused before it happens if the day’s
-        budget cannot account for it.
+        the two that do run are constrained rather than trusted: the reviewer and the critic can
+        only make a verdict harsher, never lighter, and the observer describes an anomaly a
+        detector already found rather than finding one. every model call is recorded with its
+        tokens and its cost, and refused before it happens if the day’s budget cannot account
+        for it.
       </p>
 
       <div className="mt-8 space-y-8">
@@ -40,10 +60,14 @@ export default async function AgentsPage() {
               <h2 className="tracking-widest">{agent.name}</h2>
               <span
                 className={`border px-2 py-[2px] text-[10px] tracking-widest ${
-                  agent.implemented ? "border-amber/40 text-amber" : "border-line text-muted"
+                  agent.stage === "beta"
+                    ? "border-magenta/40 text-magenta"
+                    : agent.stage === "model"
+                      ? "border-amber/40 text-amber"
+                      : "border-line text-muted"
                 }`}
               >
-                {agent.implemented ? "implemented" : "not implemented"}
+                {agent.stage === "beta" ? "beta testing" : agent.stage}
               </span>
             </div>
             <p className="mt-2 text-bone">{agent.question}</p>
@@ -53,6 +77,10 @@ export default async function AgentsPage() {
               <Field k="outputs" v={agent.outputs?.join(", ")} />
               <Field k="tools" v={agent.allowed_tools?.join(", ")} />
               <Field k="model role" v={agent.model_role} />
+              <Field
+                k="model behind it"
+                v={agent.implemented ? "yes" : "no — a deterministic engine does this job"}
+              />
             </div>
           </article>
         ))}

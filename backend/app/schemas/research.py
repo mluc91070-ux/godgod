@@ -275,6 +275,8 @@ class AgentOut(ORMModel):
     model_role: str | None
     enabled: bool
     implemented: bool
+    stage: str
+    """`model`, `beta`, or `deterministic` — see `Agent.stage`."""
 
 
 class AgentRunOut(ORMModel):

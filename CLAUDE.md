@@ -275,7 +275,26 @@ or the account is telling two stories about one dataset.
   `agents/guards.check_draft`, and a draft containing a number absent from its
   source row is discarded, not stored with a caveat.
 - A model verdict can only be stricter than the deterministic one. An approval
-  never overrides a failed check.
+  never overrides a failed check. The critic agent is built around that rule:
+  `SEVERITY` orders PASS < NEEDS_MORE_DATA < FAIL, the combined verdict is the
+  max, and a model answer lighter than the stored one is recorded under
+  `dropped` rather than applied.
+- **The observer agent reads; it never detects.** It runs after the pipeline, on
+  an anomaly a detector already fired, and adds a sentence to
+  `observation.payload`. It cannot create, suppress or rescore an anomaly. A
+  model inside `app/services/observation/` is still forbidden — this is beside
+  the pipeline, not in it.
+- **The researcher and the data_scientist stay deterministic on purpose.** Their
+  `implemented` flag is false and that is the finished state, not a backlog
+  item: a hypothesis comes from a template so that nothing reads the data before
+  choosing what to claim about it, and the statistics have one right answer.
+  Never "implement" them by putting a model where a guarantee is.
+- **`Agent.stage` says how, `implemented` says whether.** `model` is settled,
+  `beta` is running and being watched, `deterministic` is an engine with no
+  model — and a `deterministic` row is never `implemented=true`. The roster
+  lives in `data/fixtures/agents.json`, but `seed_agents` only runs while
+  `DEMO_MODE` is on, so a change to it needs a migration or production keeps
+  describing the old one.
 - A truncated answer (`stop_reason == "max_tokens"`) is an error, not a result.
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.

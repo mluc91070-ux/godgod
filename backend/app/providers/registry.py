@@ -62,9 +62,11 @@ def _x_note(settings: Settings) -> str:
             "collected and the collector says so rather than reporting zero posts."
         )
     return (
-        f"Reading recent posts for {len(settings.x_search_terms)} queries, at most "
-        f"{settings.x_max_posts_per_run} posts per run. Publishing refuses: "
-        f"X_MODE={settings.x_mode}."
+        f"Beta testing: reading recent posts for {len(settings.x_search_terms)} queries, "
+        f"at most {settings.x_max_posts_per_run} posts per run. Publishing refuses — "
+        f"X_MODE={settings.x_mode}, and the four OAuth values a write needs are not set. "
+        "Read access working is not the same capability as publishing, so the two are "
+        "reported apart."
     )
 
 

@@ -25,13 +25,20 @@ from app.providers.base import ProviderNotConfigured
 from app.providers.model import ModelCallFailed, ModelProvider, ModelResponse, get_model_provider
 from app.services.budget import BudgetExceeded, require_budget
 
-IMPLEMENTED_AGENTS = ("writer", "reviewer")
+IMPLEMENTED_AGENTS = ("writer", "reviewer", "critic", "observer")
 """Agents with a model behind them today.
 
-The other four roles in the roster — observer, researcher, data_scientist,
-critic — are implemented as deterministic engines instead. Their `implemented`
-flag stays false because the *agent* does not exist, and saying otherwise on
-/api/agents would be a claim about a capability nobody built.
+The critic and the observer joined the writer and the reviewer, and both are
+constrained rather than trusted: the critic may only make a verdict stricter,
+never lighter, and the observer reads an anomaly a detector already fired
+instead of finding one.
+
+The remaining two — researcher and data_scientist — are deterministic engines
+under `app/services/` and their `implemented` flag stays false. That is not a
+gap waiting to be filled. A hypothesis is written from a template precisely so
+that no model sees the data before choosing what to claim about it, and the
+statistics are arithmetic with one right answer. Putting a model in either place
+would trade a guarantee for a sentence.
 """
 
 

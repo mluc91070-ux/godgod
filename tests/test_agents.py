@@ -16,9 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.agents.base import run_agent
+from app.agents.critic import critique_result, strictest
 from app.agents.guards import check_draft, numbers_in, ungrounded_numbers
+from app.agents.observer import check_reading
 from app.agents.reviewer import REVIEWER_VERSION, parse_verdict, review_draft
 from app.agents.writer import WRITER_SOURCE, build_prompt, facts_for, write_draft_for_result
+from app.core.enums import CriticVerdict
 from app.core.untrusted import SYSTEM_RULE
 from app.models import AgentRun, ContentDraft, Experiment, ExperimentResult, SystemEvent
 from app.providers.base import ProviderNotConfigured
@@ -669,3 +672,128 @@ def test_a_rate_may_be_written_to_two_decimals() -> None:
 def test_a_genuinely_invented_number_is_still_caught() -> None:
     facts = {"rate_control": 0.9117647058823529}
     assert ungrounded_numbers("retention 87.4%", facts) == ["87.4"]
+
+
+# -- the critic agent -----------------------------------------------------
+#
+# One property matters more than the rest: this agent can make a verdict
+# harsher and can never make it lighter. Without that, a deterministic FAIL
+# would be arguable, and every gate in the system would become advisory.
+
+
+async def test_the_critic_cannot_soften_a_deterministic_failure(
+    session, priced, researched
+) -> None:
+    result = researched
+    result.critic_verdict = str(CriticVerdict.FAIL)
+    await session.flush()
+
+    outcome = await critique_result(
+        session,
+        result.id,
+        settings=priced,
+        provider=FakeModel(text='{"verdict": "PASS", "objection": ""}'),
+        commit=False,
+    )
+
+    assert outcome.model_verdict == str(CriticVerdict.PASS)
+    assert outcome.verdict == str(CriticVerdict.FAIL)
+    assert any("only be stricter" in note for note in outcome.dropped)
+    assert result.critic_verdict == str(CriticVerdict.FAIL)
+
+
+async def test_the_critic_can_harden_a_deterministic_pass(session, priced, researched) -> None:
+    result = researched
+    result.critic_verdict = str(CriticVerdict.PASS)
+    await session.flush()
+
+    outcome = await critique_result(
+        session,
+        result.id,
+        settings=priced,
+        provider=FakeModel(
+            text='{"verdict": "FAIL", "objection": "the exposed group is one token"}'
+        ),
+        commit=False,
+    )
+
+    assert outcome.verdict == str(CriticVerdict.FAIL)
+    assert outcome.objection == "the exposed group is one token"
+    assert result.critic_verdict == str(CriticVerdict.FAIL)
+
+
+async def test_an_objection_citing_an_invented_number_is_dropped(
+    session, priced, researched
+) -> None:
+    result = researched
+    result.critic_verdict = str(CriticVerdict.PASS)
+    await session.flush()
+
+    outcome = await critique_result(
+        session,
+        result.id,
+        settings=priced,
+        provider=FakeModel(
+            text='{"verdict": "NEEDS_MORE_DATA", "objection": "only 9999 rows were used"}'
+        ),
+        commit=False,
+    )
+
+    assert outcome.objection is None
+    assert any("9999" in note for note in outcome.dropped)
+    # The verdict still hardens: the objection was unusable, the reading was not.
+    assert outcome.verdict == str(CriticVerdict.NEEDS_MORE_DATA)
+
+
+async def test_no_model_verdict_is_not_a_pass(session, priced, researched) -> None:
+    result = researched
+    result.critic_verdict = str(CriticVerdict.NEEDS_MORE_DATA)
+    await session.flush()
+
+    outcome = await critique_result(
+        session,
+        result.id,
+        settings=priced,
+        provider=FakeModel(raises=ModelCallFailed("HTTP 529: overloaded")),
+        commit=False,
+    )
+
+    assert outcome.model_verdict is None
+    assert outcome.verdict == str(CriticVerdict.NEEDS_MORE_DATA)
+    assert "no model read this result" in (result.critic_notes or "")
+
+
+def test_the_strictest_verdict_wins_in_both_orders() -> None:
+    fail, more, ok = (
+        str(CriticVerdict.FAIL),
+        str(CriticVerdict.NEEDS_MORE_DATA),
+        str(CriticVerdict.PASS),
+    )
+    assert strictest(ok, fail) == fail
+    assert strictest(fail, ok) == fail
+    assert strictest(ok, more) == more
+    assert strictest(ok, None) == ok
+    assert strictest(None, None) == more
+
+
+# -- the observer agent ---------------------------------------------------
+#
+# It reads an anomaly a detector already fired. It never finds one, and it
+# never states a number the detector did not record.
+
+
+async def test_the_observer_refuses_a_reading_that_invents_a_number() -> None:
+    facts = {"measured_volume_usd": 4314.23, "baseline_volume_usd": 1000.0}
+    reasons = check_reading("volume hit 99999 against a 1000.0 baseline", facts)
+    assert any("99999" in reason for reason in reasons)
+
+
+async def test_the_observer_refuses_a_market_claim() -> None:
+    facts = {"measured_volume_usd": 4314.23}
+    reasons = check_reading("4314.23 of volume, bullish", facts)
+    assert any("bullish" in reason for reason in reasons)
+
+
+async def test_a_grounded_lowercase_reading_passes() -> None:
+    facts = {"token": "DEMOTOKEN", "measured_volume_usd": 4314.23, "baseline_volume_usd": 1000.0}
+    assert check_reading("demotoken traded 4314.23 against a 1000.0 baseline", facts) == []

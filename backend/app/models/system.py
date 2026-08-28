@@ -26,6 +26,16 @@ class Agent(Entity):
     enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
     implemented: Mapped[bool] = mapped_column(default=False, nullable=False)
     """False until the agent actually runs. The UI must not imply otherwise."""
+    stage: Mapped[str] = mapped_column(String(16), default="deterministic", nullable=False)
+    """How the job gets done today: `model`, `beta`, or `deterministic`.
+
+    `implemented` alone could not tell apart the two states that matter here —
+    an agent whose model calls are settled, and one whose model calls run but
+    are still being watched. Splitting them keeps `implemented` meaning exactly
+    what it says (a model-backed agent runs) while letting the roster admit
+    which ones are new. `deterministic` is not a lesser third: it is the honest
+    label for a job an engine does without a model, and those rows keep
+    `implemented=False`."""
 
     runs: Mapped[list[AgentRun]] = relationship(back_populates="agent")
 

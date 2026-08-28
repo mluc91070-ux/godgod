@@ -39,6 +39,33 @@ class ReviewOut(BaseModel):
     version: str
 
 
+class CriticOut(BaseModel):
+    verdict: str
+    """The stricter of the deterministic and model verdicts, never the lighter."""
+    deterministic_verdict: str
+    model_verdict: str | None = None
+    """None when no model read it. Not the same as a PASS."""
+    objection: str | None = None
+    dropped: list[str] = Field(default_factory=list)
+    """Objections thrown away, and why — including a model verdict that tried
+    to be lighter than the deterministic one."""
+    run_id: str | None = None
+    cost_usd: float | None = None
+    error: str | None = None
+    version: str
+
+
+class ObserverOut(BaseModel):
+    ok: bool
+    reading: str | None = None
+    anomaly_id: str | None = None
+    reasons: list[str] = Field(default_factory=list)
+    run_id: str | None = None
+    cost_usd: float | None = None
+    error: str | None = None
+    version: str
+
+
 class CollectionOut(BaseModel):
     queries: int
     fetched: int

@@ -86,6 +86,7 @@ async def seed_agents(session: AsyncSession) -> int:
         target.allowed_tools = item.get("allowed_tools")
         target.model_role = item.get("model_role")
         target.implemented = bool(item.get("implemented", False))
+        target.stage = str(item.get("stage", "deterministic"))
         target.enabled = bool(item.get("enabled", True))
         target.is_demo = False
         session.add(target)
