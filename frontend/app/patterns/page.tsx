@@ -21,6 +21,12 @@ export default async function PatternsPage() {
         </span>
       </div>
 
+      <p className="mt-4 max-w-2xl text-muted">
+        a question that has been asked more than once, and what came back each time. two
+        supporting results confirm it; one rejection is enough to mark it rejected, because a
+        falsification rule written in advance does not get a second opinion.
+      </p>
+
       <div className="mt-6 space-y-8">
         {items.length === 0 ? (
           <Empty>no pattern has survived testing yet.</Empty>

@@ -45,7 +45,7 @@ from app.models import (
 from app.models.base import utcnow
 from app.services.memory import search_memory, store_memory
 from app.services.research.critic import CRITIC_VERSION, hypothesis_status, review
-from app.services.research.dataset import DATASET_VERSION, build_dataset
+from app.services.research.dataset import DATASET_VERSION, UNIT_OF_ANALYSIS, build_dataset
 from app.services.research.experiments import ExperimentOutcome, evaluate
 from app.services.research.templates import TEMPLATES_BY_ANOMALY, TEMPLATES_BY_KEY
 from app.services.research.voice import inconclusive, rejected, supported
@@ -393,9 +393,10 @@ async def run_experiment_for(
     hypothesis.status = str(HypothesisStatus.TESTING)
     await session.flush()
 
-    dataset = await build_dataset(
-        session, template, window_hours=settings.observation_window_hours
-    )
+    # The window and the horizon belong to the template, not to a global
+    # setting: running every question over one shared six-hour frame is what
+    # made six hypotheses read as one.
+    dataset = await build_dataset(session, template)
     outcome = evaluate(dataset, template)
     critique = review(dataset, outcome, template)
 
@@ -408,18 +409,20 @@ async def run_experiment_for(
         hypothesis_id=hypothesis.id,
         title=template.question,
         method=(
-            "Token-hour cohort comparison. Exposure is the trigger condition evaluated on a "
-            f"{settings.observation_window_hours}h trailing window; the outcome is "
-            f"'{template.outcome_label}' read strictly {template.horizon_hours}h later. "
-            "Rates are compared pooled and per liquidity stratum with a two-proportion "
-            "z-test, then re-checked on a chronological split."
+            f"{UNIT_OF_ANALYSIS} cohort comparison. Exposure is the trigger condition "
+            f"evaluated on a {template.window_hours:g}h trailing window; the outcome is "
+            f"'{template.outcome_label}' read strictly {template.horizon_hours:g}h later — "
+            "hours of clock time, resolved against the measurement timestamps. Rates are "
+            f"compared pooled and within each {template.stratum_label} with a "
+            "two-proportion z-test, then re-checked on a chronological split."
         ),
         features=template.features,
         parameters={
-            "window_hours": settings.observation_window_hours,
+            "window_hours": template.window_hours,
             "horizon_hours": template.horizon_hours,
+            "min_window_points": template.min_window_points,
             "min_effect_pp": template.min_effect_pp,
-            "strata": "liquidity",
+            "strata": template.stratify_by,
         },
         dataset_version=DATASET_VERSION,
         dataset_hash=dataset.hash(),
@@ -444,7 +447,7 @@ async def run_experiment_for(
     await _event(
         session,
         event_type=EventType.EXPERIMENT_STARTED,
-        message=f"#{experiment.seq:06d} {template.key}, n={len(dataset.rows)} token-hours",
+        message=f"#{experiment.seq:06d} {template.key}, n={len(dataset.rows)} measurements",
         occurred_at=now,
         ref_type="experiment",
         ref_id=experiment.id,
@@ -520,7 +523,7 @@ async def run_experiment_for(
             trace,
             kind=TraceStepKind.DATASET,
             summary=(
-                f"{len(dataset.rows)} token-hours over {len(dataset.tokens)} tokens; "
+                f"{len(dataset.rows)} measurements over {len(dataset.tokens)} tokens; "
                 f"hash {dataset.hash()[:12]}…"
             ),
             occurred_at=now,

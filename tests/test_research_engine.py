@@ -14,8 +14,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.core.enums import CriticVerdict, HypothesisStatus, ResultOutcome
+from app.models import Token, TokenSnapshot
 from app.services.research.critic import CHECK_NAMES, hypothesis_status, review
-from app.services.research.dataset import Dataset, DatasetRow, stratum_for
+from app.services.research.dataset import (
+    Dataset,
+    DatasetRow,
+    build_dataset,
+    stratum_for,
+)
 from app.services.research.experiments import MIN_CELL, evaluate
 from app.services.research.stats import cohens_h, normal_cdf, two_proportion_test
 from app.services.research.templates import TEMPLATES, TEMPLATES_BY_KEY
@@ -56,7 +62,7 @@ def make_rows(
     return rows
 
 
-def make_dataset(template_key: str = "volume-spike-survival", **kwargs) -> Dataset:
+def make_dataset(template_key: str = "volume-burst-pool-2h", **kwargs) -> Dataset:
     rows = make_rows(**kwargs)
     return Dataset(
         template_key=template_key,
@@ -125,7 +131,7 @@ def test_template_keys_are_unique() -> None:
 
 
 def test_large_effect_in_the_predicted_direction_is_supported() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=200, exposed_hits=140, control_n=200, control_hits=80)
     outcome = evaluate(dataset, template)
     assert outcome.outcome == str(ResultOutcome.SUPPORTED)
@@ -136,7 +142,7 @@ def test_large_effect_in_the_predicted_direction_is_supported() -> None:
 def test_an_effect_pointing_the_wrong_way_is_rejected_not_confirmed() -> None:
     """The defect this test exists for: a hypothesis predicting a *decrease*
     must not be confirmed by a large increase."""
-    template = TEMPLATES_BY_KEY["withdrawal-death"]
+    template = TEMPLATES_BY_KEY["withdrawal-death-12h"]
     assert template.expected_direction == -1
     dataset = make_dataset(
         template_key=template.key,
@@ -153,7 +159,7 @@ def test_an_effect_pointing_the_wrong_way_is_rejected_not_confirmed() -> None:
 
 
 def test_effect_below_the_declared_threshold_is_rejected() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=400, exposed_hits=204, control_n=400, control_hits=200)
     outcome = evaluate(dataset, template)
     assert outcome.outcome == str(ResultOutcome.REJECTED)
@@ -163,7 +169,7 @@ def test_effect_below_the_declared_threshold_is_rejected() -> None:
 def test_a_small_sample_is_inconclusive_not_rejected() -> None:
     """A group of one row cannot falsify anything. Saying REJECTED there would
     dress noise up as a verdict."""
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=1, exposed_hits=0, control_n=60, control_hits=30)
     outcome = evaluate(dataset, template)
     assert outcome.outcome == str(ResultOutcome.INCONCLUSIVE)
@@ -173,7 +179,7 @@ def test_a_small_sample_is_inconclusive_not_rejected() -> None:
 
 
 def test_empty_dataset_says_nothing_was_tested() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     outcome = evaluate(Dataset(template_key=template.key), template)
     assert outcome.outcome == str(ResultOutcome.INCONCLUSIVE)
     assert outcome.effect_size is None
@@ -182,7 +188,7 @@ def test_empty_dataset_says_nothing_was_tested() -> None:
 
 
 def test_one_empty_group_is_reported_as_such() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=0, exposed_hits=0, control_n=50, control_hits=25)
     outcome = evaluate(dataset, template)
     assert outcome.outcome == str(ResultOutcome.INCONCLUSIVE)
@@ -190,7 +196,7 @@ def test_one_empty_group_is_reported_as_such() -> None:
 
 
 def test_a_sign_reversal_across_strata_falsifies() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     rows = make_rows(
         exposed_n=80, exposed_hits=64, control_n=80, control_hits=24, stratum="low"
     ) + make_rows(exposed_n=80, exposed_hits=24, control_n=80, control_hits=64, stratum="high")
@@ -202,10 +208,10 @@ def test_a_sign_reversal_across_strata_falsifies() -> None:
 
 
 def test_a_real_but_insignificant_difference_is_inconclusive() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
-    # 8 points apart, but on 40 rows a side: over the effect threshold, under
-    # the noise floor.
-    dataset = make_dataset(exposed_n=40, exposed_hits=22, control_n=40, control_hits=19)
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
+    # 10 points apart, but on 40 rows a side: over this template's 8-point
+    # effect threshold, under the noise floor.
+    dataset = make_dataset(exposed_n=40, exposed_hits=24, control_n=40, control_hits=20)
     outcome = evaluate(dataset, template)
     assert outcome.outcome == str(ResultOutcome.INCONCLUSIVE)
     assert outcome.p_value is not None and outcome.p_value > 0.05
@@ -213,7 +219,7 @@ def test_a_real_but_insignificant_difference_is_inconclusive() -> None:
 
 
 def test_metrics_record_the_thresholds_the_call_was_made_with() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=200, exposed_hits=140, control_n=200, control_hits=80)
     outcome = evaluate(dataset, template)
     for key in ("expected_direction", "signed_difference_pp", "n_exposed", "n_control"):
@@ -224,7 +230,7 @@ def test_metrics_record_the_thresholds_the_call_was_made_with() -> None:
 
 
 def test_critic_runs_every_declared_check() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=200, exposed_hits=140, control_n=200, control_hits=80)
     outcome = evaluate(dataset, template)
     result = review(dataset, outcome, template)
@@ -232,7 +238,7 @@ def test_critic_runs_every_declared_check() -> None:
 
 
 def test_critic_fails_a_dataset_that_reads_the_outcome_before_the_exposure() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=60, exposed_hits=40, control_n=60, control_hits=20)
     dataset.rows[0] = replace(dataset.rows[0], outcome_at=dataset.rows[0].exposure_at)
     outcome = evaluate(dataset, template)
@@ -242,7 +248,7 @@ def test_critic_fails_a_dataset_that_reads_the_outcome_before_the_exposure() -> 
 
 
 def test_critic_asks_for_more_data_on_a_thin_sample() -> None:
-    template = TEMPLATES_BY_KEY["volume-spike-survival"]
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
     dataset = make_dataset(exposed_n=5, exposed_hits=3, control_n=5, control_hits=1)
     outcome = evaluate(dataset, template)
     result = review(dataset, outcome, template)
@@ -289,3 +295,63 @@ def test_chronological_split_never_puts_a_later_row_in_the_first_half() -> None:
     first, second = dataset.split()
     assert first and second
     assert max(row.exposure_at for row in first) <= min(row.exposure_at for row in second)
+
+
+# -- the horizon ----------------------------------------------------------
+#
+# These two run against a quarter-hourly series on purpose. The fixtures every
+# other test in this file uses are hourly, which is exactly why the positional
+# bug survived so long: with one reading per hour, `snapshots[i + 6]` and "six
+# hours later" are the same row. Production measures every fifteen minutes, and
+# there they are not.
+
+
+async def _quarter_hourly(session, address: str, *, readings: int, minutes: int = 15) -> Token:
+    token = Token(address=address, chain="solana", source="promotion-feed", is_demo=False)
+    session.add(token)
+    await session.flush()
+    for step in range(readings):
+        session.add(
+            TokenSnapshot(
+                token_id=token.id,
+                observed_at=BASE + timedelta(minutes=minutes * step),
+                market_cap_usd=500_000.0,
+                liquidity_usd=50_000.0,
+                volume_usd=1_000.0,
+                buys=5,
+                sells=5,
+                age_seconds=800_000,
+                source="test",
+                is_demo=False,
+            )
+        )
+    await session.flush()
+    return token
+
+
+async def test_the_horizon_is_hours_not_rows(session) -> None:
+    """A two-hour horizon must be two hours, not two readings.
+
+    `build_dataset` used to index the series by position, so this template's
+    two-hour horizon read the row two slots ahead — thirty minutes — while the
+    hypothesis it fed said two hours in published text.
+    """
+    await _quarter_hourly(session, "HORIZONTOKEN", readings=40)
+
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
+    assert template.horizon_hours == 2
+    dataset = await build_dataset(session, template)
+
+    assert dataset.rows, "the series is long enough to hold exposures and their outcomes"
+    assert {row.outcome_at - row.exposure_at for row in dataset.rows} == {timedelta(hours=2)}
+
+
+async def test_a_window_too_sparse_to_have_a_median_is_dropped_by_name(session) -> None:
+    """Three readings three hours apart do not make a three-hour window."""
+    await _quarter_hourly(session, "SPARSETOKEN", readings=12, minutes=180)
+
+    template = TEMPLATES_BY_KEY["volume-burst-pool-2h"]
+    dataset = await build_dataset(session, template)
+
+    assert dataset.excluded.get("window_too_sparse", 0) > 0
+    assert not dataset.rows

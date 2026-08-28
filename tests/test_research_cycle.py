@@ -223,7 +223,7 @@ async def test_status_reports_the_research_engine_honestly(client):
     assert research["llm_in_loop"] is False
     assert research["hypothesis_templates"] > 0
     assert research["critic_checks"]
-    assert research["unit_of_analysis"] == "token-hour"
+    assert research["unit_of_analysis"] == "token-measurement"
 
 
 async def test_a_live_run_is_not_logged_as_a_demo_run(session, settings) -> None:

@@ -196,6 +196,24 @@ or the account is telling two stories about one dataset.
   result is not a falsification condition.
 - Every template declares `expected_direction`. An effect in the opposite
   direction falsifies; it never confirms.
+- **A horizon is clock time, never a row count.** `build_dataset` indexed the
+  series by position — `snapshots[index + horizon_hours]` — while every
+  hypothesis it fed said "six hours later". Snapshots land on a quarter-hour
+  grid, so six positions was ninety minutes, and the site published a horizon
+  it had never measured. The hourly fixtures hid it perfectly: at one reading
+  per hour the two are the same row. Any test about a timescale runs on a
+  quarter-hourly series, because that is what production has.
+- **Every template owns its scope.** Window, horizon, stratification, effect
+  threshold and outcome are declared per template, not taken from a shared
+  setting. Six templates once shared one six-hour frame, one liquidity
+  stratification and one 5-point threshold, and four of them read the same
+  outcome — six paragraphs that were, as questions, two. If a new template
+  differs from an existing one only in its trigger, it is not a new question.
+- **A trigger and its statement must be the same claim.** The divergence
+  template said "mentions rose while holders stayed flat" and was tested by a
+  rule about holder counts alone, because the mentions series is not stored per
+  snapshot. Exposure that cannot be rebuilt from the dataset has no template —
+  it waits for the data it needs.
 - Changing a threshold or an outcome definition means a new template key and a
   bumped `DATASET_VERSION` — old results must stay interpretable.
 - The decision order in `experiments.evaluate` is deliberate: *too small to

@@ -18,6 +18,12 @@ export default async function ExperimentsPage() {
         <span className="text-[10px] text-muted">{result.data.total} recorded</span>
       </div>
 
+      <p className="mt-4 max-w-2xl text-muted">
+        one run of one question against its own dataset, on its own timescale — a withdrawal is
+        asked about the next half day, a buy-side shift about the next hour. n counts the
+        measurements the comparison actually held, not the tokens watched.
+      </p>
+
       <div className="mt-6 divide-y divide-line border-y border-line">
         {result.data.items.map((experiment) => (
           <Link

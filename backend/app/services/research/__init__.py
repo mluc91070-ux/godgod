@@ -17,7 +17,12 @@ from app.services.research.cycle import (
     run_experiment_for,
     run_research_cycle,
 )
-from app.services.research.dataset import DATASET_VERSION, Dataset, build_dataset
+from app.services.research.dataset import (
+    DATASET_VERSION,
+    UNIT_OF_ANALYSIS,
+    Dataset,
+    build_dataset,
+)
 from app.services.research.experiments import MIN_CELL, ExperimentOutcome, evaluate
 from app.services.research.templates import TEMPLATES, HypothesisTemplate
 
@@ -28,6 +33,7 @@ __all__ = [
     "MIN_CELL",
     "RESEARCH_RUN_NAME",
     "TEMPLATES",
+    "UNIT_OF_ANALYSIS",
     "CriticReview",
     "Dataset",
     "ExperimentOutcome",

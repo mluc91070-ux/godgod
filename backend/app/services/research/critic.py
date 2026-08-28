@@ -37,10 +37,24 @@ CHECK_NAMES: tuple[str, ...] = (
 what the critic actually inspects instead of a hand-maintained copy."""
 
 OUTCOME_FIELDS = {
-    "liquidity_retained_6h": "liquidity_usd",
-    "holders_grew_6h": "holders",
-    "volume_retained_6h": "volume_usd",
+    "liquidity_retained": "liquidity_usd",
+    "pool_still_alive": "liquidity_usd",
+    "volume_retained": "volume_usd",
+    "still_trading": "buys",
+    "market_cap_retained": "market_cap_usd",
+    "holders_grew": "holders",
 }
+"""Dependent variable to the snapshot field it is read from, so the leakage
+check can tell when a template feeds the outcome back in as a feature."""
+
+CONTROL_FOR_STRATUM = {
+    "liquidity": "liquidity_stratum",
+    "age": "age_stratum",
+    "frame": "sampling_frame",
+}
+"""What a template must declare as a control for the comparison it actually
+runs. Checking for `liquidity_stratum` alone, as this once did, passed every
+template by accident: it was the only stratification there was."""
 
 
 @dataclass
@@ -73,7 +87,7 @@ def review(
     elif smallest < MIN_CELL:
         checks["sample_size"] = str(CriticVerdict.NEEDS_MORE_DATA)
         notes.append(
-            f"Smallest group is {smallest} token-hours against a {MIN_CELL} minimum."
+            f"Smallest group is {smallest} measurements against a {MIN_CELL} minimum."
         )
     else:
         checks["sample_size"] = str(CriticVerdict.PASS)
@@ -83,8 +97,9 @@ def review(
     if distinct < 10:
         checks["independence"] = str(CriticVerdict.NEEDS_MORE_DATA)
         notes.append(
-            f"Token-hours come from only {distinct} tokens; consecutive hours of the same "
-            "token are correlated, so the effective sample is far smaller than the row count."
+            f"Measurements come from only {distinct} tokens; consecutive readings of the "
+            "same token are correlated, so the effective sample is far smaller than the "
+            "row count."
         )
     else:
         checks["independence"] = str(CriticVerdict.PASS)
@@ -108,11 +123,13 @@ def review(
 
     # -- survivorship ------------------------------------------------------
     excluded = dataset.excluded.get("token_series_too_short", 0)
-    if excluded:
+    unreached = dataset.excluded.get("no_reading_at_horizon", 0)
+    if excluded or unreached:
         checks["survivorship_bias"] = str(CriticVerdict.NEEDS_MORE_DATA)
         notes.append(
-            f"{excluded} tokens were excluded for short series. Tokens that died early are "
-            "exactly the ones with short series, so the sample leans toward survivors."
+            f"{excluded} tokens were excluded for short series and {unreached} readings had "
+            f"nothing {template.horizon_hours:g}h later. Tokens that died early are exactly "
+            "the ones that run out of series, so the sample leans toward survivors."
         )
     else:
         checks["survivorship_bias"] = str(CriticVerdict.PASS)
@@ -126,16 +143,21 @@ def review(
 
     # -- confounding -------------------------------------------------------
     controls = template.variables.get("controls") or []
-    if "liquidity_stratum" in controls and outcome.metrics.get("strata"):
+    required = CONTROL_FOR_STRATUM[template.stratify_by]
+    if required in controls and outcome.metrics.get("strata"):
         checks["confounding"] = str(CriticVerdict.PASS)
     else:
         checks["confounding"] = str(CriticVerdict.NEEDS_MORE_DATA)
-        notes.append("The declared controls were not all applied in the comparison.")
+        notes.append(
+            f"The comparison is held within {template.stratum_label}s, which the "
+            f"hypothesis does not declare as a control, or no {template.stratum_label} "
+            "held rows on both sides."
+        )
 
     # -- stability ---------------------------------------------------------
     if outcome.stability.get("sign_reversed_across_strata"):
         checks["stability"] = str(CriticVerdict.FAIL)
-        notes.append("The effect changes sign between liquidity strata.")
+        notes.append(f"The effect changes sign between {template.stratum_label}s.")
     elif outcome.stability.get("stable_across_time") is False:
         checks["stability"] = str(CriticVerdict.FAIL)
         notes.append("The effect changes sign between the first and second half of the period.")

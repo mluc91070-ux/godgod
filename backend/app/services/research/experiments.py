@@ -66,7 +66,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
     if not dataset.rows:
         return ExperimentOutcome(
             outcome=str(ResultOutcome.INCONCLUSIVE),
-            summary="No token-hour met the sample definition. Nothing was tested.",
+            summary="No measurement met the sample definition. Nothing was tested.",
             metrics={"n_exposed": 0, "n_control": 0},
             effect_size=None,
             p_value=None,
@@ -118,16 +118,16 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
 
     if small_sample:
         limitations.append(
-            f"smallest group has {min(n_a, n_b)} token-hours, below the {MIN_CELL} needed "
+            f"smallest group has {min(n_a, n_b)} measurements, below the {MIN_CELL} needed "
             "to believe a difference of this size"
         )
     if len(dataset.tokens) < 10:
         limitations.append(
-            f"only {len(dataset.tokens)} distinct tokens; token-hours from one token are "
-            "not independent observations"
+            f"only {len(dataset.tokens)} distinct tokens; consecutive measurements of one "
+            "token are not independent observations"
         )
     if sign_reversed:
-        limitations.append("the effect changes sign between liquidity strata")
+        limitations.append(f"the effect changes sign between {template.stratum_label}s")
     if stable_over_time is False:
         limitations.append("the effect changes sign between the first and second half")
 
@@ -150,7 +150,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
         summary = (
             f"Difference of {pooled.difference_pp:+.1f} points {seen} "
             f"(exposed {pooled.rate_a:.0%} vs control {pooled.rate_b:.0%}, "
-            f"{n_a} vs {n_b} token-hours). The smallest group holds {min(n_a, n_b)} rows, "
+            f"{n_a} vs {n_b} measurements). The smallest group holds {min(n_a, n_b)} rows, "
             f"below the {MIN_CELL} needed to judge a difference of this size, so the "
             "falsification rule is not applied to a sample that cannot support it."
         )
@@ -158,7 +158,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
     elif falsified:
         outcome = str(ResultOutcome.REJECTED)
         if sign_reversed:
-            reason = "the sign reverses between liquidity strata"
+            reason = f"the sign reverses between {template.stratum_label}s"
         elif wrong_direction:
             reason = (
                 f"the effect points the opposite way to the prediction "
@@ -172,7 +172,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
         summary = (
             f"Rejected by its own falsification rule: {reason}. "
             f"Exposed {pooled.rate_a:.0%} vs control {pooled.rate_b:.0%} "
-            f"({n_a} vs {n_b} token-hours)."
+            f"({n_a} vs {n_b} measurements)."
         )
         confidence = 0.35
     elif pooled.p_value is not None and pooled.p_value > 0.05:
@@ -188,7 +188,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
         summary = (
             f"Difference of {pooled.difference_pp:+.1f} points "
             f"(exposed {pooled.rate_a:.0%} vs control {pooled.rate_b:.0%}), "
-            f"p={pooled.p_value:.3f}, holding its sign across strata."
+            f"p={pooled.p_value:.3f}, holding its sign across {template.stratum_label}s."
         )
         confidence = 0.5
 
@@ -227,6 +227,7 @@ def evaluate(dataset: Dataset, template: HypothesisTemplate) -> ExperimentOutcom
         pooled=pooled,
         stability={
             "sign_reversed_across_strata": sign_reversed,
+            "stratified_by": template.stratify_by,
             "stable_across_time": stable_over_time,
         },
     )

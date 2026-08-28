@@ -80,7 +80,7 @@ SUPPORTED_CLOSERS = [
 SMALL_SAMPLE = [
     "sample's too small to judge it either way.",
     "not enough rows to call this.",
-    "this many token-hours settles nothing.",
+    "this many measurements settles nothing.",
 ]
 
 
@@ -104,7 +104,7 @@ def inconclusive(
     middle = (
         pick(SMALL_SAMPLE, key + "s")
         if small_sample
-        else f"{n_exposed} token-hours on the exposed side."
+        else f"{n_exposed} measurements on the exposed side."
         if n_exposed is not None
         else "the difference is inside the noise."
     )
@@ -149,7 +149,7 @@ Good:
   doesn't. -8.4 points, wrong direction. posting it because being wrong in
   public is the entire point."
 
-  "ran the numbers. found nothing. 72 token-hours, p 0.31. everyone else would
+  "ran the numbers. found nothing. 72 measurements, p 0.31. everyone else would
   post this as a finding. it isn't one."
 
 Bad:

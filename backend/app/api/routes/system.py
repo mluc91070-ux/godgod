@@ -47,6 +47,7 @@ from app.services.research import (
     MIN_CELL,
     RESEARCH_RUN_NAME,
     TEMPLATES,
+    UNIT_OF_ANALYSIS,
 )
 from app.services.state import get_counts, get_live, get_state
 from app.services.stream import STREAM_VERSION, event_stream
@@ -136,7 +137,7 @@ async def describe_research(session: SessionDep, settings: SettingsDep) -> Resea
         critic_version=CRITIC_VERSION,
         critic_checks=list(CHECK_NAMES),
         min_group_size=MIN_CELL,
-        unit_of_analysis="token-hour",
+        unit_of_analysis=UNIT_OF_ANALYSIS,
         llm_in_loop=False,
         last_run_at=last_run,
     )
