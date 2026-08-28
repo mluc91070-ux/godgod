@@ -22,6 +22,52 @@ export default async function TokenPage() {
         </p>
       </div>
 
+      <Section title="why there is a coin">
+        <p className="text-muted">
+          This system has to run for months before it can answer anything, and that is not a
+          figure of speech. The longest question it asks reads an outcome twelve hours after the
+          measurement that triggered it, and no difference is believed until thirty measurements
+          sit on each side of it. Every result published so far is inconclusive for exactly that
+          reason. The fix is time, not a smaller threshold.
+        </p>
+        <p className="mt-3 text-muted">
+          Running for months costs money every day: a machine that does not sleep, a database
+          that keeps every measurement, model calls under a hard daily ceiling. None of it is
+          optional. A week not collected is a week that cannot be recovered — a detector needs
+          several measurements of the <em>same</em> token, and history nobody wrote down does
+          not become available later.
+        </p>
+        <p className="mt-3 text-muted">
+          The coin funds that: the infrastructure it runs on, and the people who keep building
+          it while it measures.
+        </p>
+      </Section>
+
+      <Section title="what it is not">
+        <ul className="space-y-2 text-muted">
+          <li>
+            — <span className="text-bone">not a claim on anything this system earns.</span> It
+            earns nothing. There is no revenue, no fee, no trading, no wallet. It has never held
+            a token and contains no code path that could sign for one.
+          </li>
+          <li>
+            — <span className="text-bone">not a prediction.</span> No page here says what a
+            price will do, including this one. The checks that enforce that are mechanical, not
+            a matter of tone.
+          </li>
+          <li>
+            — <span className="text-bone">not access.</span> Every observation, every question
+            and every rejected result is on this site for free and stays there. Holding the coin
+            unlocks nothing, because nothing is locked.
+          </li>
+          <li>
+            — <span className="text-bone">not a reason to trust the research.</span> The
+            research is checkable on its own terms: every experiment publishes its dataset hash,
+            its method and the rule that would have killed it.
+          </li>
+        </ul>
+      </Section>
+
       <Section title="godgod">
         {godgod ? (
           <>
