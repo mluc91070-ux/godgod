@@ -6,52 +6,57 @@ import { API_URL } from "@/lib/api";
 import type { Observation, StreamEvent, TokenInfo } from "@/lib/types";
 
 /**
- * The population under measurement, drawn as a field.
+ * The population under measurement, drawn as a sphere.
  *
  * One mark per token the system has actually measured, one filament between
- * two tokens whose measurements tripped the same detector. Nothing here is
- * arranged for looks:
+ * two tokens whose measurements tripped the same detector. The shape is a
+ * sphere because every mark sits on it — nothing here is arranged for looks:
  *
- *   position   <- a hash of the token address, so a token keeps its place
+ *   longitude  <- a hash of the token address, so a token keeps its place
  *                 across reloads and between visitors
- *   radius     <- how recently it was launched: new arrivals land at the edge
+ *   latitude   <- age: the newest arrivals ring the top, the ones that have
+ *                 been measured for two weeks ring the bottom
  *   size       <- liquidity, on a log scale, because the range spans five
  *                 orders of magnitude and a linear one draws one dot and dust
- *   colour     <- the sampling frame that found it, the one distinction that
- *                 changes what a result about it would mean
- *   brightness <- the novelty of its most recent observation
+ *   shape      <- the sampling frame: a filled mark completed a bonding curve,
+ *                 a ring was found by the promotion feed. That distinction
+ *                 changes what a result about the token would mean, so it is
+ *                 drawn rather than dropped.
+ *   brightness <- the novelty of its most recent observation, dimmed by depth
  *   filament   <- a detector that fired on both ends
- *   label      <- the few with the highest novelty, carrying their own numbers
+ *   label      <- the few with the highest novelty, on the near face, carrying
+ *                 their own numbers
  *
- * A token nobody has measured is not here. A quiet field is a quiet market,
- * and the count under it says how many marks are being drawn so a sparse
+ * White throughout: depth and novelty are the only things that change a mark's
+ * brightness, so a bright point is a real signal rather than a palette choice.
+ *
+ * A token nobody has measured is not here. A sparse sphere is a quiet market,
+ * and the count under it says how many marks are being drawn so an empty
  * picture cannot be mistaken for a broken one.
  */
 
 const MAX_NODES = 420;
-/** Past this the field reads as noise and stops being legible. The count is
+/** Past this the surface reads as noise and stops being legible. The count is
  *  displayed, so the cap is visible rather than silently applied. */
 
-const MAX_LABELS = 14;
-const SHOCK_MS = 1500;
+const MAX_LABELS = 10;
+const SHOCK_MS = 1600;
+const TWO_WEEKS_HOURS = 336;
 
-const FRAME_COLOR: Record<string, string> = {
-  "promotion-feed": "255, 44, 240",
-  "launchpad-migration": "255, 106, 0",
-};
-const UNRECORDED = "160, 160, 160";
+const PROMOTION = "promotion-feed";
 
 type Node = {
   address: string;
   symbol: string;
+  /** Unit-sphere coordinates. `y` is the pole axis. */
   x: number;
   y: number;
+  z: number;
   size: number;
-  color: string;
+  filled: boolean;
   novelty: number;
   liquidity: number | null;
   detectors: string[];
-  summary: string | null;
 };
 
 /** Deterministic 32-bit hash. The same address always lands in the same place:
@@ -82,15 +87,20 @@ function build(tokens: TokenInfo[], observations: Observation[]): Node[] {
 
   return measured.slice(0, MAX_NODES).map((token) => {
     const seed = hash(token.address);
-    const angle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
-    // Age decides the radius: a token measured for days sits in the body of
-    // the field, one that arrived this hour sits on its edge.
+    const longitude = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
+
+    // Age decides the latitude: a token that arrived this hour rings the top,
+    // one measured for a fortnight rings the bottom. An unknown launch time
+    // sits on the equator, which is where "we do not know" belongs.
     const hours = token.launch_time
       ? Math.max(0, (Date.now() - Date.parse(token.launch_time)) / 3_600_000)
       : null;
-    const settled = hours === null ? 0.6 : 1 - Math.min(1, hours / 336);
-    const jitter = (((seed >>> 16) & 0xff) / 0xff) * 0.18;
-    const radius = 0.28 + settled * 0.6 + jitter;
+    const aged = hours === null ? 0.5 : Math.min(1, hours / TWO_WEEKS_HOURS);
+    // Jitter keeps a crowded band from collapsing into one hard line. It is
+    // bounded and derived from the address, so it never moves either.
+    const jitter = ((((seed >>> 16) & 0xff) / 0xff) - 0.5) * 0.14;
+    const y = Math.max(-0.98, Math.min(0.98, 1 - aged * 2 + jitter));
+    const ring = Math.sqrt(Math.max(0, 1 - y * y));
 
     const observation = latest.get(token.address);
     const payload = (observation?.payload ?? {}) as { detectors_fired?: string[] };
@@ -98,14 +108,14 @@ function build(tokens: TokenInfo[], observations: Observation[]): Node[] {
     return {
       address: token.address,
       symbol: token.symbol ?? "—",
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius * 0.62,
-      size: Math.max(1, Math.log10(Math.max(10, token.liquidity_usd ?? 10)) - 1.4),
-      color: FRAME_COLOR[token.source ?? ""] ?? UNRECORDED,
+      x: Math.cos(longitude) * ring,
+      y,
+      z: Math.sin(longitude) * ring,
+      size: Math.max(1, Math.log10(Math.max(10, token.liquidity_usd ?? 10)) - 1.5),
+      filled: token.source !== PROMOTION,
       novelty: observation?.novelty_score ?? 0,
       liquidity: token.liquidity_usd,
       detectors: payload.detectors_fired ?? [],
-      summary: observation?.summary ?? null,
     };
   });
 }
@@ -125,7 +135,7 @@ function link(nodes: Node[]): [number, number][] {
   const edges: [number, number][] = [];
   for (const members of byDetector.values()) {
     // Chained rather than fully connected: a detector that fired on forty
-    // tokens would otherwise draw eight hundred lines and hide the field.
+    // tokens would otherwise draw eight hundred lines and fill the sphere.
     for (let index = 1; index < members.length && index < 40; index += 1) {
       edges.push([members[index - 1], members[index]]);
     }
@@ -143,7 +153,7 @@ function money(value: number | null): string {
 export default function MarketField({
   tokens,
   observations,
-  height = 460,
+  height = 480,
 }: {
   tokens: TokenInfo[];
   observations: Observation[];
@@ -203,17 +213,25 @@ export default function MarketField({
 
       const cx = width / 2;
       const cy = height / 2;
-      const scale = Math.min(width, height * 1.7) * 0.46;
-      const drift = reduceMotion ? 0 : seconds * 0.035;
+      const radius = Math.min(width, height) * 0.42;
+      // One turn every three minutes: slow enough to read a label, fast enough
+      // that the far face comes round while someone is still on the page.
+      const spin = reduceMotion ? 0.6 : (seconds * Math.PI * 2) / 180;
+      const cos = Math.cos(spin);
+      const sin = Math.sin(spin);
       const current = nodesRef.current;
 
-      const place = (node: Node, index: number) => {
-        // A slow shear rather than a spin: the field breathes without any mark
-        // leaving the place its address put it.
-        const wobble = reduceMotion ? 0 : Math.sin(drift * 2 + index * 0.7) * 0.012;
+      /** Rotate about the pole axis, then project. Depth runs 0 (far) to 1
+       *  (near) and is the only thing that dims a mark besides its novelty. */
+      const place = (node: Node) => {
+        const rx = node.x * cos - node.z * sin;
+        const rz = node.x * sin + node.z * cos;
+        const depth = (rz + 1) / 2;
+        const perspective = 0.84 + depth * 0.2;
         return {
-          x: cx + (node.x + wobble) * scale * Math.cos(drift * 0.4),
-          y: cy + (node.y + wobble * 0.6) * scale,
+          x: cx + rx * radius * perspective,
+          y: cy + node.y * radius * perspective,
+          depth,
         };
       };
 
@@ -226,10 +244,11 @@ export default function MarketField({
         const from = current[a];
         const to = current[b];
         if (!from || !to) continue;
-        const p1 = place(from, a);
-        const p2 = place(to, b);
+        const p1 = place(from);
+        const p2 = place(to);
+        const depth = (p1.depth + p2.depth) / 2;
         const heat = Math.max(from.novelty, to.novelty);
-        ctx.strokeStyle = `rgba(${from.color}, ${0.05 + heat * 0.22})`;
+        ctx.strokeStyle = `rgba(242, 242, 242, ${(0.04 + heat * 0.16) * (0.2 + depth * 0.8)})`;
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -237,30 +256,51 @@ export default function MarketField({
       }
 
       current.forEach((node, index) => {
-        const point = place(node, index);
+        const point = place(node);
         const lit = hit && index === hit.index ? shock : 0;
-        const alpha = 0.25 + node.novelty * 0.55 + lit * 0.6;
-        ctx.fillStyle = `rgba(${node.color}, ${Math.min(1, alpha)})`;
+        const alpha = (0.16 + node.novelty * 0.5) * (0.18 + point.depth * 0.82) + lit * 0.7;
+        const size = node.size * (0.7 + point.depth * 0.5) * (1 + lit * 1.4);
+
         ctx.beginPath();
-        ctx.arc(point.x, point.y, node.size * (1 + lit * 1.6), 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        if (node.filled) {
+          ctx.fillStyle = `rgba(242, 242, 242, ${Math.min(1, alpha)})`;
+          ctx.fill();
+        } else {
+          // The promotion frame is drawn hollow. Same colour, different mark:
+          // the distinction survives without a second hue.
+          ctx.lineWidth = 0.9;
+          ctx.strokeStyle = `rgba(242, 242, 242, ${Math.min(1, alpha + 0.1)})`;
+          ctx.stroke();
+          ctx.lineWidth = 0.5;
+        }
+
+        // The row that just arrived also sends a ring out from its token, so
+        // the event is findable on a crowded surface.
+        if (lit > 0) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, size + (1 - lit) * 34, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(242, 242, 242, ${lit * 0.32})`;
+          ctx.stroke();
+        }
       });
 
-      // Labels last, and only the few with something to say. Everything drawn
-      // here is a number already on the row it names.
+      // Labels last, only on the near face, and only for the few with
+      // something to say. Everything drawn here is a number already on the row
+      // it names.
       const labelled = [...current]
-        .map((node, index) => ({ node, index }))
-        .filter((entry) => entry.node.novelty > 0)
+        .map((node) => ({ node, point: place(node) }))
+        .filter((entry) => entry.node.novelty > 0 && entry.point.depth > 0.55)
         .sort((a, b) => b.node.novelty - a.node.novelty)
         .slice(0, MAX_LABELS);
 
-      ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
-      for (const { node, index } of labelled) {
-        const point = place(node, index);
-        ctx.fillStyle = `rgba(${node.color}, 0.9)`;
-        ctx.fillText(node.symbol.slice(0, 14), point.x + 6, point.y - 4);
-        ctx.fillStyle = "rgba(160, 160, 160, 0.75)";
-        ctx.fillText(money(node.liquidity), point.x + 6, point.y + 7);
+      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+      for (const { node, point } of labelled) {
+        const fade = (point.depth - 0.55) / 0.45;
+        ctx.fillStyle = `rgba(242, 242, 242, ${0.35 + fade * 0.55})`;
+        ctx.fillText(node.symbol.slice(0, 14), point.x + 7, point.y - 4);
+        ctx.fillStyle = `rgba(160, 160, 160, ${0.3 + fade * 0.45})`;
+        ctx.fillText(money(node.liquidity), point.x + 7, point.y + 7);
       }
 
       if (!reduceMotion || age < SHOCK_MS) raf = requestAnimationFrame(draw);
@@ -270,7 +310,7 @@ export default function MarketField({
     return () => cancelAnimationFrame(raf);
   }, [height]);
 
-  const promoted = nodes.filter((node) => node.color === FRAME_COLOR["promotion-feed"]).length;
+  const promoted = nodes.filter((node) => !node.filled).length;
   const flagged = nodes.filter((node) => node.novelty > 0).length;
 
   return (
@@ -287,16 +327,18 @@ export default function MarketField({
         </span>
         <span className="text-line">·</span>
         <span>
-          <span style={{ color: "#ff6a00" }}>{nodes.length - promoted}</span> migrated
+          <span className="text-bone">{nodes.length - promoted}</span> migrated — filled
         </span>
         <span className="text-line">·</span>
         <span>
-          <span style={{ color: "#ff2cf0" }}>{promoted}</span> promoted
+          <span className="text-bone">{promoted}</span> promoted — hollow
         </span>
         <span className="text-line">·</span>
         <span>
           <span className="text-bone">{flagged}</span> flagged
         </span>
+        <span className="text-line">·</span>
+        <span>newest at the top, two weeks measured at the bottom</span>
         <span className="text-line">·</span>
         <span>lines join tokens that tripped the same detector</span>
         <span className="ml-auto">

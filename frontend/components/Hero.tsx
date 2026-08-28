@@ -12,10 +12,10 @@ import type { Observation, SystemStateName, TokenInfo } from "@/lib/types";
  * `aria-hidden` and every claim had to be carried by the numbers underneath.
  * 1.8MB of video went with it.
  *
- * What replaces it draws the population itself: one mark per measured token,
- * a filament between two that tripped the same detector. If the tokens cannot
- * be reached the sphere still renders the four state values, which is less to
- * look at but is still true.
+ * What replaces it is a sphere made of the population itself: one mark per
+ * measured token, placed by its address and its age, a filament between two
+ * that tripped the same detector. If the tokens cannot be reached the state
+ * sphere renders instead — less to look at, still true.
  */
 
 type Props = {
