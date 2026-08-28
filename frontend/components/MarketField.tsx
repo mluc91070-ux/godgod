@@ -248,7 +248,7 @@ export default function MarketField({
         const p2 = place(to);
         const depth = (p1.depth + p2.depth) / 2;
         const heat = Math.max(from.novelty, to.novelty);
-        ctx.strokeStyle = `rgba(242, 242, 242, ${(0.04 + heat * 0.16) * (0.2 + depth * 0.8)})`;
+        ctx.strokeStyle = `rgba(242, 242, 242, ${(0.06 + heat * 0.18) * (0.22 + depth * 0.78)})`;
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -258,7 +258,11 @@ export default function MarketField({
       current.forEach((node, index) => {
         const point = place(node);
         const lit = hit && index === hit.index ? shock : 0;
-        const alpha = (0.16 + node.novelty * 0.5) * (0.18 + point.depth * 0.82) + lit * 0.7;
+        // Most tokens carry no anomaly — 384 of the 400 drawn, on the day this
+        // was tuned. If novelty were the only thing lifting a mark off the
+        // background, the sphere would be sixteen points and a black disc, so
+        // the floor is set high enough that a quiet token is still a mark.
+        const alpha = (0.32 + node.novelty * 0.55) * (0.22 + point.depth * 0.78) + lit * 0.7;
         const size = node.size * (0.7 + point.depth * 0.5) * (1 + lit * 1.4);
 
         ctx.beginPath();
