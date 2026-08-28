@@ -170,22 +170,36 @@ async def describe_collection(
     request: Request, session: SessionDep, settings: SettingsDep
 ) -> CollectionInfo:
     """What the live collectors hold, counted apart from the fixtures."""
-    from app.services.chain import CHAIN_RUN_NAME
+    # Two aggregates, not one query per token. This loaded every live token as
+    # an ORM object and then ran a COUNT(*) for each one: at 1,035 tokens that
+    # was 1,036 round trips, `/api/status` answered in about two seconds, and
+    # every page asks for it — so the cost landed on every visit to the site.
+    from app.services.chain import CHAIN_RUN_NAME, MIGRATED, PROMOTED
     from app.services.social import COLLECTOR_RUN_NAME
 
-    live_tokens = (await session.scalars(select(Token).where(Token.is_demo.is_(False)))).all()
+    per_token = (
+        select(func.count().label("n"))
+        .select_from(TokenSnapshot)
+        .join(Token, Token.id == TokenSnapshot.token_id)
+        .where(Token.is_demo.is_(False))
+        .group_by(TokenSnapshot.token_id)
+        .subquery()
+    )
+    deepest = int(await session.scalar(select(func.max(per_token.c.n))) or 0)
 
-    deepest = 0
-    for token in live_tokens:
-        count = int(
-            await session.scalar(
-                select(func.count())
-                .select_from(TokenSnapshot)
-                .where(TokenSnapshot.token_id == token.id)
+    by_frame = {
+        source: count
+        for source, count in (
+            await session.execute(
+                select(Token.source, func.count())
+                .where(Token.is_demo.is_(False))
+                .group_by(Token.source)
             )
-            or 0
-        )
-        deepest = max(deepest, count)
+        ).all()
+    }
+    token_count = sum(by_frame.values())
+    promoted = by_frame.get(PROMOTED, 0)
+    migrated = by_frame.get(MIGRATED, 0)
 
     async def count_live(model) -> int:
         return int(
@@ -200,15 +214,13 @@ async def describe_collection(
             select(func.max(AgentRun.started_at)).where(AgentRun.agent_name == name)
         )
 
-    from app.services.chain import MIGRATED, PROMOTED
-
     return CollectionInfo(
-        live_tokens=len(live_tokens),
-        tokens_promoted=sum(1 for token in live_tokens if token.source == PROMOTED),
-        tokens_migrated=sum(1 for token in live_tokens if token.source == MIGRATED),
-        tokens_unrecorded_frame=sum(
-            1 for token in live_tokens if token.source not in (PROMOTED, MIGRATED)
-        ),
+        live_tokens=token_count,
+        tokens_promoted=promoted,
+        tokens_migrated=migrated,
+        # Everything that is neither frame, including the NULL the clobbered
+        # rows were reset to. Derived by subtraction so the three always sum.
+        tokens_unrecorded_frame=token_count - promoted - migrated,
         migrations_available=bool(
             settings.launchpad_migrations and settings.launchpad_api_url
         ),

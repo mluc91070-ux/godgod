@@ -1,5 +1,4 @@
-import { api } from "@/lib/api";
-import type { Status } from "@/lib/types";
+import { getStatus } from "@/lib/status";
 
 /**
  * Persistent honesty strip. If the API is unreachable it says so; if the
@@ -19,7 +18,7 @@ function Dot() {
 }
 
 export default async function StatusBar() {
-  const result = await api<Status>("/api/status");
+  const result = await getStatus();
 
   if (!result.ok) {
     return (

@@ -3,6 +3,7 @@ import { Exo_2, Orbitron } from "next/font/google";
 
 import Footer from "@/components/Footer";
 import Nav from "@/components/Nav";
+import { getStatus } from "@/lib/status";
 import StatusBar from "@/components/StatusBar";
 import "@/styles/globals.css";
 
@@ -56,11 +57,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Memoised for the render, so this shares the request the strip and the
+  // footer already make rather than adding a third.
+  const status = await getStatus();
+  const beating = status.ok ? status.data.collection.scheduler_running : false;
+
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body className="min-h-screen overflow-x-hidden bg-void font-sans text-bone antialiased">
-        <Nav />
+        <Nav beating={beating} />
         <StatusBar />
         <main className="px-4 py-10 sm:px-6">{children}</main>
         <Footer />

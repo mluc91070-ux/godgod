@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 
@@ -154,3 +156,99 @@ async def test_live_counts_exclude_demo_rows(client, session):
 
     collection = (await client.get("/api/status")).json()["collection"]
     assert collection["live_tokens"] == 0
+
+
+# -- /api/status cost -----------------------------------------------------
+#
+# This endpoint is on the critical path of every page: the honesty strip, the
+# footer and several pages all read it. It used to load every live token as an
+# ORM object and then run one COUNT(*) per token — at 1,035 tokens in
+# production that was 1,036 round trips and about two seconds, paid on every
+# visit. The number of queries must not depend on how many tokens exist.
+
+
+async def test_status_does_not_query_once_per_token(client, session) -> None:
+    from sqlalchemy import event
+
+    from app.db.session import get_engine
+    from app.models import Token, TokenSnapshot
+    from app.models.base import utcnow
+
+    async def add_tokens(count: int, *, offset: int) -> None:
+        for index in range(count):
+            token = Token(
+                address=f"COSTTOKEN{offset + index}",
+                chain="solana",
+                source="promotion-feed",
+                is_demo=False,
+            )
+            session.add(token)
+            await session.flush()
+            # Differing depths, so `deepest_history` has something to be wrong about.
+            for step in range(index + 1):
+                session.add(
+                    TokenSnapshot(
+                        token_id=token.id,
+                        observed_at=utcnow() + timedelta(minutes=15 * step),
+                        liquidity_usd=1000.0,
+                        source="test",
+                        is_demo=False,
+                    )
+                )
+        await session.commit()
+
+    def counter(store: list[int]):
+        def listener(conn, cursor, statement, parameters, context, executemany):
+            store[0] += 1
+
+        return listener
+
+    async def measure() -> int:
+        box = [0]
+        listener = counter(box)
+        engine = get_engine().sync_engine
+        event.listen(engine, "before_cursor_execute", listener)
+        try:
+            response = await client.get("/api/status")
+            assert response.status_code == 200
+        finally:
+            event.remove(engine, "before_cursor_execute", listener)
+        return box[0]
+
+    await add_tokens(3, offset=0)
+    few = await measure()
+
+    await add_tokens(12, offset=100)
+    many = await measure()
+
+    assert many == few, (
+        f"{few} queries for 3 tokens and {many} for 15: the cost of /api/status "
+        "grows with the number of tokens"
+    )
+
+
+async def test_deepest_history_is_the_deepest_series(client, session) -> None:
+    """The aggregate has to agree with what the loop used to compute."""
+    from app.models import Token, TokenSnapshot
+    from app.models.base import utcnow
+
+    for depth in (2, 7, 4):
+        token = Token(
+            address=f"DEPTH{depth}", chain="solana", source="promotion-feed", is_demo=False
+        )
+        session.add(token)
+        await session.flush()
+        for step in range(depth):
+            session.add(
+                TokenSnapshot(
+                    token_id=token.id,
+                    observed_at=utcnow() + timedelta(minutes=15 * step),
+                    liquidity_usd=1000.0,
+                    source="test",
+                    is_demo=False,
+                )
+            )
+    await session.commit()
+
+    body = (await client.get("/api/status")).json()
+    assert body["collection"]["deepest_history"] == 7

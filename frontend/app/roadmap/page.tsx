@@ -1,6 +1,6 @@
 import { Disconnected, Label, Section } from "@/components/ui";
-import { api, fmtInt, fmtTime } from "@/lib/api";
-import type { Status } from "@/lib/types";
+import { fmtInt, fmtTime } from "@/lib/api";
+import { getStatus } from "@/lib/status";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export const metadata = {
  * status, and those do not go stale.
  */
 export default async function RoadmapPage() {
-  const result = await api<Status>("/api/status");
+  const result = await getStatus();
   if (!result.ok) return <Disconnected error={result.error} what="the roadmap" />;
 
   const { collection, research, counts, mode } = result.data;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import LiveDock from "@/components/LiveDock";
 import { Mark } from "@/components/Mark";
 
 /**
@@ -120,7 +121,7 @@ function XIcon({ size = 12 }: { size?: number }) {
   );
 }
 
-export default function Nav() {
+export default function Nav({ beating }: { beating: boolean }) {
   const pathname = usePathname() ?? "/";
   const [open, setOpen] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
@@ -240,6 +241,8 @@ export default function Nav() {
               token
             </Link>
           </div>
+
+          <LiveDock beating={beating} />
 
           <a
             href={X_URL}

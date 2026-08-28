@@ -1,6 +1,7 @@
 import { Disconnected, Field, Label, Section } from "@/components/ui";
 import { api, fmt, fmtInt, fmtTime, fmtUsd } from "@/lib/api";
-import type { ExperimentResult, Page, Status, TokenInfo } from "@/lib/types";
+import { getStatus } from "@/lib/status";
+import type { ExperimentResult, Page, TokenInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export default async function TokenPage() {
   // would be least forgivable.
   const [result, statusResult, resultsResult] = await Promise.all([
     api<Page<TokenInfo>>("/api/tokens?limit=50"),
-    api<Status>("/api/status"),
+    getStatus(),
     api<Page<ExperimentResult>>("/api/results?limit=200"),
   ]);
 

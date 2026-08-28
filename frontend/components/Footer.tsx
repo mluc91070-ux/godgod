@@ -1,6 +1,5 @@
 import { Wordmark } from "@/components/Mark";
-import { api } from "@/lib/api";
-import type { Status } from "@/lib/types";
+import { getStatus } from "@/lib/status";
 
 /**
  * The claims at the bottom of every page, read from the running system.
@@ -18,7 +17,7 @@ import type { Status } from "@/lib/types";
  * on it are dropped rather than guessed.
  */
 export default async function Footer() {
-  const result = await api<Status>("/api/status");
+  const result = await getStatus();
   const mode = result.ok ? result.data.mode : null;
 
   return (

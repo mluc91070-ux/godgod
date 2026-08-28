@@ -1,5 +1,5 @@
-import { api, fmtTime } from "@/lib/api";
-import type { Status } from "@/lib/types";
+import { fmtTime } from "@/lib/api";
+import { getStatus } from "@/lib/status";
 
 /**
  * Why a research page is empty, answered in dates rather than adjectives.
@@ -12,7 +12,7 @@ import type { Status } from "@/lib/types";
  * Every number here is read from `/api/status`; none is written down.
  */
 export default async function ResearchAge({ what }: { what: string }) {
-  const result = await api<Status>("/api/status");
+  const result = await getStatus();
   if (!result.ok) return null;
 
   const { collection, research } = result.data;
