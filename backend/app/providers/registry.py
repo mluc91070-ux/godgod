@@ -7,6 +7,7 @@ that does not exist.
 
 from __future__ import annotations
 
+from app.agents.base import IMPLEMENTED_AGENTS
 from app.core.config import Settings, get_settings
 from app.schemas.common import ProviderStatus
 
@@ -58,8 +59,10 @@ def _x_note(settings: Settings) -> str:
     """Read access only, and only when a token is present."""
     if not settings.x_bearer_token:
         return (
-            "Recent-search client implemented; no bearer token set, so nothing is "
-            "collected and the collector says so rather than reporting zero posts."
+            "Beta testing, and not connected: the recent-search client is implemented "
+            "but no bearer token is set, so nothing is collected and the collector says "
+            "so rather than reporting zero posts. Beta describes the code, not a "
+            "capability — nothing is being read and nothing is being published."
         )
     return (
         f"Beta testing: reading recent posts for {len(settings.x_search_terms)} queries, "
@@ -74,8 +77,8 @@ def _model_note(settings: Settings) -> str:
     """What the model layer can actually do right now, in one sentence."""
     if not settings.anthropic_api_key:
         return (
-            "Client implemented; no API key set, so the writer and reviewer agents "
-            "refuse rather than run. The deterministic engines are unaffected."
+            "Client implemented; no API key set, so every model-backed agent refuses "
+            "rather than runs. The deterministic engines are unaffected."
         )
     missing = [
         role
@@ -92,7 +95,14 @@ def _model_note(settings: Settings) -> str:
             "Key and roles set, but MODEL_PRICE_* is unset: the budget guard refuses "
             "to spend what it cannot measure."
         )
-    return f"Writer and reviewer agents enabled; daily budget ${settings.llm_daily_budget_usd:.2f}."
+    # Named from the roster rather than listed by hand: this sentence said
+    # "writer and reviewer" for two releases after the critic and the observer
+    # gained a model, which is a status line describing an older deployment.
+    return (
+        f"{len(IMPLEMENTED_AGENTS)} model-backed agents enabled "
+        f"({', '.join(IMPLEMENTED_AGENTS)}); daily budget "
+        f"${settings.llm_daily_budget_usd:.2f}."
+    )
 
 
 def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]:
