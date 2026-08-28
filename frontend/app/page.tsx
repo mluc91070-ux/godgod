@@ -10,13 +10,22 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   // The field draws the population, so the population is fetched with the
   // state. Both are allowed to fail on their own: a missing token list falls
-  // back to the sphere rather than taking the page down.
-  const [result, tokensResult, observationsResult] = await Promise.all([
+  // back to the state sphere rather than taking the page down.
+  //
+  // Two pages, because the API caps a page at 200 and the field draws more
+  // than that. Asking for 500 in one call is a 422, and a 422 here is silent:
+  // the list comes back empty, the fallback renders, and the page looks fine
+  // while showing something else. It shipped that way once.
+  const [result, firstPage, secondPage, observationsResult] = await Promise.all([
     api<Live>("/api/live"),
-    api<Page<TokenInfo>>("/api/tokens?limit=500"),
+    api<Page<TokenInfo>>("/api/tokens?limit=200"),
+    api<Page<TokenInfo>>("/api/tokens?limit=200&offset=200"),
     api<Page<Observation>>("/api/observations?limit=120"),
   ]);
-  const tokens = tokensResult.ok ? tokensResult.data.items : [];
+  const tokens = [
+    ...(firstPage.ok ? firstPage.data.items : []),
+    ...(secondPage.ok ? secondPage.data.items : []),
+  ];
   const observations = observationsResult.ok ? observationsResult.data.items : [];
 
   // A backend that is asleep or slow must not take the page down with it. The
