@@ -38,6 +38,11 @@ class MarketSnapshot:
     name: str | None = None
     price_usd: float | None = None
     market_cap_usd: float | None = None
+    """Circulating supply times price, as the source reports it. Never an FDV
+    standing in for one: absent stays absent."""
+    fdv_usd: float | None = None
+    """Fully diluted valuation — total supply times price. A different number,
+    kept apart so neither can be mistaken for the other."""
     liquidity_usd: float | None = None
     volume_usd: float | None = None
     """Traded in the last hour, matching the snapshot cadence."""
@@ -60,6 +65,7 @@ class MarketSnapshot:
         """The subset `token_snapshots` stores. Absent stays absent."""
         return {
             "market_cap_usd": self.market_cap_usd,
+            "fdv_usd": self.fdv_usd,
             "liquidity_usd": self.liquidity_usd,
             "volume_usd": self.volume_usd,
             "transactions": self.transactions,
@@ -171,7 +177,15 @@ def _from_pair(address: str, pairs: list[dict[str, Any]]) -> MarketSnapshot | No
         symbol=sanitize_external_text(str(base.get("symbol") or ""), max_len=32) or None,
         name=sanitize_external_text(str(base.get("name") or ""), max_len=128) or None,
         price_usd=_number(deepest.get("priceUsd")),
-        market_cap_usd=_number(deepest.get("marketCap") or deepest.get("fdv")),
+        # Market cap is market cap. This read `marketCap or fdv`, so a token
+        # the source had no market cap for silently reported its fully diluted
+        # valuation under a field the site labels "market cap" — two numbers
+        # that differ by the unminted supply, and can differ by an order of
+        # magnitude. An external audit caught it from the outside: market cap
+        # over liquidity came out at 90x to 145x on some tokens, which is what
+        # an FDV against a real pool looks like.
+        market_cap_usd=_number(deepest.get("marketCap")),
+        fdv_usd=_number(deepest.get("fdv")),
         liquidity_usd=total(lambda pair: _number((pair.get("liquidity") or {}).get("usd"))),
         volume_usd=total(lambda pair: _number((pair.get("volume") or {}).get("h1"))),
         volume_24h_usd=total(lambda pair: _number((pair.get("volume") or {}).get("h24"))),

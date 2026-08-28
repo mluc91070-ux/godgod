@@ -679,3 +679,38 @@ async def test_a_token_nobody_trades_is_still_dropped(session, chain_settings) -
         chain=FakeChain(), commit=False,
     )
     assert report.dropped == {"below_volume_floor_promotion": 1}
+
+
+# -- market cap is market cap ---------------------------------------------
+#
+# The adapter read `marketCap or fdv`, so a token the source had no market cap
+# for reported its fully diluted valuation under a field the site labels
+# "market cap". An external audit caught it from the outside: market cap over
+# liquidity landed between 90x and 145x on several tokens, which is what an FDV
+# against a real pool looks like.
+
+
+def test_an_fdv_never_stands_in_for_a_market_cap() -> None:
+    pair_payload = pair()
+    del pair_payload["marketCap"]
+    pair_payload["fdv"] = 40_000_000
+
+    snapshot = _from_pair(pair_payload["baseToken"]["address"], [pair_payload])
+
+    assert snapshot is not None
+    assert snapshot.market_cap_usd is None, "absent stays absent"
+    assert snapshot.fdv_usd == 40_000_000
+
+
+def test_both_are_kept_when_both_are_reported() -> None:
+    pair_payload = pair()
+    pair_payload["fdv"] = 40_000_000
+
+    snapshot = _from_pair(pair_payload["baseToken"]["address"], [pair_payload])
+
+    assert snapshot is not None
+    assert snapshot.market_cap_usd == 900_000
+    assert snapshot.fdv_usd == 40_000_000
+    stored = snapshot.as_snapshot_fields()
+    assert stored["market_cap_usd"] == 900_000
+    assert stored["fdv_usd"] == 40_000_000

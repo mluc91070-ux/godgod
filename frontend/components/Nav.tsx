@@ -194,28 +194,40 @@ export default function Nav({ beating }: { beating: boolean }) {
                   </span>
                 </button>
 
-                {expanded ? (
-                  <div className="absolute left-0 top-full w-[22rem] border border-line bg-void p-1 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]">
-                    {group.items.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`block border-l-2 px-3 py-2.5 transition-colors hover:bg-surface ${
-                          isCurrent(item.href)
-                            ? "border-magenta bg-surface"
-                            : "border-transparent"
-                        }`}
-                      >
-                        <span className="text-[11px] uppercase tracking-[0.16em] text-bone">
-                          {item.label}
-                        </span>
-                        <span className="mt-0.5 block text-[11px] leading-snug text-muted">
-                          {item.blurb}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
+                {/* Rendered always, hidden with CSS. Mounting the panel only
+                    while it is open left twelve of the site's fifteen routes
+                    out of the served HTML entirely: an audit crawling the
+                    homepage found `/about`, `/docs`, `/token` and nothing
+                    else, and concluded the site was a thin landing page with
+                    no deeper routes. It was not wrong about what it could
+                    see. A link a crawler cannot reach is a link that does not
+                    exist to anything but a mouse. */}
+                <div
+                  aria-hidden={!expanded}
+                  className={`absolute left-0 top-full w-[22rem] border border-line bg-void p-1 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] ${
+                    expanded ? "" : "pointer-events-none invisible opacity-0"
+                  }`}
+                >
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      tabIndex={expanded ? undefined : -1}
+                      className={`block border-l-2 px-3 py-2.5 transition-colors hover:bg-surface ${
+                        isCurrent(item.href)
+                          ? "border-magenta bg-surface"
+                          : "border-transparent"
+                      }`}
+                    >
+                      <span className="text-[11px] uppercase tracking-[0.16em] text-bone">
+                        {item.label}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted">
+                        {item.blurb}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             );
           })}

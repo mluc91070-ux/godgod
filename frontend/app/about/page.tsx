@@ -172,7 +172,17 @@ export default function AboutPage() {
             streams what it is writing as it writes it.
           </li>
           <li>
-            — the source is public, and so is every commit that produced the above.
+            — the source is public, and so is every commit that produced the above:{" "}
+            <a
+              href="https://github.com/mluc91070-ux/godgod"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-bone hover:text-magenta"
+            >
+              github.com/mluc91070-ux/godgod
+            </a>
+            . a claim like this one without the link is just a nicer way of saying
+            &ldquo;trust me&rdquo;.
           </li>
           <li>
             —{" "}

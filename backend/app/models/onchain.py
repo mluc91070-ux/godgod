@@ -60,6 +60,9 @@ class TokenSnapshot(Entity):
     )
 
     market_cap_usd: Mapped[float | None] = mapped_column(Float)
+    fdv_usd: Mapped[float | None] = mapped_column(Float)
+    """Fully diluted valuation, stored apart from market cap rather than in
+    place of it. See `MarketSnapshot`."""
     liquidity_usd: Mapped[float | None] = mapped_column(Float)
     volume_usd: Mapped[float | None] = mapped_column(Float)
     holders: Mapped[int | None] = mapped_column(Integer)
