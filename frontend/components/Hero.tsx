@@ -1,23 +1,21 @@
 import LiveField from "@/components/LiveField";
-import type { SystemStateName } from "@/lib/types";
+import MarketField from "@/components/MarketField";
+import type { Observation, SystemStateName, TokenInfo } from "@/lib/types";
 
 /**
  * The field at the top of the page.
  *
- * This used to be a video. The video looked better than the field did and it
- * was the wrong thing on this site: a fixed loop cannot represent state, so it
- * was `aria-hidden` and the numbers underneath had to carry every claim. It
- * animated at the same speed whether the system had run four cycles that hour
- * or had been dead since Tuesday, which on a page whose whole argument is
- * "every visual parameter is bound to a real value" is the one thing it could
- * not be allowed to do.
+ * This used to be a video: a fixed 15-second loop that animated identically
+ * whether the system had run four cycles that hour or had been dead since
+ * Tuesday. On a page whose argument is that every visual parameter is bound to
+ * a real value, that is the one thing it could not be — so it was
+ * `aria-hidden` and every claim had to be carried by the numbers underneath.
+ * 1.8MB of video went with it.
  *
- * What replaces it was already in the repository and never visible: 24,000
- * points on a Fibonacci sphere, rotation bound to activity, surface to
- * novelty, core radius to confidence, colour to the state machine — and now a
- * front crossing the shell for every row the system writes.
- *
- * It also removes 1.8MB of video from the page.
+ * What replaces it draws the population itself: one mark per measured token,
+ * a filament between two that tripped the same detector. If the tokens cannot
+ * be reached the sphere still renders the four state values, which is less to
+ * look at but is still true.
  */
 
 type Props = {
@@ -25,9 +23,22 @@ type Props = {
   activity: number;
   novelty: number | null;
   confidence: number | null;
+  tokens?: TokenInfo[];
+  observations?: Observation[];
 };
 
-export default function Hero({ state, activity, novelty, confidence }: Props) {
+export default function Hero({
+  state,
+  activity,
+  novelty,
+  confidence,
+  tokens,
+  observations,
+}: Props) {
+  if (tokens && tokens.length > 0) {
+    return <MarketField tokens={tokens} observations={observations ?? []} />;
+  }
+
   return (
     <div className="flex justify-center">
       <LiveField

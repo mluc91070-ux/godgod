@@ -3,12 +3,21 @@ import Link from "next/link";
 import Hero from "@/components/Hero";
 import { Disconnected } from "@/components/ui";
 import { api, clock } from "@/lib/api";
-import type { Live } from "@/lib/types";
+import type { Live, Observation, Page, TokenInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const result = await api<Live>("/api/live");
+  // The field draws the population, so the population is fetched with the
+  // state. Both are allowed to fail on their own: a missing token list falls
+  // back to the sphere rather than taking the page down.
+  const [result, tokensResult, observationsResult] = await Promise.all([
+    api<Live>("/api/live"),
+    api<Page<TokenInfo>>("/api/tokens?limit=500"),
+    api<Page<Observation>>("/api/observations?limit=120"),
+  ]);
+  const tokens = tokensResult.ok ? tokensResult.data.items : [];
+  const observations = observationsResult.ok ? observationsResult.data.items : [];
 
   // A backend that is asleep or slow must not take the page down with it. The
   // hero and the identity are static; only the live numbers are missing, and
@@ -24,7 +33,14 @@ export default async function Home() {
         </div>
 
         <div className="my-10 w-full">
-          <Hero state="IDLE" activity={0} novelty={null} confidence={null} />
+          <Hero
+            state="IDLE"
+            activity={0}
+            novelty={null}
+            confidence={null}
+            tokens={tokens}
+            observations={observations}
+          />
         </div>
 
         <div className="w-full max-w-2xl space-y-6">
@@ -57,6 +73,8 @@ export default async function Home() {
           activity={live.activity}
           novelty={live.novelty}
           confidence={live.confidence}
+          tokens={tokens}
+          observations={observations}
         />
       </div>
 
