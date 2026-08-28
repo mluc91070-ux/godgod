@@ -1,4 +1,5 @@
-import { Disconnected, Empty, Label, Tag } from "@/components/ui";
+import ResearchAge from "@/components/ResearchAge";
+import { Disconnected, Label, Tag } from "@/components/ui";
 import { api, fmt, fmtTime } from "@/lib/api";
 import type { Page, Pattern } from "@/lib/types";
 
@@ -29,7 +30,7 @@ export default async function PatternsPage() {
 
       <div className="mt-6 space-y-8">
         {items.length === 0 ? (
-          <Empty>no pattern has survived testing yet.</Empty>
+          <ResearchAge what="question has been asked twice" />
         ) : (
           items.map((pattern) => (
             <article key={pattern.id} className="border-t border-line pt-4">

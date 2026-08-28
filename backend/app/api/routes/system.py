@@ -138,6 +138,7 @@ async def describe_research(session: SessionDep, settings: SettingsDep) -> Resea
         critic_checks=list(CHECK_NAMES),
         min_group_size=MIN_CELL,
         unit_of_analysis=UNIT_OF_ANALYSIS,
+        horizons_hours=sorted({template.horizon_hours for template in TEMPLATES}),
         llm_in_loop=False,
         last_run_at=last_run,
     )
@@ -213,6 +214,14 @@ async def describe_collection(
         ),
         last_chain_run_at=await last_run(CHAIN_RUN_NAME),
         last_x_run_at=await last_run(COLLECTOR_RUN_NAME),
+        measuring_since=await session.scalar(
+            select(func.min(TokenSnapshot.observed_at)).where(
+                TokenSnapshot.is_demo.is_(False)
+            )
+        ),
+        running_since=await session.scalar(
+            select(func.min(SystemEvent.created_at)).where(SystemEvent.is_demo.is_(False))
+        ),
     )
 
 

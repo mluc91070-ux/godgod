@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import ResearchAge from "@/components/ResearchAge";
 import { Disconnected, Empty, Label, Tag } from "@/components/ui";
 import { api, fmt } from "@/lib/api";
 import type { Experiment, ExperimentResult, Page } from "@/lib/types";
@@ -78,7 +79,11 @@ export default async function FindingsPage({ searchParams }: Props) {
 
       <div className="mt-8 space-y-10">
         {grouped.length === 0 ? (
-          <Empty>no result has been recorded under that filter.</Empty>
+          filter ? (
+            <Empty>no result has been recorded under that filter.</Empty>
+          ) : (
+            <ResearchAge what="question has been answered" />
+          )
         ) : (
           grouped.map((group) => (
             <section key={group.name}>

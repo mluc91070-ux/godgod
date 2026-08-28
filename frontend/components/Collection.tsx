@@ -87,7 +87,14 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       ) : null}
 
+      {/* The age of the dataset, which is what decides whether any question
+          can be answered yet — not the age of the code. */}
       <p className="mt-4 text-[11px] text-muted">
+        measuring since {fmtTime(c.measuring_since)}
+        {c.running_since ? ` · running since ${fmtTime(c.running_since)}` : null}
+      </p>
+
+      <p className="mt-1 text-[11px] text-muted">
         last chain collection {fmtTime(c.last_chain_run_at)}
         {c.last_x_run_at ? ` · last social collection ${fmtTime(c.last_x_run_at)}` : null}
       </p>

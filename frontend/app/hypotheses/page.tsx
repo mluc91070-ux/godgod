@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import ResearchAge from "@/components/ResearchAge";
 import { Disconnected, Empty, Label, Tag } from "@/components/ui";
 import { api, fmt } from "@/lib/api";
 import type { Hypothesis, Page } from "@/lib/types";
@@ -54,7 +55,11 @@ export default async function HypothesesPage({ searchParams }: Props) {
 
       <div className="mt-8">
         {result.data.items.length === 0 ? (
-          <Empty>no hypothesis has been recorded under that filter.</Empty>
+          filter ? (
+            <Empty>no hypothesis has been recorded under that filter.</Empty>
+          ) : (
+            <ResearchAge what="question has been posed" />
+          )
         ) : (
           <ul className="divide-y divide-line border-y border-line">
             {result.data.items.map((hypothesis) => (

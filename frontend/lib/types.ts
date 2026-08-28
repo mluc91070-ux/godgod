@@ -86,6 +86,7 @@ export type Status = {
     critic_checks: string[];
     min_group_size: number;
     unit_of_analysis: string;
+    horizons_hours: number[];
     llm_in_loop: boolean;
     last_run_at: string | null;
   };
@@ -104,6 +105,8 @@ export type Status = {
     scheduler_interval_seconds: number | null;
     last_chain_run_at: string | null;
     last_x_run_at: string | null;
+    measuring_since: string | null;
+    running_since: string | null;
   };
   providers: { name: string; configured: boolean; implemented: boolean; note: string | null }[];
   counts: Record<string, number>;

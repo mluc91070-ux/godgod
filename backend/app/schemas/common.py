@@ -79,6 +79,13 @@ class ResearchInfo(BaseModel):
     min_group_size: int
     """Below this per group, a difference is reported but not judged."""
     unit_of_analysis: str
+    horizons_hours: list[float]
+    """Every horizon the templates ask about, shortest first.
+
+    Published because a list holding one value is the sign of six questions
+    that are really one — which is what this was before the templates were
+    given their own timescales.
+    """
     llm_in_loop: bool
     last_run_at: datetime | None
 
@@ -129,6 +136,14 @@ class CollectionInfo(BaseModel):
     scheduler_interval_seconds: int | None
     last_chain_run_at: datetime | None
     last_x_run_at: datetime | None
+    measuring_since: datetime | None
+    """First real measurement stored. The age of the dataset, not of the code.
+
+    Null until one exists — an empty research page is explained by this date or
+    by nothing, and inventing a start would be inventing history.
+    """
+    running_since: datetime | None
+    """First row the system ever wrote about its own work."""
 
 
 class CountsInfo(BaseModel):

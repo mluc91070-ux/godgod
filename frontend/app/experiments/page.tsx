@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import ResearchAge from "@/components/ResearchAge";
 import { Disconnected, Label, Tag } from "@/components/ui";
 import { api, fmtInt } from "@/lib/api";
 import type { Experiment, Page } from "@/lib/types";
@@ -23,6 +24,12 @@ export default async function ExperimentsPage() {
         asked about the next half day, a buy-side shift about the next hour. n counts the
         measurements the comparison actually held, not the tokens watched.
       </p>
+
+      {result.data.items.length === 0 ? (
+        <div className="mt-6">
+          <ResearchAge what="experiment has been run" />
+        </div>
+      ) : null}
 
       <div className="mt-6 divide-y divide-line border-y border-line">
         {result.data.items.map((experiment) => (
