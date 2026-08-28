@@ -125,6 +125,7 @@ class HttpModelProvider(ModelProvider):
             raise ProviderNotConfigured("ANTHROPIC_API_KEY is not set")
         self._settings = settings
         self._key = settings.anthropic_api_key
+        self._workspace = settings.anthropic_workspace_id
         self._timeout = settings.model_timeout_seconds
 
     async def complete(
@@ -156,6 +157,12 @@ class HttpModelProvider(ModelProvider):
             "anthropic-version": API_VERSION,
             "content-type": "application/json",
         }
+        # An identity-linked key authenticates the person rather than the
+        # workspace a request acts in, and the API answers 400 until the
+        # workspace is named. Sent only when configured: a workspace-scoped key
+        # neither needs it nor wants it.
+        if self._workspace:
+            headers["anthropic-workspace-id"] = self._workspace
 
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:

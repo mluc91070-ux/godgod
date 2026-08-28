@@ -797,3 +797,23 @@ async def test_the_observer_refuses_a_market_claim() -> None:
 async def test_a_grounded_lowercase_reading_passes() -> None:
     facts = {"token": "DEMOTOKEN", "measured_volume_usd": 4314.23, "baseline_volume_usd": 1000.0}
     assert check_reading("demotoken traded 4314.23 against a 1000.0 baseline", facts) == []
+
+
+# -- identity-linked keys -------------------------------------------------
+#
+# A key created against a person rather than a workspace authenticates the
+# identity, not the place the request acts in, and the API answers HTTP 400
+# until the workspace is named. Applying such a key in production took every
+# model-backed agent offline until the header was added, which is exactly the
+# case worth pinning down.
+
+
+def test_the_workspace_header_is_sent_only_when_configured(settings) -> None:
+    from app.providers.model import HttpModelProvider
+
+    settings.anthropic_api_key = "sk-ant-test"
+    settings.anthropic_workspace_id = None
+    assert HttpModelProvider(settings)._workspace is None
+
+    settings.anthropic_workspace_id = "wrkspc_test"
+    assert HttpModelProvider(settings)._workspace == "wrkspc_test"

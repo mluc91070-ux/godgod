@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     solana_ws_url: str | None = None
     x_bearer_token: str | None = None
     anthropic_api_key: str | None = None
+    anthropic_workspace_id: str | None = None
+    """Required by keys that are linked to an identity rather than a workspace.
+
+    Such a key authenticates the person, not the place the request acts in, and
+    the API refuses it with HTTP 400 until the workspace is named. It is an
+    identifier, not a credential — it grants nothing on its own."""
 
     # --- model routing (never hard-code model names elsewhere) --------
     model_fast: str | None = None
