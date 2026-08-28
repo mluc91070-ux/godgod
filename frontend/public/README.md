@@ -23,31 +23,20 @@ ellipse plus six lines; at 16 pixels those land on the same three rows and turn
 to mush — checked by rendering it, not assumed. A mark nobody can read in a
 browser tab is not more faithful for having kept every stroke.
 
-## sphere.mp4 / sphere.webm
+## sphere.mp4 / sphere.webm — removed
 
-The homepage hero. `components/Hero.tsx` serves the WebM first and falls back
-to the WebGL field if the video fails to decode at all.
+The homepage hero was a 15-second video loop of a sphere. It is gone, and the
+three files with it: `sphere.mp4` (989KB), `sphere.webm` (812KB) and
+`sphere-poster.jpg`.
 
-Built from `TEASER.mp4` (1280×720, 15s, 9.5MB) by:
+It looked better than the live field did. It was still the wrong thing on this
+site. A fixed loop cannot represent state, so it was `aria-hidden` and every
+claim had to be carried by the numbers underneath — and it animated identically
+whether the system had run four cycles that hour or had been dead since
+Tuesday. On a page whose argument is that every visual parameter is bound to a
+real value, that is the one thing it could not be.
 
-1. **Keeping the native 16:9.** An earlier version cropped to a square, which
-   looked tidy and cut about five hundred pixels off each side — by the end of
-   the loop the sphere and its cabling span x=30 to x=1279 of the frame, so a
-   square crop removes the half of the composition that gives it scale.
-   Measured, then fixed.
-2. **Boomerang, opening on the close-up.** The source is an approach: it starts
-   on a distant speck and ends on a full-frame sphere, so a hard loop would
-   jump. Reversed-then-forward runs close → far → close, seamless at both ends
-   — 0.02/255 mean difference across the seam. The order matters:
-   forward-then-reversed is equally seamless but opens on the darkest frame,
-   and a visitor's first impression is a black square.
-3. **Re-encoding at full resolution.** 9.5MB → 989KB MP4 / 812KB WebM at
-   1280×720, CRF 28, with faststart so playback begins before the download
-   finishes.
-
-To rebuild from a new source, the steps are above and `ffmpeg` is all it takes.
-
-A rendered loop cannot represent live state, so it is marked `aria-hidden` and
-the real numbers stay in the text underneath. The WebGL field is the one bound
-to activity, novelty and confidence — if that binding matters more than the
-render, leave the video out.
+`components/LiveField.tsx` renders `FieldSphere` instead: 24,000 points, with
+rotation bound to activity, surface to novelty, core radius to confidence,
+colour to the state machine, and a front crossing the shell for every row the
+system writes.

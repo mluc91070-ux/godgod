@@ -55,11 +55,15 @@ uniform float uCore;         // confidence
 uniform float uActivity;
 uniform vec2  uResolution;
 uniform float uDpr;
+uniform float uShock;        // strength of the last row written, decaying
+uniform float uShockAge;     // seconds since it landed
+uniform vec3  uShockDir;     // where on the shell it landed
 
 out float vDepth;
 out float vInner;
 out float vRim;
 out float vBoil;
+out float vShock;
 
 // Ashima-style simplex noise, trimmed to the 3D case.
 vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
@@ -129,6 +133,17 @@ void main() {
   float shell = 1.0 - (1.0 - uCore) * pow(aSeed, 6.0);
   float radius = shell * (1.0 + field * uTurbulence * 0.05);
 
+  // A row was written. The front leaves from where the event landed and
+  // crosses the shell at a fixed angular speed; a point lifts as the front
+  // passes it and settles behind it. This is the only coupling between
+  // points, and it is the honest one: they are not attracting each other,
+  // they are all reading the same event.
+  float ang = acos(clamp(dot(dir, uShockDir), -1.0, 1.0));
+  float front = uShockAge * 2.4;
+  float band = exp(-pow((ang - front) * 3.0, 2.0));
+  float shock = band * uShock;
+  radius += shock * 0.17;
+
   // The floor is what an idle system looks like, and 0.05 rad/s is a turn
   // every two minutes — indistinguishable from frozen. Quiet has to be
   // visibly quiet, not visibly broken. Activity still sets the rest.
@@ -150,6 +165,7 @@ void main() {
   vInner = 1.0 - shell;
   vRim = 1.0 - abs(normalize(pos).z);
   vBoil = pow(boil, 1.0 + uTurbulence * 2.0);
+  vShock = shock;
 }
 `;
 
@@ -160,6 +176,7 @@ in float vDepth;
 in float vInner;
 in float vRim;
 in float vBoil;
+in float vShock;
 
 uniform vec3 uColor;
 uniform float uIntensity;
@@ -180,6 +197,9 @@ void main() {
   // The rim is what makes a silhouette; pow 3 was too tight to see it.
   float weight = 1.0 + vInner * 1.6 + pow(vRim, 1.8) * 2.6;
   float alpha = edge * depth * weight * mix(0.18, 1.0, vBoil) * uIntensity;
+  // The front carries its own light, so a quiet system stays dark and a row
+  // being written is visible rather than inferred from a shape change.
+  alpha += edge * vShock * 1.4 * uIntensity;
 
   // Premultiplied output: the blend is ONE/ONE, so colour arrives already
   // scaled by its own alpha and the browser composites it without dividing.
@@ -188,12 +208,25 @@ void main() {
 }
 `;
 
+export type Shock = {
+  /** Milliseconds, `performance.now()` when the row arrived. */
+  at: number;
+  /** Unit vector on the shell, derived from the event id — not random. */
+  dir: [number, number, number];
+  /** 0..1. WARN and ERROR rows hit harder because they matter more. */
+  strength: number;
+};
+
+export const SHOCK_SECONDS = 1.6;
+/** How long a front takes to cross the shell and fade. */
+
 type Props = {
   state: SystemStateName;
   activity: number;
   novelty: number | null;
   confidence: number | null;
   size?: number;
+  shock?: Shock | null;
 };
 
 function compile(gl: WebGL2RenderingContext, type: number, source: string) {
@@ -217,9 +250,17 @@ export default function FieldSphere({
   novelty,
   confidence,
   size = 520,
+  shock = null,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [unsupported, setUnsupported] = useState(false);
+
+  // The values the frame loop reads, updated in place. They used to be effect
+  // dependencies, which rebuilt the program and re-uploaded 24,000 points
+  // every time a number moved — fine when the numbers only changed on a page
+  // load, unworkable now that a row arriving changes one of them.
+  const live = useRef({ state, activity, novelty, confidence, shock });
+  live.current = { state, activity, novelty, confidence, shock };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -308,11 +349,10 @@ export default function FieldSphere({
     gl.blendFunc(gl.ONE, gl.ONE);
     gl.disable(gl.DEPTH_TEST);
 
-    const color = STATE_COLOR[state] ?? STATE_COLOR.IDLE;
-    gl.uniform3fv(uColor, color);
-    gl.uniform1f(uTurbulence, 0.18 + (novelty ?? 0) * 0.82);
-    gl.uniform1f(uCore, 0.42 + (confidence ?? 0) * 0.3);
-    gl.uniform1f(uActivity, activity);
+    const uShock = gl.getUniformLocation(program, "uShock");
+    const uShockAge = gl.getUniformLocation(program, "uShockAge");
+    const uShockDir = gl.getUniformLocation(program, "uShockDir");
+
     gl.uniform2f(uResolution, canvas.width, canvas.height);
     gl.uniform1f(uDpr, dpr);
     gl.uniform1f(uIntensity, INTENSITY);
@@ -324,7 +364,31 @@ export default function FieldSphere({
 
     const draw = (now: number) => {
       if (!start) start = now;
+      const current = live.current;
+
       gl.uniform1f(uTime, (now - start) / 1000);
+      gl.uniform3fv(uColor, STATE_COLOR[current.state] ?? STATE_COLOR.IDLE);
+      gl.uniform1f(uTurbulence, 0.18 + (current.novelty ?? 0) * 0.82);
+      gl.uniform1f(uCore, 0.42 + (current.confidence ?? 0) * 0.3);
+      gl.uniform1f(uActivity, current.activity);
+
+      // A front lives for SHOCK_SECONDS and then there is no front. Nothing
+      // decays into a permanent glow: a system that stopped writing rows has
+      // to go back to looking like a system that stopped writing rows.
+      // Someone who asked for no motion gets no motion, fronts included. The
+      // numbers under the sphere carry the same information and do not move.
+      const hit = reduceMotion ? null : current.shock;
+      const age = hit ? (now - hit.at) / 1000 : Infinity;
+      if (hit && age >= 0 && age < SHOCK_SECONDS) {
+        gl.uniform1f(uShock, hit.strength * (1 - age / SHOCK_SECONDS));
+        gl.uniform1f(uShockAge, age);
+        gl.uniform3fv(uShockDir, hit.dir);
+      } else {
+        gl.uniform1f(uShock, 0);
+        gl.uniform1f(uShockAge, 0);
+        gl.uniform3fv(uShockDir, [0, 1, 0]);
+      }
+
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.POINTS, 0, POINTS);
@@ -342,7 +406,8 @@ export default function FieldSphere({
       gl.deleteShader(vertex);
       gl.deleteShader(fragment);
     };
-  }, [state, activity, novelty, confidence, size]);
+    // Only `size` rebuilds the program. Everything else is read per frame.
+  }, [size]);
 
   if (unsupported) {
     return (
