@@ -51,16 +51,29 @@ export default async function StatusBar() {
         )}
         <Dot />
         <span className="text-bone">{state}</span>
-        <Dot />
-        <span>
-          L{mode.autonomy_level} <span className="text-grey">{mode.autonomy_label}</span>
+
+        {/* One block, because these three are one fact: what this deployment
+            is allowed to do. Read as three loose items they invited the
+            question "allowed by what?" on every page. */}
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 border border-line px-2 py-[2px]">
+          <span className="text-muted">execution</span>
+          <span className="text-bone">
+            L{mode.autonomy_level} {mode.autonomy_label}
+          </span>
+          <Dot />
+          <span>
+            x <span className="text-bone">{mode.x_mode}</span>
+          </span>
+          <Dot />
+          <span>
+            {mode.wallet_execution_enabled ? (
+              <span className="text-amber">wallet execution on</span>
+            ) : (
+              "no execution"
+            )}
+          </span>
         </span>
-        <Dot />
-        <span>
-          x <span className="text-grey">{mode.x_mode}</span>
-        </span>
-        <Dot />
-        <span>no execution</span>
+
         <span className="ml-auto tabular-nums">v{version}</span>
       </div>
 
