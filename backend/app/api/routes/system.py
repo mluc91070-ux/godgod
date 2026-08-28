@@ -69,11 +69,20 @@ router = APIRouter(tags=["system"])
 
 AUTONOMY_LABELS = {
     0: "READ ONLY",
-    1: "RESEARCH + DRAFT",
-    2: "HUMAN APPROVAL + PUBLISH",
+    1: "RESEARCH",
+    2: "HUMAN APPROVAL",
     3: "LIMITED AUTONOMOUS PUBLISHING",
     4: "FUTURE EXPERIMENTAL ACTIONS",
 }
+"""What the system may do on its own at each level.
+
+Each label names the autonomous scope, not the internal artefact. Level 1 read
+"RESEARCH + DRAFT", which described a `content_drafts` row rather than a
+capability, and put an implementation detail in a badge on every page. What
+level 1 actually means is that research is the whole of what happens without a
+person: nothing outbound moves. Whether anything can be published at all is a
+separate fact, and `mode.x_stage` is where it is stated.
+"""
 
 async def describe_phase(session: SessionDep, settings: SettingsDep) -> str:
     """What the system is, right now — derived, never written down.

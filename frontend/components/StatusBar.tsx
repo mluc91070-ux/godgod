@@ -33,7 +33,9 @@ export default async function StatusBar() {
     );
   }
 
-  const { mode, state, phase, version } = result.data;
+  const { mode, state, phase, version, collection } = result.data;
+  // Read from the running task, never from the setting that asked for it.
+  const beating = collection.scheduler_running;
 
   return (
     <div className="border-b border-line px-4 py-2.5 sm:px-6">
@@ -44,9 +46,24 @@ export default async function StatusBar() {
             demo mode
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-bone">
-            <span className="h-1.5 w-1.5 rounded-full bg-bone" aria-hidden />
+          <span
+            className="flex items-center gap-1.5 text-bone"
+            title={
+              beating
+                ? `measuring every ${Math.round(
+                    (collection.scheduler_interval_seconds ?? 900) / 60,
+                  )} minutes`
+                : "the collection loop is not running"
+            }
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                beating ? "live-dot bg-bone" : "bg-amber"
+              }`}
+              aria-hidden
+            />
             live
+            {beating ? null : <span className="text-amber">· loop stopped</span>}
           </span>
         )}
         <Dot />

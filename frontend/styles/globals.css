@@ -28,7 +28,27 @@ a {
   text-decoration: none;
 }
 
-/* The field is the only moving element on the site. It reflects system
+/* The live dot breathes only while the collection loop is actually alive.
+   A dot that pulsed regardless would be the one thing on this site that
+   animates without measuring anything — and worse, a dead loop would still
+   look like a running one. */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+/* The field is the only other moving element on the site. It reflects system
    state; it is not decoration. */
 @keyframes field-drift {
   from {

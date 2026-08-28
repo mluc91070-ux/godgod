@@ -96,6 +96,11 @@ const GROUPS: Group[] = [
         label: "lore",
         blurb: "the character, and the rules it is not allowed to break",
       },
+      {
+        href: "/roadmap",
+        label: "roadmap",
+        blurb: "what runs, what is waiting on data, and what will never be built",
+      },
     ],
   },
 ];
