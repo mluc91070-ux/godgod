@@ -59,6 +59,7 @@ export type Status = {
     autonomy_level: number;
     autonomy_label: string;
     x_mode: string;
+    x_stage: string;
     wallet_execution_enabled: boolean;
     external_content_is_untrusted: boolean;
   };

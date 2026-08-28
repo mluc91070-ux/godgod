@@ -74,3 +74,42 @@ def test_stream_limits_have_safe_defaults() -> None:
     assert settings.stream_max_seconds > 0, "a connection that never ages out never reconnects"
     assert settings.stream_poll_seconds > 0
     assert settings.stream_replay_events > 0
+
+
+# -- what the site is allowed to call the X integration -------------------
+#
+# `x_stage` is what every page prints. The one thing it must never do is say
+# `live` for a deployment that cannot post: the switch being on is a decision,
+# the four OAuth values are the capability, and only both together are a claim.
+
+OAUTH = {
+    "x_api_key": "key",
+    "x_api_secret": "secret",
+    "x_access_token": "token",
+    "x_access_token_secret": "token-secret",
+}
+
+
+def test_the_switch_alone_does_not_make_it_live() -> None:
+    settings = build(x_mode="publish")
+    assert settings.x_can_publish is False
+    assert settings.x_stage == "beta"
+
+
+def test_credentials_alone_do_not_make_it_live() -> None:
+    settings = build(x_mode="draft", **OAUTH)
+    assert settings.x_can_publish is False
+    assert settings.x_stage == "beta"
+
+
+def test_one_missing_oauth_value_is_enough_to_stay_beta() -> None:
+    for absent in OAUTH:
+        partial = {key: value for key, value in OAUTH.items() if key != absent}
+        settings = build(x_mode="publish", **partial)
+        assert settings.x_stage == "beta", absent
+
+
+def test_the_switch_and_all_four_values_is_live() -> None:
+    settings = build(x_mode="publish", **OAUTH)
+    assert settings.x_can_publish is True
+    assert settings.x_stage == "live"

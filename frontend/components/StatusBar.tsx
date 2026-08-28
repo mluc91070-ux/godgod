@@ -62,7 +62,7 @@ export default async function StatusBar() {
           </span>
           <Dot />
           <span>
-            x <span className="text-bone">{mode.x_mode}</span>
+            x <span className="text-bone">{mode.x_stage}</span>
           </span>
           <Dot />
           <span>

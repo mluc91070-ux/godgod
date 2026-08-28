@@ -247,6 +247,36 @@ class Settings(BaseSettings):
     unable to publish a single post. These four are what writing requires.
     """
 
+    @property
+    def x_can_publish(self) -> bool:
+        """Is publishing switched on *and* possible.
+
+        Two conditions, and both are load-bearing. `X_MODE=publish` is the
+        decision; the four OAuth values are the capability. A deployment with
+        the switch on and no credentials cannot post a single time, so any
+        label derived from the mode alone would announce a capability that
+        does not exist.
+        """
+        return self.x_mode == "publish" and all(
+            (
+                self.x_api_key,
+                self.x_api_secret,
+                self.x_access_token,
+                self.x_access_token_secret,
+            )
+        )
+
+    @property
+    def x_stage(self) -> str:
+        """What to call the X integration on a page: `live` or `beta`.
+
+        `live` is only ever returned when a post could actually go out. Every
+        other state — no credentials, the switch off, or both — is `beta`,
+        which describes the integration without claiming anything about what
+        it has done.
+        """
+        return "live" if self.x_can_publish else "beta"
+
     x_min_minutes_between_posts: int = 45
     """Floor between two published posts.
 

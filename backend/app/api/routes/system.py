@@ -250,6 +250,7 @@ async def status_endpoint(
             autonomy_level=settings.autonomy_level,
             autonomy_label=AUTONOMY_LABELS[settings.autonomy_level],
             x_mode=settings.x_mode,
+            x_stage=settings.x_stage,
             wallet_execution_enabled=settings.wallet_execution_enabled,
             external_content_is_untrusted=settings.external_content_is_untrusted,
         ),

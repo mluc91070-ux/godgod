@@ -48,7 +48,7 @@ export default async function Footer() {
             </span>
             <span className="select-none text-line">·</span>
             <span>
-              x <span className="text-grey">{mode.x_mode}</span>
+              x <span className="text-grey">{mode.x_stage}</span>
             </span>
             <span className="select-none text-line">·</span>
           </>

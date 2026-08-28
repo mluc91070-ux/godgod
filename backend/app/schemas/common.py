@@ -33,6 +33,9 @@ class ModeInfo(BaseModel):
     autonomy_level: int
     autonomy_label: str
     x_mode: str
+    """The raw switch: draft, approval or publish. Kept for the API."""
+    x_stage: str
+    """What a page calls it: `live` only when a post could actually go out."""
     wallet_execution_enabled: bool
     external_content_is_untrusted: bool
 
