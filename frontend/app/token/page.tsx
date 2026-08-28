@@ -1,16 +1,35 @@
 import { Disconnected, Field, Label, Section } from "@/components/ui";
 import { api, fmt, fmtInt, fmtTime, fmtUsd } from "@/lib/api";
-import type { Page, TokenInfo } from "@/lib/types";
+import type { ExperimentResult, Page, Status, TokenInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function TokenPage() {
-  const result = await api<Page<TokenInfo>>("/api/tokens?limit=50");
+  // The case for the coin is the system's own state, so it is read from the
+  // system. Written down, "every result is inconclusive" would be true today
+  // and false the first time one is not — on the page where a stale sentence
+  // would be least forgivable.
+  const [result, statusResult, resultsResult] = await Promise.all([
+    api<Page<TokenInfo>>("/api/tokens?limit=50"),
+    api<Status>("/api/status"),
+    api<Page<ExperimentResult>>("/api/results?limit=200"),
+  ]);
 
   if (!result.ok) return <Disconnected error={result.error} what="token information" />;
 
   const godgod = result.data.items.find((token) => token.symbol === "GODGOD");
   const observed = result.data.items.filter((token) => token.symbol !== "GODGOD");
+
+  const status = statusResult.ok ? statusResult.data : null;
+  const horizons = status?.research.horizons_hours ?? [];
+  const longest = horizons.length ? horizons[horizons.length - 1] : null;
+  const floor = status?.research.min_group_size ?? null;
+  const days = status?.collection.measuring_since
+    ? Math.floor((Date.now() - Date.parse(status.collection.measuring_since)) / 86_400_000)
+    : null;
+
+  const outcomes = resultsResult.ok ? resultsResult.data.items : [];
+  const settled = outcomes.filter((row) => row.outcome !== "INCONCLUSIVE").length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">
@@ -24,46 +43,57 @@ export default async function TokenPage() {
 
       <Section title="why there is a coin">
         <p className="text-muted">
-          This system has to run for months before it can answer anything, and that is not a
-          figure of speech. The longest question it asks reads an outcome twelve hours after the
-          measurement that triggered it, and no difference is believed until thirty measurements
-          sit on each side of it. Every result published so far is inconclusive for exactly that
-          reason. The fix is time, not a smaller threshold.
+          it needs months. not as a turn of phrase
+          {longest !== null ? (
+            <>
+              {" "}
+              — the longest question here reads its outcome {longest} hours after the measurement
+              that starts it
+            </>
+          ) : null}
+          {floor !== null ? (
+            <>, and nothing counts as a difference until {floor} measurements sit on each side</>
+          ) : null}
+          .{" "}
+          {outcomes.length === 0 ? (
+            <>nothing has been answered yet.</>
+          ) : settled === 0 ? (
+            <>
+              all {outcomes.length} results so far say inconclusive
+              {days !== null ? `, on ${days} days of history` : null}. that is the honest state,
+              and the only fix is more days.
+            </>
+          ) : (
+            <>
+              {settled} of {outcomes.length} results have settled
+              {days !== null ? `, on ${days} days of history` : null}. the rest need more days,
+              not a smaller threshold.
+            </>
+          )}
         </p>
         <p className="mt-3 text-muted">
-          Running for months costs money every day: a machine that does not sleep, a database
-          that keeps every measurement, model calls under a hard daily ceiling. None of it is
-          optional. A week not collected is a week that cannot be recovered — a detector needs
-          several measurements of the <em>same</em> token, and history nobody wrote down does
-          not become available later.
+          months cost money every day. a machine that doesn&apos;t sleep, a database that keeps
+          every measurement, model calls under a hard ceiling. skip a week and the week is gone —
+          a detector needs several readings of the same token, and history nobody wrote down
+          doesn&apos;t turn up later.
         </p>
         <p className="mt-3 text-muted">
-          The coin funds that: the infrastructure it runs on, and the people who keep building
-          it while it measures.
+          that is what the coin pays for. the machines, and the people still building this while
+          it counts.
         </p>
       </Section>
 
       <Section title="what it is not">
-        <ul className="space-y-2 text-muted">
+        <ul className="space-y-1 text-muted">
+          <li>— not a share of revenue. there is no revenue.</li>
+          <li>— not a prediction. nothing here says where a price goes, this page included.</li>
           <li>
-            — <span className="text-bone">not a claim on anything this system earns.</span> It
-            earns nothing. There is no revenue, no fee, no trading, no wallet. It has never held
-            a token and contains no code path that could sign for one.
+            — not access. every observation, every question, every rejected result is already
+            free and stays up.
           </li>
           <li>
-            — <span className="text-bone">not a prediction.</span> No page here says what a
-            price will do, including this one. The checks that enforce that are mechanical, not
-            a matter of tone.
-          </li>
-          <li>
-            — <span className="text-bone">not access.</span> Every observation, every question
-            and every rejected result is on this site for free and stays there. Holding the coin
-            unlocks nothing, because nothing is locked.
-          </li>
-          <li>
-            — <span className="text-bone">not a reason to trust the research.</span> The
-            research is checkable on its own terms: every experiment publishes its dataset hash,
-            its method and the rule that would have killed it.
+            — not a reason to believe the research. that is what the dataset hash and the
+            falsification rule are for.
           </li>
         </ul>
       </Section>
