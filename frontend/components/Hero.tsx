@@ -12,10 +12,10 @@ import type { Observation, SystemStateName, TokenInfo } from "@/lib/types";
  * `aria-hidden` and every claim had to be carried by the numbers underneath.
  * 1.8MB of video went with it.
  *
- * What replaces it is a sphere made of the population itself: one mark per
- * measured token, placed by its address and its age, a filament between two
- * that tripped the same detector. If the tokens cannot be reached the state
- * sphere renders instead — less to look at, still true.
+ * What replaces it is a cloud made of the population itself: one sphere per
+ * measured token, placed by its address and its age around a white core. If
+ * the tokens cannot be reached the state sphere renders instead — less to look
+ * at, still true.
  */
 
 type Props = {
@@ -36,7 +36,16 @@ export default function Hero({
   observations,
 }: Props) {
   if (tokens && tokens.length > 0) {
-    return <MarketField tokens={tokens} observations={observations ?? []} />;
+    // Activity turns the cloud and confidence lights its core, so the two
+    // state values that have a visual meaning here still have one.
+    return (
+      <MarketField
+        tokens={tokens}
+        observations={observations ?? []}
+        activity={activity}
+        confidence={confidence}
+      />
+    );
   }
 
   return (
