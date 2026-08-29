@@ -18,7 +18,7 @@ import type { Observation, StreamEvent, TokenInfo } from "@/lib/types";
  *                 visitors and no band collapses into a ring
  *   distance   <- age, on a log scale. The core is where a token enters; it
  *                 drifts outward as it is measured and reaches the shell at a
- *                 week. An unknown launch time sits at mid-depth, which is
+ *                 day. An unknown launch time sits at mid-depth, which is
  *                 where "we do not know" belongs.
  *   size       <- liquidity, on a log scale, because the range spans five
  *                 orders of magnitude and a linear one draws one dot and dust
@@ -52,10 +52,16 @@ const SHOCK_MS = 1600;
 /** Age is placed on a log scale between these bounds. Measured on the live
  *  population: 397 of 400 tokens are under a day old, so a linear two-week
  *  scale put every one of them at the same distance and the cloud collapsed to
- *  a thin shell. Half an hour to a week is where this population actually
- *  spreads; anything older is pinned to the shell rather than dropped. */
+ *  a thin shell.
+ *
+ *  A day is the shell because that is the scale this population actually
+ *  occupies. A week put the outer edge where only three tokens ever reached
+ *  it, and the visible cloud filled 56% of the frame; at a day it fills 88%.
+ *  Older tokens pin to the shell — "at least a day" — rather than being
+ *  dropped, and the legend says a day so the clamp is stated rather than
+ *  hidden. */
 const AGE_FLOOR_HOURS = 0.5;
-const AGE_SHELL_HOURS = 168;
+const AGE_SHELL_HOURS = 24;
 /** Seconds for one full turn at rest, and at full activity. Forty seconds was
  *  measured as the point where a point crossing the near face is visibly
  *  moving without the cloud reading as a spinning logo. */
@@ -64,6 +70,16 @@ const TURN_SECONDS_BUSY = 34;
 /** The cloud is tipped so the far hemisphere is visible past the near one.
  *  Without it the two project onto each other and the volume reads flat. */
 const TILT = 0.34;
+
+/** The canvas fills the viewport height rather than a fixed box. The radius is
+ *  `min(width, height)`, and on any desktop the height is the binding side, so
+ *  this is the only lever that makes the cloud bigger. The floor keeps it
+ *  usable on a short window; the ceiling stops it dwarfing the page on a tall
+ *  one. */
+const CANVAS_HEIGHT = "clamp(460px, 82vh, 960px)";
+/** Marks were sized against a 285px radius. Scaling them with the canvas keeps
+ *  400 points from reading as dust once the cloud is twice that. */
+const REFERENCE_RADIUS = 285;
 
 const PROMOTION = "promotion-feed";
 
@@ -135,7 +151,7 @@ function build(tokens: TokenInfo[], observations: Observation[]): Node[] {
     const aged = hours === null ? 0.5 : ageFraction(hours);
     // The inner floor keeps the newest arrivals off the core itself, which is
     // a different thing and must stay readable as one.
-    const distance = 0.24 + aged * 0.76;
+    const distance = 0.24 + aged * 0.72;
 
     const observation = latest.get(token.address);
 
@@ -166,13 +182,13 @@ export default function MarketField({
   observations,
   activity = 0,
   confidence = null,
-  height = 620,
+  height = CANVAS_HEIGHT,
 }: {
   tokens: TokenInfo[];
   observations: Observation[];
   activity?: number;
   confidence?: number | null;
-  height?: number;
+  height?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const shockRef = useRef<{ at: number; index: number } | null>(null);
@@ -219,18 +235,26 @@ export default function MarketField({
       if (!start) start = now;
       const seconds = (now - start) / 1000;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Read the box CSS actually gave us rather than a prop: the height is a
+      // viewport clamp, so it changes on resize and on an orientation flip
+      // without this component being told.
       const width = canvas.clientWidth;
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      const boxHeight = canvas.clientHeight;
+      if (canvas.width !== width * dpr || canvas.height !== boxHeight * dpr) {
         canvas.width = width * dpr;
-        canvas.height = height * dpr;
+        canvas.height = boxHeight * dpr;
       }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width, boxHeight);
 
       const cx = width / 2;
-      const cy = height / 2;
-      const radius = Math.min(width, height) * 0.46;
+      const cy = boxHeight / 2;
+      // 0.47 rather than half: the outermost tokens sit at distance 0.96, the
+      // perspective term adds 4%, and each mark carries a halo. Checked
+      // numerically against the live population — nothing clips.
+      const radius = Math.min(width, boxHeight) * 0.47;
+      const markScale = radius / REFERENCE_RADIUS;
       const spin = reduceMotion ? 0.6 : (seconds * Math.PI * 2) / turnSeconds;
       const cos = Math.cos(spin);
       const sin = Math.sin(spin);
@@ -280,7 +304,7 @@ export default function MarketField({
         // set high enough that a quiet token is still a sphere rather than
         // leaving the cloud as a dozen points on a black field.
         const alpha = (0.55 + node.novelty * 0.45) * (0.32 + point.depth * 0.68) + lit * 0.6;
-        const size = node.size * (0.68 + point.depth * 0.55) * (1 + lit * 1.5);
+        const size = node.size * markScale * (0.68 + point.depth * 0.55) * (1 + lit * 1.5);
 
         // A soft halo under each mark: it is what makes a flat disc read as a
         // small sphere, and it costs one extra arc per point.
@@ -306,7 +330,7 @@ export default function MarketField({
         // the event is findable in a crowded cloud.
         if (lit > 0) {
           ctx.beginPath();
-          ctx.arc(point.x, point.y, size + (1 - lit) * 40, 0, Math.PI * 2);
+          ctx.arc(point.x, point.y, size + (1 - lit) * 40 * markScale, 0, Math.PI * 2);
           ctx.lineWidth = 1;
           ctx.strokeStyle = `rgba(242, 242, 242, ${lit * 0.3})`;
           ctx.stroke();
@@ -331,7 +355,7 @@ export default function MarketField({
         ctx.fill();
       }
       ctx.beginPath();
-      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 5 * markScale, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
       ctx.fill();
 
@@ -348,7 +372,7 @@ export default function MarketField({
         .sort((a, b) => b.node.novelty - a.node.novelty)
         .slice(0, MAX_LABELS);
 
-      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+      ctx.font = `${Math.round(10 * Math.min(1.4, markScale))}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
       for (const { node, point } of labelled) {
         const fade = (point.depth - 0.58) / 0.42;
         ctx.fillStyle = `rgba(242, 242, 242, ${0.35 + fade * 0.55})`;
@@ -362,7 +386,7 @@ export default function MarketField({
 
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [height, activity, confidence]);
+  }, [activity, confidence]);
 
   const promoted = nodes.filter((node) => !node.filled).length;
   const flagged = nodes.filter((node) => node.novelty > 0).length;
@@ -392,7 +416,7 @@ export default function MarketField({
           <span className="text-bone">{flagged}</span> flagged
         </span>
         <span className="text-line">·</span>
-        <span>new near the core, a week measured at the shell</span>
+        <span>new near the core, a day measured at the shell</span>
         <span className="ml-auto">
           {received === 0 ? "no row since you opened this" : `${received} rows live`}
         </span>
