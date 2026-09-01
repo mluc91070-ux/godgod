@@ -23,6 +23,11 @@ const config: Config = {
         muted: "#6e6e73",
         magenta: "#ff2cf0",
         amber: "#ff6a00",
+        // A sixth colour, outside the charter, added for one job: the core of
+        // the market field is green while the collector is actually working
+        // and bone when it is not. It is a state, not a decoration — the one
+        // place on the site where "alive" has to be readable at a glance.
+        live: "#00ff9d",
       },
       fontFamily: {
         // Orbitron for identity and headings, Exo 2 for prose, monospace for

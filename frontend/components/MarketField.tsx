@@ -38,11 +38,17 @@ import type { Observation, StreamEvent, TokenInfo } from "@/lib/types";
  *   rotation   <- activity. A dead loop turns at the floor rate; a working one
  *                 turns faster. It is never zero, or a still image would be
  *                 indistinguishable from a broken canvas.
- *   core       <- the white point at the centre. Its halo is confidence, and
- *                 when confidence is unmeasured there is no halo.
+ *   core       <- the point at the centre, and the only colour on the canvas.
+ *                 Green while the loop did work this cycle, bone when it did
+ *                 not: the same activity that turns the cloud, so a still
+ *                 cloud and a bone core are one statement rather than two. A
+ *                 system that has done nothing does not get to show a green
+ *                 light. Its halo is confidence, and when confidence is
+ *                 unmeasured there is no halo.
  *
- * White throughout: depth, novelty and the core are the only things that change
- * brightness, so a bright point is a real signal rather than a palette choice.
+ * White for the population: depth, novelty and the core are the only things
+ * that change brightness, so a bright point is a real signal rather than a
+ * palette choice. The one colour is the core, and it is a state.
  *
  * A token nobody has measured is not here. A sparse cloud is a quiet market,
  * and the count under it says how many spheres are being drawn so an empty
@@ -243,6 +249,13 @@ export default function MarketField({
     // quarter hour; past that the rate is held rather than climbing forever.
     const busy = Math.min(1, activity / 4);
     const turnSeconds = TURN_SECONDS_IDLE - (TURN_SECONDS_IDLE - TURN_SECONDS_BUSY) * busy;
+    // The core's colour, from the same number that sets the turn rate — but
+    // read as a threshold, not a ramp. A ramp was the first version and it was
+    // wrong in the only case that matters: the live value is 1 against a busy
+    // 4, so the light came out at 181,245,221 — a pale mint indistinguishable
+    // from the white cloud around it. The claim is binary anyway: the loop
+    // either did work this cycle or it did not, and the light says which.
+    const CORE_RGB = activity > 0 ? "0, 255, 157" : "242, 242, 242";
 
     let raf = 0;
     let start = 0;
@@ -369,10 +382,13 @@ export default function MarketField({
 
       // The core. Confidence is a halo around it; when confidence has not been
       // measured there is no halo, rather than a halo standing for zero.
+      //
+      // The halo takes the core's own colour, so a working system glows green
+      // and a stalled one glows bone. Two channels, one claim.
       if (confidence !== null) {
         const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 0.34);
-        halo.addColorStop(0, `rgba(242, 242, 242, ${0.1 + confidence * 0.16})`);
-        halo.addColorStop(1, "rgba(242, 242, 242, 0)");
+        halo.addColorStop(0, `rgba(${CORE_RGB}, ${0.1 + confidence * 0.16})`);
+        halo.addColorStop(1, `rgba(${CORE_RGB}, 0)`);
         ctx.beginPath();
         ctx.arc(cx, cy, radius * 0.34, 0, Math.PI * 2);
         ctx.fillStyle = halo;
@@ -380,7 +396,7 @@ export default function MarketField({
       }
       ctx.beginPath();
       ctx.arc(cx, cy, 5 * markScale, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.fillStyle = `rgba(${CORE_RGB}, 0.95)`;
       ctx.fill();
 
       while (cursor < placed.length) {
@@ -418,6 +434,16 @@ export default function MarketField({
   // chain the canvas is not showing.
   const offHome = nodes.filter((node) => node.square);
   const otherChains = [...new Set(offHome.map((node) => node.chain))].sort();
+  // Home chain first, then the rest by size. Order is the population's, not a
+  // ranking: the round marks are the ones whose holder share can be read.
+  const chainCounts = [...new Map<string, number>(
+    nodes.reduce<[string, number][]>((acc, node) => {
+      const seen = acc.find((entry) => entry[0] === node.chain);
+      if (seen) seen[1] += 1;
+      else acc.push([node.chain, 1]);
+      return acc;
+    }, []),
+  )].sort((a, b) => (a[0] === HOME_CHAIN ? -1 : b[0] === HOME_CHAIN ? 1 : b[1] - a[1]));
 
   return (
     <div className="w-full">
@@ -436,6 +462,18 @@ export default function MarketField({
         <span>
           <span className="text-bone">{nodes.length}</span> tokens drawn
         </span>
+        {/* The chains lead the legend, because they are the first split in the
+            population: everything after this — frame, novelty, age — is read
+            within one of them. A chain with nothing measured is not listed. */}
+        {chainCounts.map(([chain, count]) => (
+          <span key={chain} className="contents">
+            <span className="text-line">·</span>
+            <span>
+              <span className="text-bone">{count}</span> on {chain} —{" "}
+              {chain === HOME_CHAIN ? "round" : "square"}
+            </span>
+          </span>
+        ))}
         <span className="text-line">·</span>
         <span>
           <span className="text-bone">{nodes.length - promoted}</span> migrated — filled
@@ -444,18 +482,15 @@ export default function MarketField({
         <span>
           <span className="text-bone">{promoted}</span> promoted — hollow
         </span>
-        {offHome.length > 0 ? (
-          <>
-            <span className="text-line">·</span>
-            <span>
-              <span className="text-bone">{offHome.length}</span> on{" "}
-              {otherChains.join(" / ")} — square
-            </span>
-          </>
-        ) : null}
         <span className="text-line">·</span>
         <span>
           <span className="text-bone">{flagged}</span> flagged
+        </span>
+        <span className="text-line">·</span>
+        {/* The one colour on the canvas, and what it claims. */}
+        <span>
+          <span className={activity > 0 ? "text-live" : "text-bone"}>core</span>{" "}
+          {activity > 0 ? "green — the loop worked this cycle" : "bone — the loop did nothing"}
         </span>
         <span className="text-line">·</span>
         <span>new near the core, a day measured at the shell</span>

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import Hero from "@/components/Hero";
 import { Disconnected } from "@/components/ui";
-import { api, clock } from "@/lib/api";
+import { api, clock, fmtInt } from "@/lib/api";
 import type { Live, Observation, Page, TokenInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +27,20 @@ export default async function Home() {
     ...(secondPage.ok ? secondPage.data.items : []),
   ];
   const observations = observationsResult.ok ? observationsResult.data.items : [];
+
+  // The networks under measurement, counted off the tokens already fetched —
+  // no extra request, and it describes exactly what the field above it draws.
+  // Counted, never listed from configuration: a chain that is configured but
+  // has had nothing measured on it does not belong in a sentence that says
+  // "measuring". Solana leads because it is the only one whose holder share
+  // can be read and whose bonding curves are reported, not because it is
+  // bigger.
+  const chains = [...tokens.reduce((tally, token) => {
+    tally.set(token.chain, (tally.get(token.chain) ?? 0) + 1);
+    return tally;
+  }, new Map<string, number>())].sort((a, b) =>
+    a[0] === "solana" ? -1 : b[0] === "solana" ? 1 : b[1] - a[1],
+  );
 
   // A backend that is asleep or slow must not take the page down with it. The
   // hero and the identity are static; only the live numbers are missing, and
@@ -91,6 +105,20 @@ export default async function Home() {
         <p className="text-center font-display text-[10px] uppercase tracking-[0.3em] text-grey">
           the autonomous meme researcher
         </p>
+
+        {chains.length > 1 ? (
+          <div className="space-y-2 text-center">
+            <p className="font-display text-[11px] uppercase tracking-[0.3em] text-bone">
+              {chains.map(([chain]) => chain).join(" · ")}
+            </p>
+            <p className="text-[11px] text-muted">
+              {chains.map(([chain, count]) => `${fmtInt(count)} on ${chain}`).join(", ")} —
+              measured by the same promotion feed into identical rows, and never compared
+              across the two. bonding curves and holder shares are read on solana only, so
+              a robinhood row carries neither rather than carrying a guess.
+            </p>
+          </div>
+        ) : null}
 
         <div className="text-center text-[10px] uppercase tracking-widest text-muted">
           state <span className="text-bone">{live.state}</span>

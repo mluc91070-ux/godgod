@@ -55,6 +55,18 @@ export default async function RoadmapPage() {
             — two sampling frames kept apart: {fmtInt(collection.tokens_promoted)} found by the
             promotion feed, {fmtInt(collection.tokens_migrated)} by a completed bonding curve
           </li>
+          {Object.keys(collection.tokens_by_chain ?? {}).length > 1 ? (
+            <li>
+              —{" "}
+              {Object.entries(collection.tokens_by_chain)
+                .sort((a, b) => (a[0] === "solana" ? -1 : b[0] === "solana" ? 1 : b[1] - a[1]))
+                .map(([chain, count]) => `${fmtInt(count)} on ${chain}`)
+                .join(", ")}
+              , and no comparison held across the two — the migrated frame and the holder
+              share are readable on solana alone, so elsewhere they are null rather than
+              estimated
+            </li>
+          ) : null}
           <li>
             — a deterministic observation pipeline: {result.data.pipeline.detectors.length}{" "}
             detectors, {fmtInt(counts.observations)} observations, {fmtInt(counts.anomalies)}{" "}
