@@ -262,11 +262,18 @@ async def build_dataset(
 
             age_seconds = current.get("age_seconds")
             if template.stratify_by == "age":
-                stratum = age_stratum_for(age_seconds)
+                band = age_stratum_for(age_seconds)
             elif template.stratify_by == "frame":
-                stratum = token.source or "unrecorded"
+                band = token.source or "unrecorded"
             else:
-                stratum = stratum_for(current.get("liquidity_usd"))
+                band = stratum_for(current.get("liquidity_usd"))
+
+            # The chain leads every stratum, so no comparison is ever held
+            # across two of them. This is not a refinement of the existing
+            # bands: it is what stops the population from being pooled the
+            # moment MARKET_CHAINS names a second network. A token whose row
+            # predates that column reads "solana", which is what it was.
+            stratum = f"{token.chain or 'unrecorded'}/{band}"
 
             dataset.rows.append(
                 DatasetRow(

@@ -36,6 +36,39 @@ which is the population this system studies. Being promoted is not evidence of
 anything, and every experiment records that frame as its population rather than
 pretending the sample is neutral.
 
+### Which chains, and what changes when there are two
+
+`MARKET_CHAINS` names them. The promotion feed was never single-chain — it
+returns whatever was paid for, on every network the market source indexes — so
+"solana" was a filter in the collector rather than a property of the system.
+
+What the second chain changes, and what it must never be allowed to change:
+
+- **`Token.chain` is recorded, never inferred.** It comes from the pair the
+  market source returned, not from the shape of the address.
+- **A token is an address *and* a chain.** `tokens` is unique on the pair
+  (migration `0007`); the same string on two networks is two assets, and one
+  row holding both would interleave two series into one.
+- **The Solana RPC is not asked about other chains.** Holder concentration is
+  read where it can be read; anywhere else it stays null under
+  `holder_distribution_chain_unsupported`. That drop is named apart from a
+  throttled or unconfigured node because the fix is different — there is no fix,
+  it is a limit of what a Solana client can answer.
+- **The migration frame reaches one chain.** It is read from a launchpad that
+  reports completed bonding curves, and that launchpad covers Solana. A token
+  anywhere else enters through the promotion feed or not at all. That is a
+  property of the source, and `/api/status` says so rather than leaving an empty
+  cohort to be read as "none found".
+- **No comparison is held across two chains.** Every stratum in
+  `research/dataset.py` is prefixed with the chain, so a "liquidity band" is a
+  band within one network. A memecoin off a bonding curve and a token on an
+  execution layer built for tokenised equities are not one population, and the
+  average of the two answers a question nobody asked.
+- **The split between chains is the feed's, not ours.** Discovery keeps the
+  promotion feed's own order and does not rebalance towards either network.
+  Whatever share of the promotions a chain holds this hour is the share of the
+  sample it gets.
+
 ## Today
 
 Two fixture sets, both `is_demo=true` on every row, and nothing else connected.

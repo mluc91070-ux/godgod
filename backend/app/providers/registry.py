@@ -32,13 +32,23 @@ def _market_note(settings: Settings) -> str:
             "Liquidity, volume and trade counts are not measured: MARKET_API_URL "
             "is unset, so the chain collector records nothing rather than zeroes."
         )
+    chains = ", ".join(settings.market_chains) or "none"
     return (
         f"Measuring tokens above ${settings.chain_min_liquidity_usd:,.0f} liquidity, "
-        f"at most {settings.chain_max_tokens} per run."
+        f"at most {settings.chain_max_tokens} per run, on {chains}. The promotion "
+        "feed decides the split between chains; it is not rebalanced here. Holder "
+        "distributions are read on Solana only — the RPC client speaks one chain, "
+        "and elsewhere the share is recorded null rather than estimated."
     )
 
 
 def _launchpad_note(settings: Settings) -> str:
+    """The migration frame, and the one chain it reaches.
+
+    Stated wherever the frame is described: the launchpad reports completed
+    bonding curves and covers a single chain, so a token on any other enters
+    through the promotion feed or not at all.
+    """
     if not settings.launchpad_migrations:
         return "Migrations are switched off. No token is marked as migrated."
     if not settings.launchpad_api_url:
@@ -51,7 +61,9 @@ def _launchpad_note(settings: Settings) -> str:
         f"Reading completed curves, at most {settings.launchpad_max_tokens} per "
         f"run, measured above ${settings.launchpad_min_liquidity_usd:,.0f} "
         "liquidity — a lower floor than the promotion feed, because a token "
-        "minutes past migration is thin by construction, not parked."
+        "minutes past migration is thin by construction, not parked. Solana "
+        "only: this frame is a bonding curve completing, and the source that "
+        "reports one covers a single chain."
     )
 
 

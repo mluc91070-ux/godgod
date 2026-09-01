@@ -13,6 +13,9 @@ import type { Status } from "@/lib/types";
 export default function Collection({ status }: { status: Status }) {
   const c = status.collection;
   const ratio = Math.min(1, c.deepest_history / Math.max(1, c.needed_to_observe));
+  // Counted, never listed from configuration: a chain that is configured but
+  // has had nothing measured on it yet must not appear here with a zero.
+  const chains = Object.entries(c.tokens_by_chain ?? {}).sort((a, b) => b[1] - a[1]);
 
   return (
     <section className="border-t border-line pt-4">
@@ -38,6 +41,20 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       </div>
 
+      {/* Two networks, and the total would hide which one the tokens are on.
+          The migrated frame reaches one of them, so the split is not cosmetic:
+          it says which rows can carry a bonding curve at all. */}
+      {chains.length > 1 ? (
+        <div className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+          {chains.map(([chain, count]) => (
+            <div key={chain} className="flex justify-between border-b border-line py-1">
+              <span className="text-muted">{chain}</span>
+              <span>{fmtInt(count)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Two populations, and a total alone would hide which one grew. */}
       <div className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-2">
         <div className="flex justify-between border-b border-line py-1">
@@ -62,6 +79,9 @@ export default function Collection({ status }: { status: Status }) {
         {c.migrations_available
           ? "two sampling frames, kept apart. a result that holds in one and not the other is a result about the frame, not about the market."
           : "migrations are not being read, so the dash is 'not measured', not 'none found'."}
+        {chains.length > 1
+          ? " the migrated frame is read from a launchpad that covers solana only, so every token on another chain arrived through the promotion feed. no comparison is held across two chains."
+          : null}
         {c.tokens_unrecorded_frame > 0
           ? ` ${fmtInt(c.tokens_unrecorded_frame)} more were measured before the frame was recorded at all — they are not counted as either, because nobody wrote down which.`
           : null}

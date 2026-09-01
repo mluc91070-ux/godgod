@@ -97,6 +97,7 @@ export type Status = {
     tokens_migrated: number;
     tokens_unrecorded_frame: number;
     migrations_available: boolean;
+    tokens_by_chain: Record<string, number>;
     live_snapshots: number;
     live_posts: number;
     deepest_history: number;

@@ -103,6 +103,7 @@ export default async function TokenPage() {
         {godgod ? (
           <>
             <Field k="address" v={<span className="break-all">{godgod.address}</span>} />
+            <Field k="chain" v={godgod.chain} />
             <Field k="name" v={godgod.name} />
             <Field k="symbol" v={godgod.symbol} />
             <Field k="decimals" v={godgod.decimals ?? "—"} />
@@ -127,6 +128,10 @@ export default async function TokenPage() {
               <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-widest text-muted">
                 <span className="text-bone">{token.symbol ?? "—"}</span>
                 <span className="break-all normal-case tracking-normal">{token.address}</span>
+                {/* The chain is part of the identity, not decoration: the same
+                    address string is a different asset on a different network,
+                    and top10 concentration is only readable on one of them. */}
+                <span>{token.chain}</span>
                 <span>launched {fmtTime(token.launch_time)}</span>
               </div>
               <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-muted">

@@ -4,7 +4,10 @@ An RPC node knows what is on chain. It does not know what a token is worth or
 how much of it traded, because that lives in the pools of decentralised
 exchanges and in the aggregators that index them. This is the interface for
 that, and — like the RPC — the endpoint is configuration (`MARKET_API_URL`), so
-no vendor name is compiled into the system.
+no vendor name is compiled into the system. Which *chains* are read is
+configuration for the same reason (`MARKET_CHAINS`): the promotion feed answers
+for every chain the source indexes, and "solana" was a filter in the code
+rather than a property of it.
 
 The response is normalised into the same field names `token_snapshots` uses.
 Anything the source does not report stays `None`: a token with no reported
@@ -34,6 +37,12 @@ class MarketSnapshot:
     """One measurement. Every field is optional because every field can be absent."""
 
     address: str
+    chain: str = "solana"
+    """Which network this measurement was taken on.
+
+    Carried on the measurement rather than assumed by the caller: the same
+    promotion feed returns tokens on several chains, and a row that cannot say
+    which one it came from cannot be compared with anything."""
     symbol: str | None = None
     name: str | None = None
     price_usd: float | None = None
@@ -80,7 +89,9 @@ class MarketProvider(ABC):
     implemented: bool = False
 
     @abstractmethod
-    async def get_snapshot(self, address: str) -> MarketSnapshot | None: ...
+    async def get_snapshot(
+        self, address: str, chain: str = "solana"
+    ) -> MarketSnapshot | None: ...
 
     @abstractmethod
     async def search(self, query: str, limit: int = 20) -> list[MarketSnapshot]: ...
@@ -89,9 +100,16 @@ class MarketProvider(ABC):
     async def discover(self, limit: int = 30) -> list[MarketSnapshot]: ...
 
     @abstractmethod
-    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]: ...
-    """Measure a known set of tokens. Addresses the market has never seen
-    are simply absent from the result — never returned as an empty measurement."""
+    async def snapshots(
+        self, addresses: list[str], chain: str = "solana"
+    ) -> list[MarketSnapshot]: ...
+    """Measure a known set of tokens on one chain. Addresses the market has
+    never seen are simply absent from the result — never returned as an empty
+    measurement.
+
+    One chain per call because an address is only meaningful with the network
+    it lives on: the same hex string is a different token on a different
+    chain."""
 
 
 class NullMarketProvider(MarketProvider):
@@ -100,7 +118,7 @@ class NullMarketProvider(MarketProvider):
     name = "market-none"
     implemented = False
 
-    async def get_snapshot(self, address: str) -> MarketSnapshot | None:
+    async def get_snapshot(self, address: str, chain: str = "solana") -> MarketSnapshot | None:
         raise ProviderNotConfigured(
             "MARKET_API_URL is not set. Liquidity, volume and trade counts are "
             "not measured, so no token snapshot can be recorded."
@@ -112,7 +130,9 @@ class NullMarketProvider(MarketProvider):
     async def discover(self, limit: int = 30) -> list[MarketSnapshot]:
         raise ProviderNotConfigured("MARKET_API_URL is not set")
 
-    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]:
+    async def snapshots(
+        self, addresses: list[str], chain: str = "solana"
+    ) -> list[MarketSnapshot]:
         raise ProviderNotConfigured("MARKET_API_URL is not set")
 
 
@@ -131,7 +151,9 @@ def _int(value: Any) -> int | None:
     return int(number) if number is not None else None
 
 
-def _from_pair(address: str, pairs: list[dict[str, Any]]) -> MarketSnapshot | None:
+def _from_pair(
+    address: str, pairs: list[dict[str, Any]], chain: str = "solana"
+) -> MarketSnapshot | None:
     """Fold the pairs for one token into a single measurement.
 
     A token trades in several pools. Liquidity and volume are summed because
@@ -172,6 +194,14 @@ def _from_pair(address: str, pairs: list[dict[str, Any]]) -> MarketSnapshot | No
 
     return MarketSnapshot(
         address=address,
+        # Taken from the pair rather than from the request, so a source that
+        # answers for a chain other than the one asked for is recorded as what
+        # it actually said. Sanitised because it is external text like any
+        # other, and it ends up in a database column and on a page.
+        chain=(
+            sanitize_external_text(str(deepest.get("chainId") or ""), max_len=32).lower()
+            or chain
+        ),
         # Names and symbols are attacker-controlled strings on a permissionless
         # chain; they are sanitised before they are ever stored or displayed.
         symbol=sanitize_external_text(str(base.get("symbol") or ""), max_len=32) or None,
@@ -218,6 +248,7 @@ class HttpMarketProvider(MarketProvider):
             raise ProviderNotConfigured("MARKET_API_URL is not set")
         self._settings = settings
         self._root = settings.market_api_url.rstrip("/")
+        self._chains = [chain.lower() for chain in settings.market_chains] or ["solana"]
         self._client = client
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
@@ -245,26 +276,29 @@ class HttpMarketProvider(MarketProvider):
             raise MarketCallFailed(f"HTTP {response.status_code}: {response.text[:200]}")
         return response.json()
 
-    async def get_snapshot(self, address: str) -> MarketSnapshot | None:
-        payload = await self._get(f"/tokens/v1/solana/{address}")
+    async def get_snapshot(self, address: str, chain: str = "solana") -> MarketSnapshot | None:
+        payload = await self._get(f"/tokens/v1/{chain}/{address}")
         pairs = payload if isinstance(payload, list) else (payload.get("pairs") or [])
-        return _from_pair(address, pairs)
+        return _from_pair(address, pairs, chain)
 
     async def search(self, query: str, limit: int = 20) -> list[MarketSnapshot]:
         payload = await self._get("/latest/dex/search", {"q": query})
         pairs = payload.get("pairs") or []
-        solana = [pair for pair in pairs if pair.get("chainId") == "solana"]
+        wanted = [pair for pair in pairs if pair.get("chainId") in self._chains]
 
-        seen: dict[str, list[dict[str, Any]]] = {}
-        for pair in solana:
+        # Keyed by chain as well as address: the same address string can name
+        # a different token on a different chain, and folding two of them into
+        # one measurement would sum liquidity across networks.
+        seen: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for pair in wanted:
             address = (pair.get("baseToken") or {}).get("address")
             if address:
-                seen.setdefault(address, []).append(pair)
+                seen.setdefault((str(pair.get("chainId")), address), []).append(pair)
 
         snapshots = [
             snapshot
-            for address, group in seen.items()
-            if (snapshot := _from_pair(address, group)) is not None
+            for (chain, address), group in seen.items()
+            if (snapshot := _from_pair(address, group, chain)) is not None
         ]
         snapshots.sort(key=lambda item: item.liquidity_usd or 0.0, reverse=True)
         return snapshots[:limit]
@@ -283,24 +317,39 @@ class HttpMarketProvider(MarketProvider):
         """
         payload = await self._get("/token-boosts/latest/v1")
         entries = payload if isinstance(payload, list) else (payload.get("data") or [])
-        addresses = [
-            entry["tokenAddress"]
+        promoted = [
+            (str(entry.get("chainId")), entry["tokenAddress"])
             for entry in entries
-            if entry.get("chainId") == "solana" and entry.get("tokenAddress")
+            if entry.get("chainId") in self._chains and entry.get("tokenAddress")
         ]
         # Keep first-seen order while removing repeats: the same token is
         # promoted several times and must not be measured twice.
-        unique: list[str] = []
-        for address in addresses:
-            if address not in unique:
-                unique.append(address)
+        #
+        # The feed's own order decides the split between chains. It is not
+        # rebalanced towards either one: whatever share of the promotions each
+        # chain holds this hour is the share of the sample it gets, and that
+        # share is a fact about the feed rather than a choice made here.
+        unique: list[tuple[str, str]] = []
+        for entry in promoted:
+            if entry not in unique:
+                unique.append(entry)
+        selected = unique[:limit]
 
-        snapshots = await self.snapshots(unique[:limit])
+        # One request per chain, because the endpoint is per-chain.
+        by_chain: dict[str, list[str]] = {}
+        for chain, address in selected:
+            by_chain.setdefault(chain, []).append(address)
+
+        snapshots: list[MarketSnapshot] = []
+        for chain, addresses in by_chain.items():
+            snapshots.extend(await self.snapshots(addresses, chain))
         snapshots.sort(key=lambda item: item.volume_usd or 0.0, reverse=True)
         return snapshots[:limit]
 
-    async def snapshots(self, addresses: list[str]) -> list[MarketSnapshot]:
-        """Measure a known set of tokens, in batches the endpoint accepts.
+    async def snapshots(
+        self, addresses: list[str], chain: str = "solana"
+    ) -> list[MarketSnapshot]:
+        """Measure a known set of tokens on one chain, in batches it accepts.
 
         Twenty-five per request is the documented ceiling. A token the market
         has no pair for produces no row at all, which is the honest answer:
@@ -311,7 +360,7 @@ class HttpMarketProvider(MarketProvider):
             batch = addresses[start : start + 25]
             if not batch:
                 continue
-            payload = await self._get(f"/tokens/v1/solana/{','.join(batch)}")
+            payload = await self._get(f"/tokens/v1/{chain}/{','.join(batch)}")
             pairs = payload if isinstance(payload, list) else (payload.get("pairs") or [])
             grouped: dict[str, list[dict[str, Any]]] = {}
             for pair in pairs:
@@ -321,7 +370,7 @@ class HttpMarketProvider(MarketProvider):
             results.extend(
                 snapshot
                 for address, group in grouped.items()
-                if (snapshot := _from_pair(address, group)) is not None
+                if (snapshot := _from_pair(address, group, chain)) is not None
             )
         return results
 
@@ -331,7 +380,11 @@ _cache: dict[tuple, MarketProvider] = {}
 
 def get_market_provider(settings: Settings | None = None) -> MarketProvider:
     settings = settings or get_settings()
-    key = (settings.market_api_url, settings.market_timeout_seconds)
+    key = (
+        settings.market_api_url,
+        settings.market_timeout_seconds,
+        tuple(settings.market_chains),
+    )
     provider = _cache.get(key)
     if provider is None:
         provider = (

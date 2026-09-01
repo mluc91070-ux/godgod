@@ -17,10 +17,20 @@ from app.models.base import Entity
 
 class Token(Entity):
     __tablename__ = "tokens"
-    __table_args__ = (UniqueConstraint("address", name="uq_tokens_address"),)
+    __table_args__ = (UniqueConstraint("address", "chain", name="uq_tokens_address_chain"),)
+    """Unique on the pair, because an address alone does not name a token.
+
+    It was unique on the address while one chain was read. A second chain makes
+    that constraint wrong in both directions: it would reject a legitimate
+    token whose address string collides with one on another network, and — the
+    worse half — the lookup that goes with it would fold two different assets
+    into one row and interleave their measurements into a single series.
+    """
 
     address: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     chain: Mapped[str] = mapped_column(String(32), default="solana", nullable=False)
+    """Which network the token lives on. Never inferred from the address
+    format: it is recorded from what the market source reported."""
     name: Mapped[str | None] = mapped_column(String(256))
     symbol: Mapped[str | None] = mapped_column(String(64))
     decimals: Mapped[int | None] = mapped_column(Integer)

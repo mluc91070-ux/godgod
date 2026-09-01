@@ -148,6 +148,26 @@ class Settings(BaseSettings):
 
     market_timeout_seconds: float = 20.0
 
+    market_chains: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["solana", "robinhood"]
+    )
+    """Which chains the market source is read for.
+
+    The promotion feed is not single-chain — it returns whatever was paid for,
+    on every chain the source indexes — so the chain was never a property of
+    the code, only an unexamined filter in it. Naming the chains here makes the
+    population a configuration decision that is written down, and `Token.chain`
+    records which one every row came from.
+
+    Adding a chain changes the population every past experiment drew from, so
+    the chain is carried into the stratum: comparisons are held within one
+    chain, never pooled across two. See `research/dataset.py`.
+
+    A chain identifier is not a vendor: it names the network, the way "solana"
+    already did. What the identifiers must match is whatever the configured
+    MARKET_API_URL calls them.
+    """
+
     chain_watch_queries: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["solana"]
     )
@@ -345,7 +365,9 @@ class Settings(BaseSettings):
             raise ValueError("autonomy_level must be between 0 and 4")
         return v
 
-    @field_validator("cors_origins", "x_search_terms", "chain_watch_queries", mode="before")
+    @field_validator(
+        "cors_origins", "x_search_terms", "chain_watch_queries", "market_chains", mode="before"
+    )
     @classmethod
     def _split_list(cls, v: object) -> object:
         """Comma-separated in the environment; a list everywhere else."""

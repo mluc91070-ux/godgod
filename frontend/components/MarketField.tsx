@@ -22,10 +22,16 @@ import type { Observation, StreamEvent, TokenInfo } from "@/lib/types";
  *                 where "we do not know" belongs.
  *   size       <- liquidity, on a log scale, because the range spans five
  *                 orders of magnitude and a linear one draws one dot and dust
- *   shape      <- the sampling frame: a filled sphere completed a bonding
- *                 curve, a ring was found by the promotion feed. That
+ *   fill       <- the sampling frame: a filled mark completed a bonding
+ *                 curve, a hollow one was found by the promotion feed. That
  *                 distinction changes what a result about the token would
  *                 mean, so it is drawn rather than dropped.
+ *   form       <- the chain: a round mark on solana, a square one anywhere
+ *                 else. The population is no longer one network, and two
+ *                 chains drawn identically would read as one crowd. The two
+ *                 channels are independent because the facts are: a square
+ *                 mark is never filled, because the migrated frame is read
+ *                 from a launchpad that covers solana alone.
  *   brightness <- the novelty of its most recent observation, dimmed by depth
  *   pulse      <- novelty again: a token with no anomaly does not move at all,
  *                 so motion in the cloud is signal rather than screensaver
@@ -82,6 +88,10 @@ const CANVAS_HEIGHT = "clamp(460px, 82vh, 960px)";
 const REFERENCE_RADIUS = 285;
 
 const PROMOTION = "promotion-feed";
+/** The chain drawn round. Not a claim that it matters more — it is the one
+ *  chain whose holder distribution can be read and whose bonding curves are
+ *  reported, so it is the one whose marks can carry both channels. */
+const HOME_CHAIN = "solana";
 
 type Node = {
   address: string;
@@ -92,6 +102,10 @@ type Node = {
   z: number;
   size: number;
   filled: boolean;
+  /** Drawn square rather than round: this token is not on the chain the
+   *  holder distribution and the migration frame can reach. */
+  square: boolean;
+  chain: string;
   novelty: number;
   /** Phase of this token's pulse, from its address: two tokens with the same
    *  novelty must not breathe in lockstep, and the offset must not be random
@@ -163,6 +177,8 @@ function build(tokens: TokenInfo[], observations: Observation[]): Node[] {
       z: Math.sin(longitude) * ring * distance,
       size: Math.max(1.4, (Math.log10(Math.max(10, token.liquidity_usd ?? 10)) - 2.9) * 1.5 + 1.4),
       filled: token.source !== PROMOTION,
+      square: token.chain !== HOME_CHAIN,
+      chain: token.chain,
       novelty: observation?.novelty_score ?? 0,
       phase: ((seed >>> 8) & 0xff) / 0xff * Math.PI * 2,
       liquidity: token.liquidity_usd,
@@ -314,7 +330,15 @@ export default function MarketField({
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        if (node.square) {
+          // Half-extent chosen so the square covers the same area as the
+          // circle it replaces: size is bound to liquidity, and a square that
+          // read as bigger would be the chain quietly changing the number.
+          const half = size * 0.886;
+          ctx.rect(point.x - half, point.y - half, half * 2, half * 2);
+        } else {
+          ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        }
         if (node.filled) {
           ctx.fillStyle = `rgba(242, 242, 242, ${Math.min(1, alpha)})`;
           ctx.fill();
@@ -390,6 +414,10 @@ export default function MarketField({
 
   const promoted = nodes.filter((node) => !node.filled).length;
   const flagged = nodes.filter((node) => node.novelty > 0).length;
+  // Counted off the marks actually drawn, so the legend can never name a
+  // chain the canvas is not showing.
+  const offHome = nodes.filter((node) => node.square);
+  const otherChains = [...new Set(offHome.map((node) => node.chain))].sort();
 
   return (
     <div className="w-full">
@@ -397,7 +425,12 @@ export default function MarketField({
         ref={canvasRef}
         style={{ width: "100%", height }}
         role="img"
-        aria-label={`${nodes.length} tokens under measurement, ${flagged} with a recent anomaly`}
+        aria-label={
+          `${nodes.length} tokens under measurement, ${flagged} with a recent anomaly` +
+          (offHome.length > 0
+            ? `, ${offHome.length} on ${otherChains.join(" and ")} drawn as squares`
+            : "")
+        }
       />
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted">
         <span>
@@ -411,6 +444,15 @@ export default function MarketField({
         <span>
           <span className="text-bone">{promoted}</span> promoted — hollow
         </span>
+        {offHome.length > 0 ? (
+          <>
+            <span className="text-line">·</span>
+            <span>
+              <span className="text-bone">{offHome.length}</span> on{" "}
+              {otherChains.join(" / ")} — square
+            </span>
+          </>
+        ) : null}
         <span className="text-line">·</span>
         <span>
           <span className="text-bone">{flagged}</span> flagged

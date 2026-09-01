@@ -14,7 +14,13 @@ Three things this module refuses to do:
   unreachable market API produces `complete: false` with the reason.
 - **Mix live rows with fixtures.** Everything written here is `is_demo=False`.
 
-Two populations are sampled, and every token records which one found it:
+- **Measure one chain with another chain's node.** The RPC client speaks
+  Solana. It is asked for a holder distribution only on Solana rows; anywhere
+  else the share stays `NULL` under a named drop, because "the endpoint that
+  could answer this was never called" is not the same as "there is no answer".
+
+Two populations are sampled on every configured chain, and every token records
+which frame found it and which network it lives on:
 
 - **promoted** — the promotion feed. Somebody paid to put it there.
 - **migrated** — a bonding curve that filled. Nobody paid for placement; the
@@ -24,6 +30,18 @@ They are kept apart because they are not the same population, and a result that
 holds in one and not the other is a result about the sampling frame. Both are
 measured by the same market provider into identical rows, so they stay
 comparable.
+
+The chain is the second such axis, and it is kept apart for the same reason.
+The promotion feed is not single-chain; `MARKET_CHAINS` names the networks
+read, `Token.chain` records the one each row came from, and every comparison is
+held within one chain rather than pooled across two — a bonding-curve memecoin
+and a token on an execution layer built for tokenised equities are not one
+population, and averaging them would answer a question nobody asked.
+
+The migration frame is Solana-only, and not by omission: it is read from a
+launchpad that reports completed bonding curves, and that launchpad covers one
+chain. A token on any other chain therefore enters through the promotion frame
+or not at all, which is a limit of the source and is recorded as one.
 
 It also cannot fabricate history. The first run of this collector produces one
 measurement per token, and the pipeline needs `OBSERVATION_MIN_SNAPSHOTS` of
@@ -73,6 +91,9 @@ class ChainReport:
     snapshots_stored: int = 0
     distributions_measured: int = 0
     """Tokens whose top-10 share the RPC could actually compute."""
+    by_chain: dict[str, int] = field(default_factory=dict)
+    """Measurements stored per chain. A run that reached one chain and not the
+    other is not a smaller run, it is a run with a hole in it."""
     migrations_seen: int = 0
     """Completed bonding curves the launchpad reported this run."""
     migrations_measured: int = 0
@@ -87,12 +108,16 @@ class ChainReport:
     def drop(self, reason: str) -> None:
         self.dropped[reason] = self.dropped.get(reason, 0) + 1
 
+    def count_chain(self, chain: str) -> None:
+        self.by_chain[chain] = self.by_chain.get(chain, 0) + 1
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "candidates": self.candidates,
             "measured": self.measured,
             "tokens_created": self.tokens_created,
             "snapshots_stored": self.snapshots_stored,
+            "by_chain": self.by_chain,
             "distributions_measured": self.distributions_measured,
             "migrations_seen": self.migrations_seen,
             "migrations_measured": self.migrations_measured,
@@ -134,7 +159,15 @@ async def _get_or_create_token(
     *,
     migration: MigratedToken | None = None,
 ) -> Token:
-    token = await session.scalar(select(Token).where(Token.address == snapshot.address))
+    # Keyed on the pair, not on the address. An address is only a token
+    # together with its network: the same string is a different asset on a
+    # different chain, and looking it up by address alone would attach one
+    # chain's measurement to another chain's row.
+    token = await session.scalar(
+        select(Token).where(
+            Token.address == snapshot.address, Token.chain == snapshot.chain
+        )
+    )
     if token is not None:
         if snapshot.symbol and not token.symbol:
             token.symbol = snapshot.symbol
@@ -146,6 +179,10 @@ async def _get_or_create_token(
 
     token = Token(
         address=snapshot.address,
+        # The network the measurement was taken on, as the market source
+        # reported it — never defaulted to Solana because that is what this
+        # collector used to read.
+        chain=snapshot.chain,
         symbol=snapshot.symbol,
         name=snapshot.name,
         launch_time=snapshot.created_at,
@@ -306,23 +343,31 @@ async def collect_chain(
         # The RPC is asked only for what the market data cannot supply. A
         # failure here costs the distribution, not the whole measurement.
         top10_share = None
-        try:
-            distribution = await chain.get_holder_distribution(snapshot.address)
-            top10_share = distribution.top10_share
-            if distribution.measurable:
-                report.distributions_measured += 1
-            else:
-                report.drop("holder_distribution_not_reported")
-        except RpcCallFailed as exc:
-            # Named separately because the fix differs: a throttled endpoint
-            # needs a dedicated RPC url, an unconfigured one needs any url.
-            report.drop(
-                "holder_distribution_rate_limited"
-                if "rate-limited" in str(exc)
-                else "holder_distribution_failed"
-            )
-        except (ProviderNotConfigured, AttributeError):
-            report.drop("holder_distribution_unavailable")
+        if snapshot.chain != "solana":
+            # And it is asked only where it can answer. The client speaks
+            # Solana; an address on another chain is not a mint it can look
+            # up, so the call is not made and the share stays NULL under its
+            # own reason. Calling anyway and recording the error would file a
+            # design decision as a fault, and the two need different fixes.
+            report.drop("holder_distribution_chain_unsupported")
+        else:
+            try:
+                distribution = await chain.get_holder_distribution(snapshot.address)
+                top10_share = distribution.top10_share
+                if distribution.measurable:
+                    report.distributions_measured += 1
+                else:
+                    report.drop("holder_distribution_not_reported")
+            except RpcCallFailed as exc:
+                # Named separately because the fix differs: a throttled endpoint
+                # needs a dedicated RPC url, an unconfigured one needs any url.
+                report.drop(
+                    "holder_distribution_rate_limited"
+                    if "rate-limited" in str(exc)
+                    else "holder_distribution_failed"
+                )
+            except (ProviderNotConfigured, AttributeError):
+                report.drop("holder_distribution_unavailable")
 
         fields = snapshot.as_snapshot_fields()
         session.add(
@@ -339,6 +384,7 @@ async def collect_chain(
         await session.flush()
         report.measured += 1
         report.snapshots_stored += 1
+        report.count_chain(token.chain)
 
     report.duration_ms = int((utcnow() - started).total_seconds() * 1000)
 
@@ -346,6 +392,10 @@ async def collect_chain(
         f"chain collector: {report.snapshots_stored} measurements of "
         f"{report.candidates} candidates"
     )
+    if report.by_chain:
+        message += " on " + ", ".join(
+            f"{count} {chain}" for chain, count in sorted(report.by_chain.items())
+        )
     if report.migrations_seen:
         message += f", {report.migrations_seen} freshly migrated"
     if report.distributions_measured:

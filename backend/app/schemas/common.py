@@ -121,6 +121,13 @@ class CollectionInfo(BaseModel):
     migrations_available: bool
     """False when no launchpad is configured, so an empty migrated cohort is
     distinguishable from one nothing ever looked for."""
+    tokens_by_chain: dict[str, int]
+    """Live tokens per network, counted rather than assumed.
+
+    The launchpad frame reaches one chain only, so a chain appearing here with
+    a promotion count and no migrations is the source's limit and not a gap in
+    the run. A chain named in MARKET_CHAINS but absent from this map has had
+    nothing measured on it yet, which is a different statement from zero."""
     live_snapshots: int
     live_posts: int
     deepest_history: int

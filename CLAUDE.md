@@ -342,6 +342,19 @@ or the account is telling two stories about one dataset.
 - Discovery reads the promotion feed, not a name search — searching by name on
   a permissionless chain returns clones of whatever was typed. Being promoted is
   a sampling frame, not evidence, and experiments record it as their population.
+- **More than one chain, kept apart.** `MARKET_CHAINS` names the networks read;
+  `Token.chain` records the one each row came from, taken from the market
+  source rather than inferred from the address. `tokens` is unique on
+  (address, chain) — the same string is a different asset on a different
+  network. Every stratum in `research/dataset.py` is prefixed with the chain,
+  so no comparison is ever held across two of them.
+- **A client is only asked what it can answer.** The RPC speaks Solana, so
+  holder concentration is read on Solana rows and stays NULL elsewhere under
+  `holder_distribution_chain_unsupported`. Calling anyway and recording the
+  error would file a design limit as a fault. The migration frame is Solana-only
+  for the same kind of reason — the launchpad covers one chain — and that is
+  stated wherever the frame is described, so an empty cohort on another chain is
+  never read as "none found".
 - **Two frames, kept apart.** `promotion-feed` is tokens somebody paid to place;
   `launchpad-migration` is tokens whose bonding curve filled. Both are measured
   by the same market provider into identical rows, and `Token.source` records

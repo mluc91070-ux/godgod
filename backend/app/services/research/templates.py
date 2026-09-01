@@ -35,12 +35,18 @@ from app.services.observation.detectors import DetectorParams
 from app.services.observation.windows import TokenWindow, median, ratio
 
 STRATIFICATIONS: dict[str, str] = {
-    "liquidity": "liquidity band",
-    "age": "token-age band",
-    "frame": "sampling frame",
+    "liquidity": "chain and liquidity band",
+    "age": "chain and token-age band",
+    "frame": "chain and sampling frame",
 }
 """What a template compares within. The key selects how `DatasetRow.stratum`
-is filled; the value is the phrase used wherever a result talks about it."""
+is filled; the value is the phrase used wherever a result talks about it.
+
+Every one of them names the chain, because every one of them is held within
+one. The population stopped being single-chain when `MARKET_CHAINS` gained a
+second entry, and a stratum that did not carry the chain would have started
+comparing a bonding-curve memecoin against a token on an execution layer for
+tokenised equities, silently, under a label that said "liquidity band"."""
 
 
 @dataclass(frozen=True)
@@ -253,7 +259,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["volume_over_median"],
             "dependent": ["liquidity_retained"],
-            "controls": ["liquidity_stratum"],
+            "controls": ["chain", "liquidity_stratum"],
         },
         trigger=_volume_spike,
         outcome=_liquidity_held,
@@ -293,7 +299,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["liquidity_change_pct"],
             "dependent": ["pool_still_alive"],
-            "controls": ["liquidity_stratum"],
+            "controls": ["chain", "liquidity_stratum"],
         },
         trigger=_liquidity_withdrawn,
         outcome=_liquidity_survived,
@@ -337,7 +343,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["buy_share_deviation"],
             "dependent": ["still_trading"],
-            "controls": ["age_stratum"],
+            "controls": ["chain", "age_stratum"],
         },
         trigger=_buy_share_spike,
         outcome=_still_trading,
@@ -381,7 +387,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["age_days", "volume_over_liquidity"],
             "dependent": ["liquidity_retained"],
-            "controls": ["sampling_frame"],
+            "controls": ["chain", "sampling_frame"],
         },
         trigger=_quiet_survivor,
         outcome=_liquidity_held,
@@ -422,7 +428,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["concentration_jump"],
             "dependent": ["market_cap_retained"],
-            "controls": ["liquidity_stratum"],
+            "controls": ["chain", "liquidity_stratum"],
         },
         trigger=_concentration_high,
         outcome=_market_cap_held,
@@ -469,7 +475,7 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         variables={
             "independent": ["holder_growth_ratio"],
             "dependent": ["holders_grew"],
-            "controls": ["age_stratum"],
+            "controls": ["chain", "age_stratum"],
         },
         trigger=_holder_spike,
         outcome=_holders_grew,

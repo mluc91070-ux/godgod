@@ -197,6 +197,16 @@ async def describe_collection(
             )
         ).all()
     }
+    by_chain = {
+        str(chain): int(count)
+        for chain, count in (
+            await session.execute(
+                select(Token.chain, func.count())
+                .where(Token.is_demo.is_(False))
+                .group_by(Token.chain)
+            )
+        ).all()
+    }
     token_count = sum(by_frame.values())
     promoted = by_frame.get(PROMOTED, 0)
     migrated = by_frame.get(MIGRATED, 0)
@@ -224,6 +234,7 @@ async def describe_collection(
         migrations_available=bool(
             settings.launchpad_migrations and settings.launchpad_api_url
         ),
+        tokens_by_chain=by_chain,
         live_snapshots=await count_live(TokenSnapshot),
         live_posts=await count_live(SocialPost),
         deepest_history=deepest,
