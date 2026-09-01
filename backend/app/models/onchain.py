@@ -85,6 +85,18 @@ class TokenSnapshot(Entity):
     holder_change_pct: Mapped[float | None] = mapped_column(Float)
 
     source: Mapped[str | None] = mapped_column(String(128))
+    selected_by: Mapped[str | None] = mapped_column(String(32))
+    """Why this measurement was taken: `discovery`, `migration` or `retention`.
+
+    Not the same question as `Token.source`, which records the frame that first
+    found the token and is written once. This records the rule that put *this
+    row* in the dataset, and the rules are not interchangeable — a retained row
+    skips the liquidity and volume floors on purpose, because a token that had
+    a large market cap and then drained is the single most informative row
+    there is and dropping it would be survivorship bias by construction.
+
+    NULL on every row written before the distinction existed. That is "not
+    recorded", not "discovery"."""
 
     token: Mapped[Token] = relationship(back_populates="snapshots")
 

@@ -101,6 +101,7 @@ export type Status = {
     live_snapshots: number;
     live_posts: number;
     deepest_history: number;
+    tokens_ready_to_observe: number;
     needed_to_observe: number;
     observing_live: boolean;
     scheduler_running: boolean;

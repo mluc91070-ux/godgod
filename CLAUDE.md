@@ -361,6 +361,16 @@ or the account is telling two stories about one dataset.
   which one found it. It is written once and never rewritten: a token that
   entered as promoted stays promoted, or the population of every past
   experiment changes retroactively and invisibly.
+- **The frame says how a token was found; `selected_by` says why a row exists.**
+  They are different questions and live in different columns. `Token.source` is
+  written once. `TokenSnapshot.selected_by` is per measurement — `discovery`,
+  `migration` or `retention` — because a token above
+  `CHAIN_RETAIN_MIN_MARKET_CAP_USD` is re-measured every run whether or not the
+  feed still names it, and it **skips the liquidity and volume floors**. That
+  is the point: a large cap that drains is the outcome the earlier reading was
+  interesting for, and applying the entry floors there would delete the outcome
+  and keep the exposure. Retention is capped per chain, never in total, or a
+  budget rule decides which population gets studied.
 - **Only whoever created the row names the frame, and only once.** Every other
   writer fills what is missing and touches nothing else. This is not theory:
   `ObservationPipeline._upsert_token` assigned every field on every run — fine

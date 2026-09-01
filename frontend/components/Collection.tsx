@@ -41,6 +41,18 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       </div>
 
+      {/* The number that decides whether anything can be answered. A token is
+          not a research subject until it has enough readings for a detector to
+          speak, and most never used to get there — they left the promotion
+          feed first. Shown against the total so the ratio is visible. */}
+      <p className="mt-3 text-[11px] text-muted">
+        <span className="text-bone">{fmtInt(c.tokens_ready_to_observe ?? 0)}</span> of{" "}
+        {fmtInt(c.live_tokens)} have the {c.needed_to_observe} measurements a detector needs
+        before it may say anything. the rest were measured and then lost the feed — the
+        largest by market cap are now kept under measurement on purpose, which is the only
+        honest way to make that number move.
+      </p>
+
       {/* Two networks, and the total would hide which one the tokens are on.
           The migrated frame reaches one of them, so the split is not cosmetic:
           it says which rows can carry a bonding curve at all. */}

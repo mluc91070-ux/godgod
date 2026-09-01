@@ -186,6 +186,17 @@ async def describe_collection(
         .subquery()
     )
     deepest = int(await session.scalar(select(func.max(per_token.c.n))) or 0)
+    # How many tokens have enough history for a detector to speak about them at
+    # all. The deepest series alone hides the shape: one token at 111 readings
+    # and everything else at three is a dataset with one subject in it.
+    ready = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(per_token)
+            .where(per_token.c.n >= settings.observation_min_snapshots)
+        )
+        or 0
+    )
 
     by_frame = {
         source: count
@@ -238,6 +249,7 @@ async def describe_collection(
         live_snapshots=await count_live(TokenSnapshot),
         live_posts=await count_live(SocialPost),
         deepest_history=deepest,
+        tokens_ready_to_observe=ready,
         needed_to_observe=settings.observation_min_snapshots,
         observing_live=not settings.demo_mode,
         scheduler_running=_scheduler_running(request),

@@ -132,6 +132,13 @@ class CollectionInfo(BaseModel):
     live_posts: int
     deepest_history: int
     """Most measurements held for any single token."""
+    tokens_ready_to_observe: int
+    """Tokens with enough history for a detector to speak about them.
+
+    The deepest series alone hides the shape of the dataset: one token at 111
+    readings and every other at three is a dataset with one subject in it. This
+    is the number that says how much of the population is actually observable,
+    and it is the number retention is meant to move."""
     needed_to_observe: int
     """Measurements one token needs before any detector can speak."""
     observing_live: bool

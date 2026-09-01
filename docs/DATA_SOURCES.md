@@ -69,6 +69,37 @@ What the second chain changes, and what it must never be allowed to change:
   Whatever share of the promotions a chain holds this hour is the share of the
   sample it gets.
 
+### Why some tokens are kept under measurement
+
+A token used to be measured only while the promotion feed still named it. The
+result was measured, not guessed: **12,284 readings across 3,732 tokens — a
+mean of 3.3 each, against an `OBSERVATION_MIN_SNAPSHOTS` of 6.** Most of the
+dataset never qualified to be looked at, because it left the feed first. A
+series with holes in it is not a shorter series; it is a different one.
+
+Above `CHAIN_RETAIN_MIN_MARKET_CAP_USD` a token is re-measured every run
+regardless of the feed. It reaches the observation threshold in six consecutive
+quarter hours and keeps accumulating after that.
+
+- The floor is read from the live distribution — market cap p50 $8.4k, p75
+  $659k, p90 $8.4m — so a million sits just above the third quartile.
+- The cap is **per chain** (`CHAIN_RETAIN_MAX_TOKENS`), never in total. In
+  total the larger caps on one network would fill every slot and the other
+  would never be retained at all, which is a budget rule deciding which
+  population gets studied.
+- The cohort is read from the **latest snapshot**, not from
+  `Token.market_cap_usd` — that column is a cached value with no timestamp, and
+  a selection rule has to be reconstructible from a measurement that says when
+  it was taken.
+- A retained token **skips the liquidity and volume floors**. Those floors
+  decide what is worth entering the dataset; a retained token is already in it,
+  and the question about it is what happens next — including the pool draining,
+  which is exactly what the floors reject. Dropping it there would be
+  survivorship bias built into the collector.
+- Every row records `selected_by` (`discovery` / `migration` / `retention`), so
+  two selection rules never sit in one column unlabelled. Rows written before
+  the distinction existed are NULL, which is "not recorded", not "discovery".
+
 ## Today
 
 Two fixture sets, both `is_demo=true` on every row, and nothing else connected.

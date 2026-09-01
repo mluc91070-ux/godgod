@@ -33,12 +33,20 @@ def _market_note(settings: Settings) -> str:
             "is unset, so the chain collector records nothing rather than zeroes."
         )
     chains = ", ".join(settings.market_chains) or "none"
+    retained = (
+        f" Tokens above ${settings.chain_retain_min_market_cap_usd:,.0f} market cap are "
+        f"re-measured every run, at most {settings.chain_retain_max_tokens} per chain, "
+        "and keep being measured after they fall through the floors — the drain is the "
+        "outcome, not a reason to stop looking."
+        if settings.chain_retain_max_tokens > 0
+        else " Retention is off: a token is measured only while the feed still names it."
+    )
     return (
         f"Measuring tokens above ${settings.chain_min_liquidity_usd:,.0f} liquidity, "
         f"at most {settings.chain_max_tokens} per run, on {chains}. The promotion "
         "feed decides the split between chains; it is not rebalanced here. Holder "
         "distributions are read on Solana only — the RPC client speaks one chain, "
-        "and elsewhere the share is recorded null rather than estimated."
+        "and elsewhere the share is recorded null rather than estimated." + retained
     )
 
 

@@ -251,6 +251,34 @@ class Settings(BaseSettings):
     and the same answer, so the same number. On a token under an hour old the
     24h figure is simply everything that has traded since it launched."""
 
+    chain_retain_min_market_cap_usd: float = 1_000_000.0
+    """Above this market cap a token is measured every run, whether or not the
+    promotion feed still names it.
+
+    The problem this solves is measured, not imagined: at the time of writing
+    the collector held 12,284 measurements across 3,732 tokens — a mean of 3.3
+    each, against an `OBSERVATION_MIN_SNAPSHOTS` of 6. Most tokens rotate out
+    of the promotion feed before any detector is allowed to speak about them,
+    and a series with holes in it is not a shorter series, it is a different
+    one. A retained token reaches the threshold in six consecutive quarter
+    hours and keeps accumulating after that.
+
+    The floor is set from the live distribution: market cap p50 $8.4k, p75
+    $659k, p90 $8.4m. A million sits just above the third quartile — 283 of
+    1,200 tokens qualified — which is the point where "big" stops being a
+    rounding error on a fresh pool.
+    """
+
+    chain_retain_max_tokens: int = 20
+    """Retained tokens per chain, not in total.
+
+    In total, the largest caps on the older chain would fill every slot and the
+    newer one would never be retained at all — a budget rule quietly deciding
+    which network gets studied. Per chain, each population keeps its own top,
+    which is also the only form comparable with everything else here: every
+    comparison in this system is held within one chain.
+    """
+
     chain_discover: bool = True
     """Read the promotion feed instead of searching by name.
 
