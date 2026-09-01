@@ -155,10 +155,10 @@ async def main() -> int:
         async def search(self, query, limit=20):
             return await self.discover(limit)
 
-        async def get_snapshot(self, addr):
+        async def get_snapshot(self, addr, chain="solana"):
             return next((s for s in self._snapshots if s.address == addr), None)
 
-        async def snapshots(self, addresses):
+        async def snapshots(self, addresses, chain="solana"):
             wanted = set(addresses)
             return [s for s in self._snapshots if s.address in wanted]
 

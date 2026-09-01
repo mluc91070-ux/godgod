@@ -26,6 +26,11 @@ which frame found it and which network it lives on:
 - **migrated** — a bonding curve that filled. Nobody paid for placement; the
   crowd bought it one trade at a time.
 
+Both frames now run on both chains, though not from the same kind of source:
+one launchpad publishes an API, the other publishes only a contract, which is
+read over a public node. They hand back the same `MigratedToken`, so nothing
+here knows the difference.
+
 On top of the two frames there is a third *selection rule*, which is a
 different kind of thing and is recorded in a different column. A token above
 `CHAIN_RETAIN_MIN_MARKET_CAP_USD` is re-measured every run whether or not the
@@ -54,10 +59,9 @@ held within one chain rather than pooled across two — a bonding-curve memecoin
 and a token on an execution layer built for tokenised equities are not one
 population, and averaging them would answer a question nobody asked.
 
-The migration frame is Solana-only, and not by omission: it is read from a
-launchpad that reports completed bonding curves, and that launchpad covers one
-chain. A token on any other chain therefore enters through the promotion frame
-or not at all, which is a limit of the source and is recorded as one.
+Where a chain has no launchpad source configured, its tokens enter through the
+promotion frame or not at all, and the run records `launchpad_not_configured`
+rather than letting an empty cohort read as "none graduated".
 
 It also cannot fabricate history. The first run of this collector produces one
 measurement per token, and the pipeline needs `OBSERVATION_MIN_SNAPSHOTS` of
@@ -80,6 +84,7 @@ from app.models import AgentRun, SystemEvent, Token, TokenSnapshot
 from app.models.base import as_utc, utcnow
 from app.providers.base import ProviderNotConfigured
 from app.providers.launchpad import (
+    EvmLaunchpadProvider,
     LaunchpadCallFailed,
     LaunchpadProvider,
     MigratedToken,
@@ -92,6 +97,7 @@ from app.providers.market import (
     get_market_provider,
 )
 from app.providers.solana import RpcCallFailed, get_solana_provider
+from app.services.launchpad_scan import scan_launchpad
 
 CHAIN_RUN_NAME = "chain-collector"
 SNAPSHOT_SOURCE = "live-market-v3"
@@ -114,6 +120,11 @@ class ChainReport:
     retained: int = 0
     """Measurements taken because the token is above the retention floor,
     rather than because the feed named it this run."""
+    scans: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per chain, what the launch scan did: the block range it covered, how far
+    it still trails the head, and how many status calls it could not make. A
+    launchpad with no graduations and a scan that never ran look identical
+    without this."""
     by_chain: dict[str, int] = field(default_factory=dict)
     """Measurements stored per chain. A run that reached one chain and not the
     other is not a smaller run, it is a run with a hole in it."""
@@ -144,6 +155,7 @@ class ChainReport:
             "tokens_created": self.tokens_created,
             "snapshots_stored": self.snapshots_stored,
             "by_chain": self.by_chain,
+            "scans": self.scans,
             "retained": self.retained,
             "distributions_measured": self.distributions_measured,
             "migrations_seen": self.migrations_seen,
@@ -322,7 +334,17 @@ async def collect_chain(
     settings = settings or get_settings()
     market = market or get_market_provider(settings)
     chain = chain or get_solana_provider(settings)
-    launchpad = launchpad or get_launchpad_provider(settings)
+    # One launchpad per chain, because the two chains publish this fact in
+    # completely different ways: one serves an API, the other only a contract.
+    # Both hand back `MigratedToken`, so nothing below knows the difference.
+    #
+    # An explicitly passed provider still means "solana", which is what it
+    # meant when there was only one.
+    launchpads = (
+        {"solana": launchpad}
+        if launchpad is not None
+        else {name: get_launchpad_provider(settings, name) for name in settings.market_chains}
+    )
     started = utcnow()
     # Snapshots are keyed to a slot on the clock, not to the moment the run
     # started. Meme markets move in minutes, so hourly sampling both loses the
@@ -350,36 +372,62 @@ async def collect_chain(
     except (ProviderNotConfigured, MarketCallFailed) as exc:
         report.error = f"{type(exc).__name__}: {exc}"
 
-    # The second frame. Migrations are read from the launchpad and measured by
-    # the market provider, so a migrated token produces the same row shape as a
-    # promoted one. A launchpad failure costs this cohort, not the run.
-    migrations: dict[str, MigratedToken] = {}
-    if not settings.launchpad_migrations:
-        pass
-    elif not launchpad.implemented:
-        # Not configured is a decision, not a failure — but it is recorded, so
-        # that a run with no migrations is distinguishable from a run that
-        # never looked for any.
-        report.drop("launchpad_not_configured")
-    else:
-        try:
-            reported = await launchpad.recent_migrations(
-                limit=settings.launchpad_max_tokens
-            )
-            report.migrations_seen = len(reported)
-            migrations = {item.address: item for item in reported}
-            if migrations:
-                measured = await market.snapshots(list(migrations))
-                report.migrations_measured = len(measured)
+    # The second frame, now on every chain that has a source for it. Migrations
+    # are read from a launchpad and measured by the market provider, so a
+    # migrated token produces the same row shape as a promoted one whichever
+    # chain it is on. A launchpad failure costs that cohort, not the run.
+    #
+    # Keyed on the pair, like everything else here: an address alone does not
+    # name a token once there is more than one network.
+    migrations: dict[tuple[str, str], MigratedToken] = {}
+    if settings.launchpad_migrations:
+        for chain_id, provider in launchpads.items():
+            if not provider.implemented:
+                # Not configured is a decision, not a failure — but it is
+                # recorded, so a run with no migrations is distinguishable from
+                # a run that never looked for any.
+                report.drop("launchpad_not_configured")
+                continue
+            try:
+                if isinstance(provider, EvmLaunchpadProvider):
+                    # A chain is scanned, not queried: the launches are behind
+                    # a two-thousand block cap and the graduations are contract
+                    # state read one token at a time. The scan owns a cursor and
+                    # a table; what comes back is the curves that completed
+                    # since the last pass.
+                    scan = await scan_launchpad(
+                        session, settings=settings, provider=provider
+                    )
+                    reported = scan.migrations
+                    report.scans[chain_id] = scan.report.as_dict()
+                    if scan.report.error:
+                        report.launchpad_error = scan.report.error
+                    for _ in range(scan.report.unchecked):
+                        report.drop("migration_status_unchecked")
+                    for _ in range(scan.report.unreadable):
+                        report.drop("migration_status_unreadable")
+                else:
+                    reported = await provider.recent_migrations(
+                        limit=settings.launchpad_max_tokens
+                    )
+                report.migrations_seen += len(reported)
+                found = {(chain_id, item.address): item for item in reported}
+                migrations.update(found)
+                if not found:
+                    continue
+                measured = await market.snapshots(
+                    [address for _, address in found], chain_id
+                )
+                report.migrations_measured += len(measured)
                 # Absent from the market means no pair exists yet. That is a
                 # real state of a just-migrated token, and it is counted, not
                 # filled in with zeros.
-                for address in migrations:
+                for _, address in found:
                     if not any(item.address == address for item in measured):
                         report.drop("migration_not_yet_on_market")
                 candidates.extend(measured)
-        except (ProviderNotConfigured, LaunchpadCallFailed, MarketCallFailed) as exc:
-            report.launchpad_error = f"{type(exc).__name__}: {exc}"
+            except (ProviderNotConfigured, LaunchpadCallFailed, MarketCallFailed) as exc:
+                report.launchpad_error = f"{type(exc).__name__}: {exc}"
 
     # The third rule. A token above the retention floor is measured every run,
     # whether or not the feed still names it, because a series with holes in it
@@ -427,12 +475,7 @@ async def collect_chain(
         + len(retained)
     )
     for snapshot in list(unique.values())[:budget]:
-        # Migrations are read from a launchpad that covers one chain, so the
-        # lookup is only meaningful there. Without the guard an address that
-        # collided across networks would inherit the other chain's curve.
-        migration = (
-            migrations.get(snapshot.address) if snapshot.chain == "solana" else None
-        )
+        migration = migrations.get((snapshot.chain, snapshot.address))
         keep = (snapshot.chain, snapshot.address) in retained
         # The floors are per-frame because they answer different questions. On
         # the promotion feed the risk is a deep pool nobody trades — a parked

@@ -35,8 +35,18 @@ from typing import Any
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.core.keccak import event_topic, function_selector
 from app.core.untrusted import sanitize_external_text
 from app.providers.base import ProviderNotConfigured
+from app.providers.evm import (
+    EvmCallFailed,
+    EvmProvider,
+    EvmReverted,
+    address_from_topic,
+    encode_address_arg,
+    get_evm_provider,
+    words,
+)
 
 
 class LaunchpadCallFailed(RuntimeError):
@@ -241,12 +251,179 @@ class HttpLaunchpadProvider(LaunchpadProvider):
         return migrations[:limit]
 
 
+@dataclass(frozen=True)
+class LaunchEvent:
+    """One launch, as the chain reported it."""
+
+    address: str
+    factory: str
+    block: int
+
+
+class EvmLaunchpadProvider(LaunchpadProvider):
+    """Bonding curves read off an EVM chain, with no API in between.
+
+    There is no endpoint to call for this launchpad — the ones that exist want
+    a key — so the contract is read instead. Two primitives, both ordinary node
+    calls, and neither of them keeps state:
+
+    - `scan_launches` reads the launch event over a block range. Its first
+      indexed parameter is the token.
+    - `graduation_status` calls the status view on the factory that emitted it.
+
+    Deciding *which* blocks to scan and remembering what was found belongs to
+    a service with a database, not here: this node caps `eth_getLogs` at two
+    thousand blocks per request — measured, it says so in the error — and a
+    curve finishes hours or days after the launch that started it. A window
+    wide enough to hold both does not exist. See `services/launchpad_scan.py`.
+
+    Three ways this refuses to guess:
+
+    - **A revert is not a "no".** The same event signature is emitted on this
+      chain by a contract with no such view, and asking it reverts. That is
+      returned as `None` — unreadable — never as "not graduated".
+    - **A factory is never assumed.** The addresses are configuration and
+      default to empty. Three published as the factory for this launchpad were
+      checked against the chain and none of them emitted the event; the ones
+      that do were found by asking the chain itself, with a topic filter and no
+      address at all.
+    - **A range too wide is split, not truncated.** Silently reading the last
+      two thousand blocks of a ten-thousand block request would report a quiet
+      launchpad.
+    """
+
+    name = "launchpad-evm"
+    implemented = True
+
+    def __init__(self, settings: Settings, evm: EvmProvider | None = None) -> None:
+        if not settings.evm_rpc_url:
+            raise ProviderNotConfigured("EVM_RPC_URL is not set")
+        if not settings.evm_launchpad_factories:
+            raise ProviderNotConfigured("EVM_LAUNCHPAD_FACTORIES is empty")
+        self._settings = settings
+        self._evm = evm or get_evm_provider(settings)
+        self.factories = [address.lower() for address in settings.evm_launchpad_factories]
+        self._topic = event_topic(settings.evm_launchpad_event)
+        self._selector = function_selector(settings.evm_launchpad_status_call)
+
+    async def head_block(self) -> int:
+        """The newest block, after checking the node is on the right chain.
+
+        Without the check a mistyped url writes one chain's tokens into
+        another's rows, and nothing downstream could ever tell.
+        """
+        expected = self._settings.evm_chain_id
+        try:
+            if expected is not None:
+                actual = await self._evm.chain_id()
+                if actual != expected:
+                    raise LaunchpadCallFailed(
+                        f"the node reports chain id {actual}, expected {expected}"
+                    )
+            return await self._evm.block_number()
+        except EvmCallFailed as exc:
+            raise LaunchpadCallFailed(f"{type(exc).__name__}: {exc}") from exc
+
+    async def scan_launches(self, from_block: int, to_block: int) -> list[LaunchEvent]:
+        """Launches in a block range, in chunks the node accepts.
+
+        Filtered by topic rather than by address, and the address checked
+        afterwards: a node that quietly ignored an address filter would
+        otherwise hand back another contract's launches as this one's.
+        """
+        chunk = max(1, self._settings.evm_log_chunk_blocks)
+        allowed = set(self.factories)
+        found: list[LaunchEvent] = []
+        start = from_block
+        try:
+            while start <= to_block:
+                end = min(to_block, start + chunk - 1)
+                logs = await self._evm.get_logs(
+                    from_block=start, to_block=end, topics=[self._topic]
+                )
+                for entry in logs:
+                    factory = str(entry.get("address", "")).lower()
+                    topics = entry.get("topics") or []
+                    if factory not in allowed or len(topics) < 2:
+                        continue
+                    found.append(
+                        LaunchEvent(
+                            address=address_from_topic(str(topics[1])),
+                            factory=factory,
+                            block=int(str(entry.get("blockNumber", "0x0")), 16),
+                        )
+                    )
+                start = end + 1
+        except EvmCallFailed as exc:
+            raise LaunchpadCallFailed(f"{type(exc).__name__}: {exc}") from exc
+        return found
+
+    async def graduation_status(self, factory: str, token: str) -> bool | None:
+        """True, False, or None for "the contract did not answer".
+
+        The third distinction is the point. A revert here means this contract
+        has no opinion about this token, which is not the same claim as a curve
+        that has not finished.
+        """
+        try:
+            answer = await self._evm.call(
+                factory, self._selector + encode_address_arg(token)
+            )
+        except EvmReverted:
+            return None
+        except EvmCallFailed as exc:
+            raise LaunchpadCallFailed(f"{type(exc).__name__}: {exc}") from exc
+
+        fields = words(answer)
+        if len(fields) < 3:
+            return None
+        return int(fields[2], 16) == 1
+
+    async def recent_migrations(self, limit: int = 30) -> list[MigratedToken]:
+        """Not served here.
+
+        The interface exists for a source that can answer "what migrated
+        recently" in one call. A chain cannot: the launches are in logs behind
+        a two-thousand block cap and the graduations are in contract state read
+        one token at a time, so answering it needs a cursor and a table.
+        `services/launchpad_scan.py` owns both and calls the two primitives
+        above. Raising is the honest response — returning an empty list would
+        report a launchpad where nothing ever graduates.
+        """
+        raise LaunchpadCallFailed(
+            "an EVM launchpad is scanned incrementally, not queried; see "
+            "services/launchpad_scan.py"
+        )
+
+
 _cache: dict[tuple, LaunchpadProvider] = {}
 
 
-def get_launchpad_provider(settings: Settings | None = None) -> LaunchpadProvider:
+def get_launchpad_provider(
+    settings: Settings | None = None, chain: str = "solana"
+) -> LaunchpadProvider:
+    """The launchpad for one chain, or a provider that says there is none.
+
+    Two sources, because the two chains have nothing in common here: one
+    launchpad publishes an API, the other publishes a contract. Both produce
+    `MigratedToken`, so the collector never learns the difference.
+    """
     settings = settings or get_settings()
-    key = (settings.launchpad_api_url, settings.launchpad_timeout_seconds)
+    if chain == settings.evm_chain:
+        key = (
+            "evm",
+            settings.evm_rpc_url,
+            tuple(settings.evm_launchpad_factories),
+            settings.evm_launchpad_event,
+        )
+        if key not in _cache:
+            try:
+                _cache[key] = EvmLaunchpadProvider(settings)
+            except ProviderNotConfigured:
+                _cache[key] = NullLaunchpadProvider()
+        return _cache[key]
+
+    key = ("http", settings.launchpad_api_url, settings.launchpad_timeout_seconds)
     if key not in _cache:
         _cache[key] = (
             HttpLaunchpadProvider(settings)

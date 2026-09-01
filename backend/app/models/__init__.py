@@ -6,7 +6,14 @@ test harness both rely on it.
 
 from app.models.base import Base, Entity, new_id, utcnow
 from app.models.memory import Memory
-from app.models.onchain import Token, TokenSnapshot, Wallet, WalletCluster
+from app.models.onchain import (
+    ChainCursor,
+    LaunchpadLaunch,
+    Token,
+    TokenSnapshot,
+    Wallet,
+    WalletCluster,
+)
 from app.models.research import (
     Anomaly,
     Experiment,
@@ -26,11 +33,13 @@ __all__ = [
     "AgentRun",
     "Anomaly",
     "Base",
+    "ChainCursor",
     "ContentDraft",
     "Entity",
     "Experiment",
     "ExperimentResult",
     "Hypothesis",
+    "LaunchpadLaunch",
     "Memory",
     "MetricsSnapshot",
     "Observation",

@@ -62,6 +62,16 @@ services:
         sync: false
       - key: LLM_DAILY_BUDGET_USD
         value: "3.0"
+      # The second chain. Read-only: the client has four methods and none of
+      # them can sign or send. Both are set in the dashboard rather than here —
+      # the factory addresses in particular should be verified against the
+      # chain before they are trusted, see .env.example.
+      - key: EVM_RPC_URL
+        sync: false
+      - key: EVM_CHAIN_ID
+        sync: false
+      - key: EVM_LAUNCHPAD_FACTORIES
+        sync: false
 
 # The research cycle used to be a Render cron service here. Render crons are
 # paid-only, and the job is one authenticated POST, so it lives in

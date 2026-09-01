@@ -51,11 +51,11 @@ def _market_note(settings: Settings) -> str:
 
 
 def _launchpad_note(settings: Settings) -> str:
-    """The migration frame, and the one chain it reaches.
+    """The migration frame as one source serves it.
 
-    Stated wherever the frame is described: the launchpad reports completed
-    bonding curves and covers a single chain, so a token on any other enters
-    through the promotion feed or not at all.
+    This is the API-backed launchpad, which covers one chain. The other chain's
+    launch contracts are read directly over a node and are reported under
+    `evm`, so a reader can tell which half is missing when one is.
     """
     if not settings.launchpad_migrations:
         return "Migrations are switched off. No token is marked as migrated."
@@ -69,9 +69,35 @@ def _launchpad_note(settings: Settings) -> str:
         f"Reading completed curves, at most {settings.launchpad_max_tokens} per "
         f"run, measured above ${settings.launchpad_min_liquidity_usd:,.0f} "
         "liquidity — a lower floor than the promotion feed, because a token "
-        "minutes past migration is thin by construction, not parked. Solana "
-        "only: this frame is a bonding curve completing, and the source that "
-        "reports one covers a single chain."
+        "minutes past migration is thin by construction, not parked. This "
+        "endpoint covers one chain; the other is read from its launch "
+        "contracts over a node, reported separately."
+    )
+
+
+def _evm_note(settings: Settings) -> str:
+    """The second chain's node, and the one fact it is there for."""
+    if not settings.evm_rpc_url:
+        return (
+            "Read-only JSON-RPC client implemented; EVM_RPC_URL is not set, so no "
+            "bonding curve state is read on that chain and no token there is marked "
+            "as migrated. Read-only in every configuration: four methods, none of "
+            "which can sign or send."
+        )
+    if not settings.evm_launchpad_factories:
+        return (
+            "Node configured, but EVM_LAUNCHPAD_FACTORIES is empty, so no launch "
+            "event is read. The addresses are deliberately not compiled in: three "
+            "published as the factory for this launchpad were checked against the "
+            "chain and none of them emitted the event."
+        )
+    return (
+        f"Reading {settings.evm_launchpad_status_call} on "
+        f"{len(settings.evm_launchpad_factories)} launch contract(s) over the last "
+        f"{settings.evm_launchpad_lookback_blocks:,} blocks, at most "
+        f"{settings.evm_launchpad_max_calls} status calls per run. Only a curve the "
+        "contract reports complete is recorded as migrated; a call that reverts is "
+        "counted as unreadable, never as unmigrated. Read-only: no signing path."
     )
 
 
@@ -145,6 +171,14 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
             configured=bool(settings.launchpad_api_url),
             implemented=True,
             note=_launchpad_note(settings),
+        ),
+        ProviderStatus(
+            name="evm",
+            configured=bool(
+                settings.evm_rpc_url and settings.evm_launchpad_factories
+            ),
+            implemented=True,
+            note=_evm_note(settings),
         ),
         ProviderStatus(
             name="x",

@@ -382,6 +382,21 @@ or the account is telling two stories about one dataset.
   tokens back through `DatabaseObservationSource` and stamped
   `source = "database-live"` over all 144 of them. An upsert that reads a row it
   did not create is a fill-if-empty, never an assignment.
+- **A chain is scanned, not queried.** The EVM launchpad has no API, so it is
+  read over a public node: launches from logs (capped at 2,000 blocks a
+  request), graduation from contract state one token at a time, hours apart.
+  That needs a cursor (`chain_cursors`) and a table (`launchpad_launches`), and
+  both belong to `services/launchpad_scan.py` — the provider stays stateless
+  and exposes two primitives. `graduated` is three-valued and **NULL is never
+  "did not migrate"**; a reverting contract, a 429 and an exhausted call budget
+  all leave NULL. A failed scan does not advance the cursor: a gap stepped over
+  looks exactly like a launchpad nobody uses.
+- **Contract addresses and event signatures are configuration, and are checked
+  against the chain.** Three published factory addresses for this launchpad
+  emitted nothing; the real ones were found with a topic-filtered `eth_getLogs`
+  and no address at all. Signatures are written out in full and hashed by
+  `core/keccak.py` — `hashlib.sha3_256` is *not* Keccak, and the wrong hash
+  filters to nothing and reports a silent chain.
 - **A migration is read, never inferred.** `bonding_curve_state = "complete"`
   only when the launchpad said so, and `migrated_to_dex` only when the payload
   named a pool. A high market cap is not a completed curve.

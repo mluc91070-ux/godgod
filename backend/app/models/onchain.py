@@ -8,7 +8,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.types import JSONDict
@@ -99,6 +108,60 @@ class TokenSnapshot(Entity):
     recorded", not "discovery"."""
 
     token: Mapped[Token] = relationship(back_populates="snapshots")
+
+
+class LaunchpadLaunch(Entity):
+    """A token seen launching on a bonding curve, and whether it ever finished.
+
+    This table exists because the two halves of one fact live in different
+    places and arrive at different times. The launch is a log entry, readable
+    only two thousand blocks at a time; the graduation is contract state that
+    changes hours or days later. No single query holds both, so the launch is
+    written down and re-asked.
+
+    `graduated` is deliberately three-valued:
+
+    - `True` — the contract said the curve completed.
+    - `False` — the contract said it had not, at `checked_at`.
+    - `NULL` — nobody has managed to ask, or the contract refused. Not
+      "did not migrate". A launch that was never resolved keeps NULL for good,
+      and that is the honest record of a question nobody answered.
+    """
+
+    __tablename__ = "launchpad_launches"
+    __table_args__ = (
+        UniqueConstraint("chain", "address", name="uq_launches_chain_address"),
+    )
+
+    chain: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    address: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    factory: Mapped[str] = mapped_column(String(64), nullable=False)
+    """The contract that emitted the launch. Kept because the status call goes
+    back to the same one — the topic is not unique to a single launchpad."""
+    launched_at_block: Mapped[int] = mapped_column(Integer, nullable=False)
+    graduated: Mapped[bool | None] = mapped_column(Boolean)
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    """When the status was last read. NULL means never successfully read."""
+    graduated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    """When this system first saw it complete — not when the curve filled. The
+    chain knows the second; this row only ever knew the first."""
+
+
+class ChainCursor(Entity):
+    """How far a chain has been scanned, per named scan.
+
+    Without it a windowed scan either re-reads the same blocks forever or skips
+    whatever happened while the process was down, and the second failure is
+    invisible: missing launches look exactly like a launchpad nobody uses.
+    """
+
+    __tablename__ = "chain_cursors"
+    __table_args__ = (UniqueConstraint("chain", "name", name="uq_cursors_chain_name"),)
+
+    chain: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    block: Mapped[int] = mapped_column(Integer, nullable=False)
+    """The last block scanned, inclusive."""
 
 
 class Wallet(Entity):

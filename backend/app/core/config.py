@@ -248,6 +248,132 @@ class Settings(BaseSettings):
         divisors = (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
         return max(value for value in divisors if value <= min(minutes, 60))
 
+    evm_rpc_url: str | None = None
+    """A read-only JSON-RPC endpoint for the EVM chain being measured.
+
+    A url rather than a vendor name, for the third time and the same reason.
+    The chain it points at is a deployment decision; nothing in the code names
+    one.
+
+    What it buys is the only fact a market API cannot supply about a token on
+    that chain: whether its bonding curve finished. That lives in a launchpad
+    contract, and a contract is readable by anyone with a node — no key, no
+    account, no cost.
+    """
+
+    evm_chain: str = "robinhood"
+    """Which `Token.chain` the EVM reads describe.
+
+    Named rather than derived from the node's chain id, because the id is a
+    number and `Token.chain` is the market source's own label for the same
+    network. Tying the two together by hand is the only place they can be
+    reconciled, and getting it wrong would file one chain's migrations under
+    another's — which is why `EVM_CHAIN_ID`, when set, is checked against the
+    node before a single log is read.
+    """
+
+    evm_chain_id: int | None = None
+    """The chain id the node must report. Unset means unchecked.
+
+    Set it and a node pointed at the wrong network refuses loudly instead of
+    quietly writing another chain's tokens into this one's rows.
+    """
+
+    evm_timeout_seconds: float = 20.0
+
+    evm_retries: int = 1
+    """Retries after a rate-limited call. Measured on the public endpoint: a
+    burst of reads returns HTTP 429, and one backoff clears it. More would be
+    pretending a shared endpoint is a dedicated one."""
+
+    evm_retry_seconds: float = 3.0
+
+    evm_launchpad_factories: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
+    )
+    """Contract addresses whose launch events are read. Empty means none.
+
+    Empty by default and never guessed. Three addresses published as "the"
+    factory for this launchpad were checked against the chain and none of them
+    emitted the event: two had not emitted anything for hours, and the third
+    emitted a different set of topics entirely. The addresses that do emit it
+    were found by asking the chain — a topic-filtered `eth_getLogs` with no
+    address at all — which is the only method here that cannot be out of date.
+
+    More than one is expected: a launchpad redeploys its factory, and the old
+    one keeps its history.
+    """
+
+    evm_launchpad_event: str = (
+        "TokenLaunched(address,address,address,address,address,"
+        "uint256,uint256,uint256,uint256,uint256)"
+    )
+    """The launch event, written out rather than hashed into a constant.
+
+    `topics[0]` is the keccak of this string, and a 32-byte constant pasted
+    into the source is a thing nobody can check. The first indexed parameter is
+    the token.
+    """
+
+    evm_launchpad_status_call: str = "graduationStatus(address)"
+    """The view function asked whether a curve finished.
+
+    It returns `(uint256 pairedPrincipal, uint256 threshold, bool graduated)`,
+    and only the third word is read as the claim. A contract that reverts on
+    this call has not said "no" — it has said nothing, and it is recorded that
+    way.
+    """
+
+    evm_log_chunk_blocks: int = 2_000
+    """Blocks per `eth_getLogs` request.
+
+    Measured, not chosen: the node answers a wider range with "requested logs
+    from 5000 blocks but only allowed to search 2000 blocks per request". A
+    range wider than this is split into chunks rather than truncated, because
+    silently reading the last two thousand blocks of a ten-thousand block
+    request would report a launchpad where nothing happens.
+    """
+
+    evm_scan_max_blocks_per_run: int = 6_000
+    """Furthest the launch scan advances its cursor in one run.
+
+    Three requests at the chunk size. At roughly four blocks a second, six
+    thousand blocks is about twenty-five minutes of chain — comfortably more
+    than the collection interval, so the cursor gains on the head instead of
+    falling behind, and a restart after an outage catches up over several runs
+    rather than asking for a range the node will refuse.
+    """
+
+    evm_scan_start_blocks_back: int = 20_000
+    """Where the cursor starts on a database that has never scanned.
+
+    Deliberately short. The alternative is starting at the launchpad's first
+    block, which is hundreds of requests before the first useful answer; this
+    starts near the head and the history fills in going forward. What the
+    system has not scanned it does not claim, and the cursor is stored, so the
+    gap is visible rather than implied.
+    """
+
+    evm_launchpad_max_calls: int = 25
+    """Ceiling on status calls per run, across new and re-checked launches.
+
+    The endpoint is shared and rate-limited — measured: a burst returns 429 —
+    and a curve finishes hours or days after the launch that started it, so
+    every launch has to be re-asked more than once. This is the cost control:
+    everything past the ceiling is left for the next run and counted, never
+    read as unmigrated.
+    """
+
+    evm_recheck_hours: int = 6
+    """How long an unresolved launch keeps being re-asked.
+
+    A token whose curve has not finished this long after launching is left
+    alone rather than marked as failed: `graduated` stays NULL, which is "not
+    known to have finished". Measured on this chain, roughly one launch an hour
+    and none of nine graduated within ten hours, so a window this size is where
+    the calls are worth spending — not a claim about when curves finish.
+    """
+
     launchpad_api_url: str | None = None
     """Where completed bonding curves are read from.
 
@@ -438,7 +564,12 @@ class Settings(BaseSettings):
         return v
 
     @field_validator(
-        "cors_origins", "x_search_terms", "chain_watch_queries", "market_chains", mode="before"
+        "cors_origins",
+        "x_search_terms",
+        "chain_watch_queries",
+        "market_chains",
+        "evm_launchpad_factories",
+        mode="before",
     )
     @classmethod
     def _split_list(cls, v: object) -> object:

@@ -38,7 +38,7 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     # Every client is implemented; none is configured here. The notes must say
     # each one refuses, rather than implying a live feed.
     providers = {p["name"]: p for p in body["providers"]}
-    assert set(providers) == {"solana", "market", "launchpad", "x", "anthropic"}
+    assert set(providers) == {"solana", "market", "launchpad", "evm", "x", "anthropic"}
     assert all(p["configured"] is False for p in providers.values())
 
     assert providers["solana"]["implemented"] is True
@@ -52,6 +52,13 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     assert providers["x"]["implemented"] is True
     assert providers["x"]["configured"] is False
     assert "no bearer token" in providers["x"]["note"]
+
+    # The second chain's node. Unset here, and the note has to say that no
+    # curve state is read rather than implying every token is unmigrated.
+    assert providers["evm"]["implemented"] is True
+    assert providers["evm"]["configured"] is False
+    assert "EVM_RPC_URL is not set" in providers["evm"]["note"]
+    assert "none of which can sign" in providers["evm"]["note"].lower()
 
     assert body["counts"]["observations"] > 0
 

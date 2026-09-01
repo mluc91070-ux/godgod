@@ -111,10 +111,10 @@ class FakeMarket:
             raise self._raises
         return self._snapshots
 
-    async def get_snapshot(self, address):
+    async def get_snapshot(self, address, chain="solana"):
         return next((s for s in self._snapshots if s.address == address), None)
 
-    async def snapshots(self, addresses):
+    async def snapshots(self, addresses, chain="solana"):
         wanted = set(addresses)
         return [s for s in self._snapshots if s.address in wanted]
 

@@ -101,6 +101,51 @@ after that.
   two selection rules never sit in one column unlabelled. Rows written before
   the distinction existed are NULL, which is "not recorded", not "discovery".
 
+### Reading a bonding curve off a chain
+
+The Solana launchpad publishes an API. The other one does not — the indexers
+that cover it want a key — so its contracts are read directly over a public
+node. No key, no account, no cost. Read-only by construction: the client has
+four methods (`eth_chainId`, `eth_blockNumber`, `eth_getLogs`, `eth_call`) and
+not one of them can sign or send.
+
+The fact wanted is whether a curve finished. It arrives in two halves, from two
+places, at different times:
+
+- the **launch** is a log entry, and this node refuses a range wider than 2,000
+  blocks — about eight minutes of chain. It says so: *"requested logs from 5000
+  blocks but only allowed to search 2000 blocks per request"*.
+- the **graduation** is contract state that flips hours or days later, readable
+  one token at a time.
+
+No window holds both, so the launch is written to `launchpad_launches`, a
+cursor in `chain_cursors` records how far the logs have been read, and the
+unresolved launches are re-asked on later runs. `graduated` is three-valued:
+true, false, and NULL for *nobody managed to ask* — a rate-limited node, a
+contract that reverted, a run that hit its call budget. **NULL is never
+rendered as "did not migrate."**
+
+Everything here was verified against the chain rather than taken from a page:
+
+- The event signature was matched by hashing it locally and comparing with what
+  the chain puts in `topics[0]`. `hashlib.sha3_256` is not Keccak, so
+  `app/core/keccak.py` implements the real one; a wrong hash would filter to
+  nothing and report a chain where nothing happens.
+- **The published factory addresses were wrong.** Three were checked; none
+  emitted the launch event. The two that do were found by asking the chain — a
+  topic-filtered `eth_getLogs` with no address — and only one of them answers
+  the status call. The other reverts, which is why a revert is its own outcome
+  and not a "no". The addresses are configuration and default to empty.
+- Measured limits, not guesses: 2,000 blocks per log query, HTTP 429 on a burst
+  of reads, and timeouts on repeated wide queries. A failed scan leaves the
+  cursor where it was — a gap stepped over is indistinguishable from a quiet
+  launchpad.
+
+What this frame will *not* be is large. Measured: roughly one launch an hour
+from these contracts, and of nine found in ten hours none had graduated, at a
+threshold of 4.2 ETH. That is a fact about the launchpad, and an empty cohort
+here is reported with the block range that produced it rather than on its own.
+
 ## Today
 
 Two fixture sets, both `is_demo=true` on every row, and nothing else connected.
