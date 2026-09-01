@@ -94,9 +94,13 @@ from app.providers.market import (
 from app.providers.solana import RpcCallFailed, get_solana_provider
 
 CHAIN_RUN_NAME = "chain-collector"
-SNAPSHOT_SOURCE = "live-market-v2"
-"""v2 stores one-hour volume and trade counts instead of twenty-four hour
-ones. Rows from v1 are not comparable with these and keep their own tag."""
+SNAPSHOT_SOURCE = "live-market-v3"
+"""v2 stored one-hour volume and trade counts instead of twenty-four hour
+ones. v3 changes no field: it marks where the *sampling* changed — a ten-minute
+slot instead of fifteen, and entry floors raised to $50k liquidity and $100k
+daily volume. The rows are the same shape; the population they were drawn from
+is not, and a series that crosses the seam should be able to say where it is.
+Rows from earlier versions keep their own tag."""
 
 
 @dataclass
@@ -320,12 +324,17 @@ async def collect_chain(
     chain = chain or get_solana_provider(settings)
     launchpad = launchpad or get_launchpad_provider(settings)
     started = utcnow()
-    # Snapshots are keyed to the quarter hour. Meme markets move in minutes,
-    # so hourly sampling both loses the shape of a move and makes the system
-    # take six hours to say anything at all.
+    # Snapshots are keyed to a slot on the clock, not to the moment the run
+    # started. Meme markets move in minutes, so hourly sampling both loses the
+    # shape of a move and makes the system take six hours to say anything.
+    #
+    # The slot is derived from the collection interval rather than fixed, so
+    # the two cannot drift apart: a loop faster than the slot spends requests
+    # landing where a measurement already exists.
     now = datetime.now(UTC)
+    slot = settings.snapshot_slot_minutes
     observed_at = as_utc(as_of) or now.replace(
-        minute=(now.minute // 15) * 15, second=0, microsecond=0
+        minute=(now.minute // slot) * slot, second=0, microsecond=0
     )
     report = ChainReport()
 

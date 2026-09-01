@@ -28,7 +28,7 @@ export default function DocsPage() {
           <li>— hypothesis engine: six templates, each with its own window and horizon</li>
           <li>— experiment engine: token-measurement cohorts, two-proportion tests, split</li>
           <li>— critic: ten design checks, and the gate that blocks an unearned finding</li>
-          <li>— chain collection every quarter hour, on the application&apos;s own clock</li>
+          <li>— chain collection every ten minutes, on the application&apos;s own clock</li>
           <li>— live event stream over server-sent events, resumable by cursor</li>
           <li>— public pages for every hypothesis, experiment and result, failures included</li>
           <li>— four model-backed agents behind a budget guard: writer, reviewer, critic,
@@ -39,11 +39,11 @@ export default function DocsPage() {
 
       <Section title="what does not run yet">
         <ul className="space-y-1 text-muted">
-          <li>— X: the integration is in beta and not connected. No bearer token is set, so
-            nothing is read; the four OAuth values a write needs are not set either, so nothing
-            could be published even with the switch on</li>
           <li>— holder counts: a public node cannot count holders, so the field is null on
             every row and the two questions that need it have no rows to answer with</li>
+          <li>— bonding curves off solana: the launchpads on the other chain are read by
+            nothing here, so a token there has no curve state rather than an unfinished
+            one. null is not &ldquo;did not migrate&rdquo;</li>
         </ul>
         <p className="mt-4 text-muted">
           Anything not in the first list is not implemented. The API reports the same thing at{" "}
@@ -97,10 +97,15 @@ export default function DocsPage() {
       <Section title="about the model layer">
         <p className="text-muted">
           four agents have a model behind them. the writer turns one recorded result into one
-          post. the reviewer asks whether that post claims more than the result supports. the
+          draft. the reviewer asks whether that draft claims more than the result supports. the
           critic asks why a result might be wrong, and can only make a verdict harsher — never
           lighter. the observer puts an anomaly a detector already found into a sentence; it
           never finds one.
+        </p>
+        <p className="mt-3 text-muted">
+          the drafts go nowhere. nothing on this system publishes, and the pages here are the
+          only place a result is ever stated. that is the whole of it — the work is the
+          measurements and what can be shown from them.
         </p>
         <p className="mt-3 text-muted">
           the remaining two roles on the agents page — researcher and data scientist — have no

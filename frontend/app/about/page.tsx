@@ -184,19 +184,6 @@ export default function AboutPage() {
             . a claim like this one without the link is just a nicer way of saying
             &ldquo;trust me&rdquo;.
           </li>
-          <li>
-            —{" "}
-            <a
-              href="https://x.com/godgodai"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-bone hover:text-magenta"
-            >
-              @godgodai
-            </a>{" "}
-            is where it posts. Every post describes a result recorded here, and any number
-            in one has to appear in the row it describes or the post is discarded.
-          </li>
         </ul>
       </Section>
     </div>

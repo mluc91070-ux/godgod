@@ -13,18 +13,23 @@ export const metadata = {
 /**
  * A roadmap that reads the system instead of describing it from memory.
  *
- * The counts, the horizons, the start date and the X stage all come from
- * `/api/status`. That is not decoration: the docs page spent two releases
- * claiming "the X and Solana providers, scheduled last" while Solana had been
- * collecting for days, and a roadmap is the single page most likely to rot the
- * same way. Anything here that cannot be derived is a decision rather than a
- * status, and those do not go stale.
+ * The counts, the horizons and the start date all come from `/api/status`.
+ * That is not decoration: the docs page spent two releases claiming "the X and
+ * Solana providers, scheduled last" while Solana had been collecting for days,
+ * and a roadmap is the single page most likely to rot the same way. Anything
+ * here that cannot be derived is a decision rather than a status, and those do
+ * not go stale.
+ *
+ * The social side is no longer described on any page. It is not deleted from
+ * the system — /api/status still reports the provider as unconfigured, which
+ * is the truth — but the site is about the measurements, and a paragraph about
+ * an integration that reads nothing was a paragraph about nothing.
  */
 export default async function RoadmapPage() {
   const result = await getStatus();
   if (!result.ok) return <Disconnected error={result.error} what="the roadmap" />;
 
-  const { collection, research, counts, mode } = result.data;
+  const { collection, research, counts } = result.data;
   const horizons = research.horizons_hours ?? [];
   const longest = horizons.length ? horizons[horizons.length - 1] : null;
   const days = collection.measuring_since
@@ -95,13 +100,6 @@ export default async function RoadmapPage() {
           <li>
             — <span className="text-magenta">observer agent</span>: a model puts an anomaly a
             detector already found into a sentence. It cannot create, suppress or rescore one.
-          </li>
-          <li>
-            — <span className="text-magenta">X</span>: stage{" "}
-            <span className="text-bone">{mode.x_stage}</span>. The client is built and not
-            connected — no credentials are set, so nothing is read and nothing is published.
-            This page will say <span className="text-bone">live</span> when a post can actually
-            go out, because that word is derived from whether it can.
           </li>
         </ul>
       </Section>

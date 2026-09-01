@@ -79,7 +79,8 @@ series with holes in it is not a shorter series; it is a different one.
 
 Above `CHAIN_RETAIN_MIN_MARKET_CAP_USD` a token is re-measured every run
 regardless of the feed. It reaches the observation threshold in six consecutive
-quarter hours and keeps accumulating after that.
+slots — an hour at the current ten-minute cadence — and keeps accumulating
+after that.
 
 - The floor is read from the live distribution — market cap p50 $8.4k, p75
   $659k, p90 $8.4m — so a million sits just above the third quartile.

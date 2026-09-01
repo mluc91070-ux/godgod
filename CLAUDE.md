@@ -198,11 +198,12 @@ or the account is telling two stories about one dataset.
   direction falsifies; it never confirms.
 - **A horizon is clock time, never a row count.** `build_dataset` indexed the
   series by position — `snapshots[index + horizon_hours]` — while every
-  hypothesis it fed said "six hours later". Snapshots land on a quarter-hour
-  grid, so six positions was ninety minutes, and the site published a horizon
-  it had never measured. The hourly fixtures hid it perfectly: at one reading
-  per hour the two are the same row. Any test about a timescale runs on a
-  quarter-hourly series, because that is what production has.
+  hypothesis it fed said "six hours later". Snapshots land on a fixed grid —
+  ten minutes now, fifteen before — so six positions was an hour and a half,
+  and the site published a horizon it had never measured. The hourly fixtures
+  hid it perfectly: at one reading per hour the two are the same row. Any test
+  about a timescale runs on a sub-hourly series, because that is what
+  production has.
 - **Every template owns its scope.** Window, horizon, stratification, effect
   threshold and outcome are declared per template, not taken from a shared
   setting. Six templates once shared one six-hour frame, one liquidity
@@ -234,8 +235,10 @@ or the account is telling two stories about one dataset.
   detector needs several measurements of the *same* token, so history that was
   never collected is never recoverable.
 - Ticks align to the clock, never to process start. A flat sleep from boot puts
-  every measurement late in its quarter-hour slot and shifts the whole series
-  on each restart.
+  every measurement late in its slot and shifts the whole series on each
+  restart. **The slot is derived from the interval** (`snapshot_slot_minutes`)
+  and snapped to a divisor of sixty, so the two cannot drift apart and slots
+  always tile the hour.
 - The GitHub workflow stays as a backstop. The two cannot collide — one
   measurement per token per slot, and the second attempt is counted as
   `already_measured_this_slot`.
@@ -244,7 +247,7 @@ or the account is telling two stories about one dataset.
 - A failing cycle is logged with its traceback and the next tick still fires.
   `CancelledError` is re-raised, never absorbed, or shutdown hangs.
 - While `DEMO_MODE` is on the loop collects but does not observe or research:
-  re-deriving the synthetic dataset every quarter hour produces nothing. Real
+  re-deriving the synthetic dataset on every tick produces nothing. Real
   history still accumulates underneath, which is the point of demo mode.
 
 ## Stream rules
@@ -375,7 +378,7 @@ or the account is telling two stories about one dataset.
   writer fills what is missing and touches nothing else. This is not theory:
   `ObservationPipeline._upsert_token` assigned every field on every run — fine
   while fixtures were the only thing creating tokens, silent data loss once the
-  scheduler ran it live every quarter hour, because it read the collector's own
+  scheduler ran it live on every tick, because it read the collector's own
   tokens back through `DatabaseObservationSource` and stamped
   `source = "database-live"` over all 144 of them. An upsert that reads a row it
   did not create is a fill-if-empty, never an assignment.
@@ -383,7 +386,11 @@ or the account is telling two stories about one dataset.
   only when the launchpad said so, and `migrated_to_dex` only when the payload
   named a pool. A high market cap is not a completed curve.
 - **The floors are per-frame, because they answer different questions.** The
-  $10k liquidity floor rejects a parked balance — a deep pool nobody trades.
+  $50k liquidity floor rejects a parked balance — a deep pool nobody trades.
+  It was $10k, which admitted the median token at $5,885 of depth: a pool three
+  trades wide, and most of what it let in was never going to be a subject, only
+  a row. The volume floor moved $25k to $100k for the same reason — at $25k it
+  passed 1,348 of 1,400 tokens, which is not a filter.
   A token twenty minutes past migration cannot be one, and that floor rejects it
   for the opposite reason. Measured live: it dropped 21 of 25 fresh migrations,
   including one at 18 minutes doing $343k of volume on a $6k pool. Migrations

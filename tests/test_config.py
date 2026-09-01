@@ -113,3 +113,44 @@ def test_the_switch_and_all_four_values_is_live() -> None:
     settings = build(x_mode="publish", **OAUTH)
     assert settings.x_can_publish is True
     assert settings.x_stage == "live"
+
+
+# -- the measurement slot follows the collection interval -------------------
+
+
+def test_the_slot_is_derived_from_the_interval(settings) -> None:
+    """The two must not drift apart.
+
+    A loop faster than the slot spends requests landing where a measurement
+    already exists; a loop slower than it leaves the grid half empty, and the
+    gaps look like a market that went quiet.
+    """
+    settings.scheduler_interval_seconds = 600
+    assert settings.snapshot_slot_minutes == 10
+    settings.scheduler_interval_seconds = 900
+    assert settings.snapshot_slot_minutes == 15
+
+
+def test_the_slot_always_tiles_the_hour(settings) -> None:
+    """Otherwise every hour's boundary lands somewhere different.
+
+    Seven minutes does not divide sixty, so no two days would be comparable.
+    It is snapped down to six rather than accepted.
+    """
+    for seconds, expected in (
+        (60, 1),
+        (420, 6),
+        (600, 10),
+        (900, 15),
+        (1_500, 20),
+        (3_600, 60),
+        (7_200, 60),
+    ):
+        settings.scheduler_interval_seconds = seconds
+        assert settings.snapshot_slot_minutes == expected, seconds
+        assert 60 % settings.snapshot_slot_minutes == 0
+
+
+def test_a_sub_minute_interval_still_yields_a_slot(settings) -> None:
+    settings.scheduler_interval_seconds = 30
+    assert settings.snapshot_slot_minutes == 1

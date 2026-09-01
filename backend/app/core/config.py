@@ -177,17 +177,27 @@ class Settings(BaseSettings):
     """Tokens tracked per collection run. The deterministic floors drop most of
     them before anything is stored; this caps the work before that."""
 
-    chain_min_liquidity_usd: float = 10_000.0
+    chain_min_liquidity_usd: float = 50_000.0
     """A token below this is not worth a row. Distinct from the pipeline's own
-    floor, which decides what is worth *observing* once it is stored."""
+    floor, which decides what is worth *observing* once it is stored.
 
-    chain_min_volume_usd: float = 25_000.0
+    Raised from $10,000 against the measured population: of 1,400 tokens held,
+    646 cleared ten thousand and 406 clear fifty. The old floor admitted the
+    median token at $5,885 of depth, which is a pool three trades wide — most
+    of what it let in was never going to be a subject, only a row.
+    """
+
+    chain_min_volume_usd: float = 100_000.0
     """Liquidity alone says nothing.
 
     Measured on the live feed: pools holding over a billion dollars of wrapped
     SOL reported about a hundred dollars of daily volume. That is a parked
     balance, not a market, and tracking it would fill the dataset with tokens
     nothing ever happens to.
+
+    Raised from $25,000 because at that level it was not a filter: 1,348 of
+    1,400 tokens cleared it. The median is $135,513, so a hundred thousand is
+    the point where the floor starts doing the job it was written for.
     """
 
     scheduler_enabled: bool = False
@@ -203,12 +213,40 @@ class Settings(BaseSettings):
     so history that is never collected is never recoverable.
 
     The GitHub workflow stays as a backstop. The two cannot collide — the
-    collector stores one measurement per token per quarter hour.
+    collector stores one measurement per token per slot.
     """
 
-    scheduler_interval_seconds: int = 900
-    """Matches the collector's quarter-hour slot. A shorter interval would
-    spend requests to land in a slot already measured."""
+    scheduler_interval_seconds: int = 600
+    """How often the collector runs. The measurement slot follows it.
+
+    Ten minutes rather than fifteen: six readings an hour instead of four, so a
+    token clears `OBSERVATION_MIN_SNAPSHOTS` in an hour rather than ninety
+    minutes, and a six-hour window holds thirty-six points instead of
+    twenty-four.
+
+    The cost is on the shape of `volume_usd`, which is an hourly rolling
+    figure: two consecutive readings now overlap by 83% instead of 75%. That is
+    still far from the 96% that made the 24h window useless, and the trade is
+    worth stating rather than hiding — the sampling got denser, the measurement
+    did not change.
+    """
+
+    @property
+    def snapshot_slot_minutes(self) -> int:
+        """The grid measurements are keyed to, derived from the interval.
+
+        Derived rather than configured because the two must not drift apart. A
+        loop running faster than the slot spends requests landing in a slot
+        already measured; a loop running slower leaves the grid half empty and
+        the gaps look like a market that went quiet.
+
+        Snapped to a divisor of sixty so slots tile the hour. Without that, a
+        seven-minute interval would put every hour's boundary in a different
+        place and no two days would be comparable.
+        """
+        minutes = max(1, self.scheduler_interval_seconds // 60)
+        divisors = (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60)
+        return max(value for value in divisors if value <= min(minutes, 60))
 
     launchpad_api_url: str | None = None
     """Where completed bonding curves are read from.
@@ -269,8 +307,14 @@ class Settings(BaseSettings):
     rounding error on a fresh pool.
     """
 
-    chain_retain_max_tokens: int = 20
+    chain_retain_max_tokens: int = 40
     """Retained tokens per chain, not in total.
+
+    Forty rather than twenty: the cohort is the part of the dataset that can
+    actually be researched — a retained token is measured every run and reaches
+    the observation threshold — so it is the number to spend on. Forty per
+    chain against a floor of a million is roughly the top decile of each
+    population.
 
     In total, the largest caps on the older chain would fill every slot and the
     newer one would never be retained at all — a budget rule quietly deciding

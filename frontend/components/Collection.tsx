@@ -26,6 +26,9 @@ export default function Collection({ status }: { status: Status }) {
         </span>
       </div>
 
+      {/* Three numbers about the measurements. The social count used to sit
+          here and was always zero — a column reporting the absence of a thing
+          the site no longer talks about. /api/status still carries it. */}
       <div className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-3">
         <div className="flex justify-between border-b border-line py-1">
           <span className="text-muted">tokens measured</span>
@@ -36,8 +39,8 @@ export default function Collection({ status }: { status: Status }) {
           <span>{fmtInt(c.live_snapshots)}</span>
         </div>
         <div className="flex justify-between border-b border-line py-1">
-          <span className="text-muted">social posts</span>
-          <span>{fmtInt(c.live_posts)}</span>
+          <span className="text-muted">observable tokens</span>
+          <span>{fmtInt(c.tokens_ready_to_observe ?? 0)}</span>
         </div>
       </div>
 
@@ -47,7 +50,7 @@ export default function Collection({ status }: { status: Status }) {
           feed first. Shown against the total so the ratio is visible. */}
       <p className="mt-3 text-[11px] text-muted">
         <span className="text-bone">{fmtInt(c.tokens_ready_to_observe ?? 0)}</span> of{" "}
-        {fmtInt(c.live_tokens)} have the {c.needed_to_observe} measurements a detector needs
+        {fmtInt(c.live_tokens)} tokens have the {c.needed_to_observe} measurements a detector needs
         before it may say anything. the rest were measured and then lost the feed — the
         largest by market cap are now kept under measurement on purpose, which is the only
         honest way to make that number move.
@@ -128,7 +131,6 @@ export default function Collection({ status }: { status: Status }) {
 
       <p className="mt-1 text-[11px] text-muted">
         last chain collection {fmtTime(c.last_chain_run_at)}
-        {c.last_x_run_at ? ` · last social collection ${fmtTime(c.last_x_run_at)}` : null}
       </p>
 
       {/* Read from the running task, not from the setting that asked for it.
