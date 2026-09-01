@@ -94,6 +94,15 @@ export default async function DataPage() {
             />
             <Field k="window" v={`${status.data.pipeline.window_hours}h`} />
             <Field k="detectors" v={status.data.pipeline.detectors.join(", ")} />
+            {/* Listed apart rather than hidden: these are real detectors with
+                no data behind them, and counting them among the others would
+                report ten working measurements where there are seven. */}
+            {status.data.pipeline.detectors_without_a_source?.length ? (
+              <Field
+                k="detectors with no source"
+                v={status.data.pipeline.detectors_without_a_source.join(", ")}
+              />
+            ) : null}
             <Field
               k="model in the loop"
               v={

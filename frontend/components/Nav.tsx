@@ -106,20 +106,10 @@ const GROUPS: Group[] = [
   },
 ];
 
-export const X_URL = "https://x.com/godgodai";
-
 const PRIMARY: [string, string][] = [
   ["/about", "about"],
   ["/docs", "docs"],
 ];
-
-function XIcon({ size = 12 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden>
-      <path d="M18.9 2H22l-7.1 8.1L23.2 22h-6.6l-5.2-6.8L5.5 22H2.4l7.6-8.7L1.2 2h6.8l4.7 6.2L18.9 2Zm-1.1 18.1h1.7L7.3 3.8H5.5l12.3 16.3Z" />
-    </svg>
-  );
-}
 
 export default function Nav({ beating }: { beating: boolean }) {
   const pathname = usePathname() ?? "/";
@@ -256,16 +246,6 @@ export default function Nav({ beating }: { beating: boolean }) {
 
           <LiveDock beating={beating} />
 
-          <a
-            href={X_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label="GODGOD on X"
-            className="ml-1 p-2.5 text-grey transition-colors hover:text-bone"
-          >
-            <XIcon />
-          </a>
-
           <button
             type="button"
             aria-label={drawer ? "Close menu" : "Open menu"}
@@ -338,15 +318,6 @@ export default function Nav({ beating }: { beating: boolean }) {
             >
               token
             </Link>
-            <a
-              href={X_URL}
-              target="_blank"
-              rel="noreferrer noopener"
-              aria-label="GODGOD on X"
-              className="border border-line p-[11px] text-grey"
-            >
-              <XIcon />
-            </a>
           </div>
         </div>
       ) : null}

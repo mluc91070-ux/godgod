@@ -120,6 +120,9 @@ class ChainReport:
     retained: int = 0
     """Measurements taken because the token is above the retention floor,
     rather than because the feed named it this run."""
+    watched: int = 0
+    """Measurements of tokens named by hand. Counted apart because they are not
+    a sample of anything."""
     scans: dict[str, dict[str, Any]] = field(default_factory=dict)
     """Per chain, what the launch scan did: the block range it covered, how far
     it still trails the head, and how many status calls it could not make. A
@@ -157,6 +160,7 @@ class ChainReport:
             "by_chain": self.by_chain,
             "scans": self.scans,
             "retained": self.retained,
+            "watched": self.watched,
             "distributions_measured": self.distributions_measured,
             "migrations_seen": self.migrations_seen,
             "migrations_measured": self.migrations_measured,
@@ -176,6 +180,13 @@ class ChainReport:
 
 PROMOTED = "promotion-feed"
 MIGRATED = "launchpad-migration"
+WATCHLIST = "hand-watchlist"
+"""The third frame, and the one that is not a sample.
+
+A hand-written list of tokens that already did well is every selection bias at
+once. It is kept because watching named tokens is useful, and it is kept
+*apart* because an experiment drawn from survivors answers nothing — see
+`research/dataset.py`, which drops these rows by name."""
 """The two sampling frames. Stored on `Token.source` so every experiment can
 say which population it drew from instead of implying a neutral one."""
 
@@ -202,6 +213,7 @@ async def _get_or_create_token(
     report: ChainReport,
     *,
     migration: MigratedToken | None = None,
+    frame: str | None = None,
 ) -> Token:
     # Keyed on the pair, not on the address. An address is only a token
     # together with its network: the same string is a different asset on a
@@ -233,7 +245,7 @@ async def _get_or_create_token(
         # The frame that found it first. Never overwritten later: a token that
         # was promoted and then migrated entered this dataset as promoted, and
         # rewriting that would change the population of every past experiment.
-        source=MIGRATED if migration is not None else PROMOTED,
+        source=frame or (MIGRATED if migration is not None else PROMOTED),
         is_demo=False,
     )
     if migration is not None:
@@ -440,6 +452,37 @@ async def collect_chain(
     # and the discovery floors would drop it exactly when it became
     # interesting. Every such row records `selected_by="retention"` so the two
     # rules never sit in one column unlabelled.
+    # The named list, measured whatever the feed is doing. Same rows as any
+    # other token; a different frame on the row, so no experiment can mistake a
+    # list of winners for a sample.
+    watched: dict[str, list[str]] = {}
+    for entry in settings.chain_watchlist:
+        chain_id, _, address = entry.partition(":")
+        chain_id, address = chain_id.strip().lower(), address.strip()
+        if not address:
+            report.drop("watchlist_entry_malformed")
+            continue
+        watched.setdefault(chain_id, []).append(address)
+
+    watchlist: set[tuple[str, str]] = set()
+    try:
+        for chain_id, addresses in watched.items():
+            measured = await market.snapshots(addresses, chain_id)
+            for address in addresses:
+                if not any(
+                    item.address.lower() == address.lower() for item in measured
+                ):
+                    # The market has no pair for it on that chain. A real state
+                    # — a wrong address looks exactly like a dead one from here
+                    # — and it is counted rather than passed over.
+                    report.drop("watchlist_not_on_market")
+            for item in measured:
+                watchlist.add((item.chain, item.address))
+            candidates.extend(measured)
+    except (ProviderNotConfigured, MarketCallFailed) as exc:
+        report.drop("watchlist_measurement_failed")
+        report.retention_error = f"{type(exc).__name__}: {exc}"
+
     retained: set[tuple[str, str]] = set()
     try:
         for chain_id, addresses in (await _retained_addresses(session, settings)).items():
@@ -473,10 +516,12 @@ async def collect_chain(
         settings.chain_max_tokens
         + (settings.launchpad_max_tokens if migrations else 0)
         + len(retained)
+        + len(watchlist)
     )
     for snapshot in list(unique.values())[:budget]:
         migration = migrations.get((snapshot.chain, snapshot.address))
-        keep = (snapshot.chain, snapshot.address) in retained
+        watching = (snapshot.chain, snapshot.address) in watchlist
+        keep = watching or (snapshot.chain, snapshot.address) in retained
         # The floors are per-frame because they answer different questions. On
         # the promotion feed the risk is a deep pool nobody trades — a parked
         # balance. A token that migrated twenty minutes ago cannot be one, and
@@ -494,7 +539,13 @@ async def collect_chain(
         )
         frame = "migration" if migration is not None else "promotion"
         selected_by = (
-            "retention" if keep else "migration" if migration is not None else "discovery"
+            "watchlist"
+            if watching
+            else "retention"
+            if keep
+            else "migration"
+            if migration is not None
+            else "discovery"
         )
 
         # The floors decide what is worth *entering* the dataset. A retained
@@ -520,7 +571,14 @@ async def collect_chain(
                 continue
 
         token = await _get_or_create_token(
-            session, snapshot, report, migration=migration
+            session,
+            snapshot,
+            report,
+            migration=migration,
+            # Only if this row is new. A token the feed already found keeps the
+            # frame that found it — naming it by hand afterwards does not
+            # change how it entered the dataset.
+            frame=WATCHLIST if watching else None,
         )
         if await _already_measured(session, token.id, observed_at):
             report.drop("already_measured_this_slot")
@@ -572,7 +630,9 @@ async def collect_chain(
         report.measured += 1
         report.snapshots_stored += 1
         report.count_chain(token.chain)
-        if keep:
+        if watching:
+            report.watched += 1
+        elif keep:
             report.retained += 1
 
     report.duration_ms = int((utcnow() - started).total_seconds() * 1000)
@@ -585,6 +645,8 @@ async def collect_chain(
         message += " on " + ", ".join(
             f"{count} {chain}" for chain, count in sorted(report.by_chain.items())
         )
+    if report.watched:
+        message += f", {report.watched} from the watchlist"
     if report.retained:
         message += f", {report.retained} retained above the market-cap floor"
     if report.migrations_seen:

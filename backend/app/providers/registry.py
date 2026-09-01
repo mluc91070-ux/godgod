@@ -102,20 +102,18 @@ def _evm_note(settings: Settings) -> str:
 
 
 def _x_note(settings: Settings) -> str:
-    """Read access only, and only when a token is present."""
-    if not settings.x_bearer_token:
-        return (
-            "Beta testing, and not connected: the recent-search client is implemented "
-            "but no bearer token is set, so nothing is collected and the collector says "
-            "so rather than reporting zero posts. Beta describes the code, not a "
-            "capability — nothing is being read and nothing is being published."
-        )
+    """What is left after the reading side was removed.
+
+    Not "disabled". The collector, its endpoint, its gate and its tests are
+    gone, so there is no configuration that starts it — which is a different
+    and stronger statement than a switch set to off.
+    """
     return (
-        f"Beta testing: reading recent posts for {len(settings.x_search_terms)} queries, "
-        f"at most {settings.x_max_posts_per_run} posts per run. Publishing refuses — "
-        f"X_MODE={settings.x_mode}, and the four OAuth values a write needs are not set. "
-        "Read access working is not the same capability as publishing, so the two are "
-        "reported apart."
+        "Reading is removed: there is no collector, no endpoint and no path that "
+        "stores a post, whatever credentials are set. Three detectors read social "
+        "activity and can no longer fire; status names them rather than listing "
+        f"them as working. Publishing refuses on its own terms — X_MODE={settings.x_mode} "
+        "and the four OAuth values a write needs are not set."
     )
 
 
@@ -182,7 +180,9 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
         ),
         ProviderStatus(
             name="x",
-            configured=bool(settings.x_bearer_token),
+            # False whatever is set: there is nothing left to configure on the
+            # reading side, and saying otherwise would imply a feed.
+            configured=False,
             implemented=True,
             note=_x_note(settings),
         ),

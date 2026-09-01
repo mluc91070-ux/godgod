@@ -90,12 +90,24 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       </div>
 
+      {c.tokens_watchlist > 0 ? (
+        <div className="mt-3 flex justify-between border-b border-line py-1 text-[11px]">
+          <span className="text-muted">
+            named by hand — a watchlist, not a sample
+          </span>
+          <span className="text-bone">{fmtInt(c.tokens_watchlist)}</span>
+        </div>
+      ) : null}
+
       <p className="mt-3 text-[11px] text-muted">
         {c.migrations_available
           ? "two sampling frames, kept apart. a result that holds in one and not the other is a result about the frame, not about the market."
           : "migrations are not being read, so the dash is 'not measured', not 'none found'."}
         {chains.length > 1
           ? " the migrated frame is read from a launchpad that covers solana only, so every token on another chain arrived through the promotion feed. no comparison is held across two chains."
+          : null}
+        {c.tokens_watchlist > 0
+          ? " tokens named by hand are measured and shown like any other, and dropped from every dataset by name: the list was written after seeing which ones did well, so a rate computed over them is a fact about whoever wrote it."
           : null}
         {c.tokens_unrecorded_frame > 0
           ? ` ${fmtInt(c.tokens_unrecorded_frame)} more were measured before the frame was recorded at all — they are not counted as either, because nobody wrote down which.`

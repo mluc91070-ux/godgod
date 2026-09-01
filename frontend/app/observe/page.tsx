@@ -75,7 +75,9 @@ export default async function ObservePage() {
       {pipeline ? (
         <p className="mt-4 text-[11px] text-muted">
           source <span className="text-bone">{pipeline.source}</span> · {pipeline.window_hours}h
-          window · {pipeline.detectors.length} deterministic detectors · no model in the loop, so
+          window ·{" "}
+          {pipeline.detectors.length - (pipeline.detectors_without_a_source?.length ?? 0)}{" "}
+          deterministic detectors with a source · no model in the loop, so
           every row below was decided by a threshold, not by a judgement.
         </p>
       ) : null}

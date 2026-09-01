@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Token, TokenSnapshot
 from app.models.base import as_utc
 from app.providers.source import TokenRef
+from app.services.chain import WATCHLIST
 from app.services.observation.detectors import DetectorParams
 from app.services.observation.windows import build_token_window
 from app.services.research.templates import HypothesisTemplate
@@ -207,6 +208,13 @@ async def build_dataset(
 
     tokens = (await session.scalars(select(Token))).all()
     for token in tokens:
+        if token.source == WATCHLIST:
+            # Hand-named tokens are measured and shown, never compared. The
+            # list was written after seeing which ones did well, so every row
+            # in it is a survivor and any rate computed over them is a fact
+            # about the person who wrote the list.
+            dataset.drop("hand_selected_token")
+            continue
         snapshots = [
             _snapshot_dict(row)
             for row in (

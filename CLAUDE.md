@@ -30,7 +30,6 @@ backend/.venv/Scripts/python scripts/check_phase1.py           # phase gates
 backend/.venv/Scripts/python scripts/check_phase2.py
 backend/.venv/Scripts/python scripts/check_phase3.py
 backend/.venv/Scripts/python scripts/check_phase4.py           # covers PHASE 4-6
-backend/.venv/Scripts/python scripts/check_phase7.py           # x provider
 backend/.venv/Scripts/python scripts/check_phase8.py           # chain + market
 backend/.venv/Scripts/python scripts/check_phase9.py           # live stream
 backend/.venv/Scripts/python scripts/check_phase10.py          # public pages
@@ -302,8 +301,23 @@ or the account is telling two stories about one dataset.
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.
 
+## Social rules
+
+**Nothing reads X.** The collector, its endpoint, its gate and its tests are
+gone — not disabled, removed — because the site is about the measurements and a
+capability one endpoint away from running is not the same claim as a capability
+that does not exist. `/api/status` says so, and it says which three detectors
+lost their source with it rather than listing ten measurements where there are
+seven.
+
+The publish path is a separate thing and still refuses on its own terms; the
+rules below are what governs it if it is ever wired up.
+
 ## X rules
 
+- **Reading is not a rule any more, it is absent.** There is no collector, no
+  `/api/admin/x/collect`, and no path that stores a post. A detector that needs
+  social data returns nothing, which is correct, and status names it.
 - **Publishing is off unless the deployment opts in.** `X_MODE` is the switch
   and no argument to any function overrides it. Below autonomy level 3 a human
   must approve each draft; that is a decision, never a default.

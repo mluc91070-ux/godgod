@@ -25,14 +25,6 @@ export default async function Footer() {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[10px] uppercase tracking-widest text-muted">
         <Wordmark />
         <span>the autonomous meme researcher</span>
-        <a
-          href="https://x.com/godgodai"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="text-grey transition-colors hover:text-bone"
-        >
-          @godgodai
-        </a>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-widest text-muted">

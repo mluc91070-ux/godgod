@@ -67,6 +67,14 @@ class PipelineInfo(BaseModel):
     source_is_demo: bool
     window_hours: int
     detectors: list[str]
+    detectors_without_a_source: list[str]
+    """Detectors that can no longer be fed, and so can never fire.
+
+    Three of them read social activity, and nothing collects it any more. They
+    are not deleted — a detector that returns nothing because it has no data is
+    a correct detector — but listing them beside the others without saying so
+    would let a reader count ten working measurements where there are seven.
+    """
     llm_in_loop: bool
     """False in PHASE 3. Every observation carries llm_reviewed=False."""
     last_run_at: datetime | None
@@ -110,6 +118,12 @@ class CollectionInfo(BaseModel):
     Two populations, kept apart because they are not the same one. A result
     that holds in one and not the other is a result about the sampling frame.
     """
+    tokens_watchlist: int
+    """Tokens named by hand rather than sampled.
+
+    Counted apart and never folded into either frame: the list was written
+    after seeing which tokens did well, so it is a set of survivors, and the
+    research datasets drop it by name rather than drawing from it."""
     tokens_unrecorded_frame: int
     """Measured before the sampling frame was recorded at all.
 
@@ -129,7 +143,6 @@ class CollectionInfo(BaseModel):
     the run. A chain named in MARKET_CHAINS but absent from this map has had
     nothing measured on it yet, which is a different statement from zero."""
     live_snapshots: int
-    live_posts: int
     deepest_history: int
     """Most measurements held for any single token."""
     tokens_ready_to_observe: int
@@ -152,7 +165,6 @@ class CollectionInfo(BaseModel):
     """
     scheduler_interval_seconds: int | None
     last_chain_run_at: datetime | None
-    last_x_run_at: datetime | None
     measuring_since: datetime | None
     """First real measurement stored. The age of the dataset, not of the code.
 

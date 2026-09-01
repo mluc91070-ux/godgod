@@ -16,7 +16,6 @@ from app.models import Anomaly, ContentDraft, ExperimentResult, Token, TokenSnap
 from app.schemas.agents import (
     BudgetOut,
     ChainOut,
-    CollectionOut,
     CriticOut,
     GoLiveOut,
     ObserverOut,
@@ -25,7 +24,6 @@ from app.schemas.agents import (
 )
 from app.services.budget import get_budget_status
 from app.services.chain import collect_chain
-from app.services.social import collect_posts
 
 router = APIRouter(prefix="/api", tags=["agents"])
 
@@ -109,20 +107,6 @@ async def run_observer(
 
     outcome = await read_anomaly(session, anomaly_id, settings=settings)
     return ObserverOut(**outcome.as_dict())
-
-
-@router.post("/admin/x/collect", response_model=CollectionOut)
-async def run_collector(
-    session: SessionDep, settings: SettingsDep, admin: AdminDep
-) -> CollectionOut:
-    """Run each configured X search once and store what comes back.
-
-    Returns 200 with `complete: false` when the quota stopped the run or no
-    token is configured — a collector that returns zero posts for those reasons
-    must not look like one that found nothing.
-    """
-    report = await collect_posts(session, settings=settings)
-    return CollectionOut(**report.as_dict())
 
 
 @router.post("/admin/chain/collect", response_model=ChainOut)

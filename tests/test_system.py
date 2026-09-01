@@ -49,9 +49,14 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     assert providers["anthropic"]["configured"] is False
     assert "no API key" in providers["anthropic"]["note"]
 
+    # Reading is removed, not switched off. `configured` is False whatever
+    # credentials exist, because there is nothing left to configure — and the
+    # note has to say removed rather than unconnected, which would imply a feed
+    # waiting on a key.
     assert providers["x"]["implemented"] is True
     assert providers["x"]["configured"] is False
-    assert "no bearer token" in providers["x"]["note"]
+    assert "Reading is removed" in providers["x"]["note"]
+    assert "no collector" in providers["x"]["note"]
 
     # The second chain's node. Unset here, and the note has to say that no
     # curve state is read rather than implying every token is unmigrated.

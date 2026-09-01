@@ -415,6 +415,24 @@ class Settings(BaseSettings):
     and the same answer, so the same number. On a token under an hour old the
     24h figure is simply everything that has traded since it launched."""
 
+    chain_watchlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    """Tokens named by hand, as `chain:address`, measured every run.
+
+    This is a third sampling frame and by far the most biased one: the other
+    two are populations — whatever the feed promoted, whatever curve filled —
+    and this one is a list somebody wrote after seeing which tokens did well.
+    Every entry is a survivor by construction.
+
+    That is fine for watching and useless for inference, so the two uses are
+    separated rather than blurred: the rows are measured, stored and shown like
+    any other, and `research/dataset.py` drops them under a named reason. A
+    "top runners" list in a comparison is survivorship bias with extra steps.
+
+    Addresses are recorded exactly as given and never trusted as metadata: the
+    symbol and name still come from the market source, and nothing a list says
+    about a token is stored as a fact about it.
+    """
+
     chain_retain_min_market_cap_usd: float = 1_000_000.0
     """Above this market cap a token is measured every run, whether or not the
     promotion feed still names it.
@@ -568,6 +586,7 @@ class Settings(BaseSettings):
         "x_search_terms",
         "chain_watch_queries",
         "market_chains",
+        "chain_watchlist",
         "evm_launchpad_factories",
         mode="before",
     )

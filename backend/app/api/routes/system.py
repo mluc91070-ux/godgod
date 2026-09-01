@@ -17,7 +17,6 @@ from app.models import (
     Hypothesis,
     MetricsSnapshot,
     ResearchSource,
-    SocialPost,
     SystemEvent,
     Token,
     TokenSnapshot,
@@ -131,6 +130,11 @@ async def describe_pipeline(session: SessionDep, settings: SettingsDep) -> Pipel
         source_is_demo=source.is_demo,
         window_hours=settings.observation_window_hours,
         detectors=sorted(DETECTOR_NAMES),
+        # Named from the detector list rather than written out, so a detector
+        # that gains a source again stops being listed here on its own.
+        detectors_without_a_source=sorted(
+            name for name in DETECTOR_NAMES if "social" in name or "narrative" in name
+        ),
         llm_in_loop=False,
         last_run_at=last_run,
     )
@@ -174,8 +178,7 @@ async def describe_collection(
     # an ORM object and then ran a COUNT(*) for each one: at 1,035 tokens that
     # was 1,036 round trips, `/api/status` answered in about two seconds, and
     # every page asks for it — so the cost landed on every visit to the site.
-    from app.services.chain import CHAIN_RUN_NAME, MIGRATED, PROMOTED
-    from app.services.social import COLLECTOR_RUN_NAME
+    from app.services.chain import CHAIN_RUN_NAME, MIGRATED, PROMOTED, WATCHLIST
 
     per_token = (
         select(func.count().label("n"))
@@ -221,6 +224,7 @@ async def describe_collection(
     token_count = sum(by_frame.values())
     promoted = by_frame.get(PROMOTED, 0)
     migrated = by_frame.get(MIGRATED, 0)
+    watchlist = by_frame.get(WATCHLIST, 0)
 
     async def count_live(model) -> int:
         return int(
@@ -241,13 +245,13 @@ async def describe_collection(
         tokens_migrated=migrated,
         # Everything that is neither frame, including the NULL the clobbered
         # rows were reset to. Derived by subtraction so the three always sum.
-        tokens_unrecorded_frame=token_count - promoted - migrated,
+        tokens_watchlist=watchlist,
+        tokens_unrecorded_frame=token_count - promoted - migrated - watchlist,
         migrations_available=bool(
             settings.launchpad_migrations and settings.launchpad_api_url
         ),
         tokens_by_chain=by_chain,
         live_snapshots=await count_live(TokenSnapshot),
-        live_posts=await count_live(SocialPost),
         deepest_history=deepest,
         tokens_ready_to_observe=ready,
         needed_to_observe=settings.observation_min_snapshots,
@@ -257,7 +261,6 @@ async def describe_collection(
             settings.scheduler_interval_seconds if settings.scheduler_enabled else None
         ),
         last_chain_run_at=await last_run(CHAIN_RUN_NAME),
-        last_x_run_at=await last_run(COLLECTOR_RUN_NAME),
         measuring_since=await session.scalar(
             select(func.min(TokenSnapshot.observed_at)).where(
                 TokenSnapshot.is_demo.is_(False)

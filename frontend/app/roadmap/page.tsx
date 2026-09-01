@@ -20,10 +20,11 @@ export const metadata = {
  * here that cannot be derived is a decision rather than a status, and those do
  * not go stale.
  *
- * The social side is no longer described on any page. It is not deleted from
- * the system — /api/status still reports the provider as unconfigured, which
- * is the truth — but the site is about the measurements, and a paragraph about
- * an integration that reads nothing was a paragraph about nothing.
+ * The social side is gone from the system, not just from this page: no
+ * collector, no endpoint, no gate. What is left of it in /api/status is one
+ * line saying reading is removed and naming the three detectors that lost
+ * their source with it — because seven working measurements listed as ten is
+ * exactly the kind of count this page exists to stop.
  */
 export default async function RoadmapPage() {
   const result = await getStatus();
@@ -73,9 +74,11 @@ export default async function RoadmapPage() {
             </li>
           ) : null}
           <li>
-            — a deterministic observation pipeline: {result.data.pipeline.detectors.length}{" "}
-            detectors, {fmtInt(counts.observations)} observations, {fmtInt(counts.anomalies)}{" "}
-            anomalies, no model anywhere in it
+            — a deterministic observation pipeline:{" "}
+            {result.data.pipeline.detectors.length -
+              (result.data.pipeline.detectors_without_a_source?.length ?? 0)}{" "}
+            detectors with a source, {fmtInt(counts.observations)} observations,{" "}
+            {fmtInt(counts.anomalies)} anomalies, no model anywhere in it
           </li>
           <li>
             — {research.hypothesis_templates} questions, each with its own window, horizon

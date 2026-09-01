@@ -77,6 +77,7 @@ export type Status = {
     source_is_demo: boolean;
     window_hours: number;
     detectors: string[];
+    detectors_without_a_source: string[];
     llm_in_loop: boolean;
     last_run_at: string | null;
   };
@@ -95,11 +96,11 @@ export type Status = {
     live_tokens: number;
     tokens_promoted: number;
     tokens_migrated: number;
+    tokens_watchlist: number;
     tokens_unrecorded_frame: number;
     migrations_available: boolean;
     tokens_by_chain: Record<string, number>;
     live_snapshots: number;
-    live_posts: number;
     deepest_history: number;
     tokens_ready_to_observe: number;
     needed_to_observe: number;
@@ -107,7 +108,6 @@ export type Status = {
     scheduler_running: boolean;
     scheduler_interval_seconds: number | null;
     last_chain_run_at: string | null;
-    last_x_run_at: string | null;
     measuring_since: string | null;
     running_since: string | null;
   };

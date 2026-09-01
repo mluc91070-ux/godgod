@@ -24,7 +24,8 @@ export default function DocsPage() {
           <li>— database schema and migrations for the full research chain</li>
           <li>— read API over observations, hypotheses, experiments, traces, patterns, memory</li>
           <li>— memory: store, embed, rank by cosine, neighbours, cluster, digest</li>
-          <li>— observation pipeline: ingest, filter, score, ten anomaly detectors</li>
+          <li>— observation pipeline: ingest, filter, score, seven anomaly detectors that
+            can fire. three more read social activity, which nothing collects any more</li>
           <li>— hypothesis engine: six templates, each with its own window and horizon</li>
           <li>— experiment engine: token-measurement cohorts, two-proportion tests, split</li>
           <li>— critic: ten design checks, and the gate that blocks an unearned finding</li>
@@ -41,9 +42,10 @@ export default function DocsPage() {
         <ul className="space-y-1 text-muted">
           <li>— holder counts: a public node cannot count holders, so the field is null on
             every row and the two questions that need it have no rows to answer with</li>
-          <li>— bonding curves off solana: the launchpads on the other chain are read by
-            nothing here, so a token there has no curve state rather than an unfinished
-            one. null is not &ldquo;did not migrate&rdquo;</li>
+          <li>— three social detectors: nothing reads social activity, so they have no
+            data and can never fire. they are listed apart in{" "}
+            <code className="text-bone">/api/status</code> rather than counted among the
+            working ones</li>
         </ul>
         <p className="mt-4 text-muted">
           Anything not in the first list is not implemented. The API reports the same thing at{" "}
@@ -54,7 +56,7 @@ export default function DocsPage() {
 
       <Section title="about the observation pipeline">
         <p className="text-muted">
-          Detection is deterministic: ten threshold-based detectors over trailing windows of
+          Detection is deterministic: threshold-based detectors over trailing windows of
           measurements. Every anomaly records the detector version, the baseline it compared
           against and the thresholds it used, so any call can be re-checked. Nothing here is a
           judgement call by a model — the model layer, when it arrives, only sees what these
