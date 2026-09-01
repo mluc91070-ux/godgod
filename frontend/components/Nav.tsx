@@ -45,6 +45,11 @@ const GROUPS: Group[] = [
         label: "data",
         blurb: "the tokens under measurement, and which feed found them",
       },
+      {
+        href: "/watchlist",
+        label: "watchlist",
+        blurb: "tokens named by hand, the claims about them, and the measurements beside them",
+      },
     ],
   },
   {

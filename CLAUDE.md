@@ -40,6 +40,7 @@ backend/.venv/Scripts/python scripts/generate_demo_timeseries.py
 backend/.venv/Scripts/python scripts/validate_compose.py
 cd backend && .venv/Scripts/python -m app.workers.observe [--backfill]
 cd backend && .venv/Scripts/python -m app.workers.research
+cd backend && .venv/Scripts/python -m app.workers.load_notes   # operator notes
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 cd backend && .venv/Scripts/python -m alembic upgrade head
 cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"

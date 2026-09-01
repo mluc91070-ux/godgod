@@ -415,6 +415,14 @@ class Settings(BaseSettings):
     and the same answer, so the same number. On a token under an hour old the
     24h figure is simply everything that has traded since it launched."""
 
+    watchlist_notes_path: str = "data/watchlist/robinhood-runners.json"
+    """Where the operator's notes about watched tokens are read from.
+
+    A path rather than a fixture: these are not `is_demo` rows and nothing
+    generates them. Absent is a valid state and the loader says so rather than
+    failing — a deployment with no notes simply has none.
+    """
+
     chain_watchlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
     """Tokens named by hand, as `chain:address`, measured every run.
 

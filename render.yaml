@@ -50,6 +50,8 @@ services:
         sync: false
       - key: FIXTURES_DIR
         value: /data/fixtures
+      - key: WATCHLIST_NOTES_PATH
+        value: /data/watchlist/robinhood-runners.json
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: MODEL_WRITER
