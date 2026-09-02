@@ -13,7 +13,11 @@ const LEVEL_COLOR: Record<string, string> = {
 const MAX_ROWS = 500;
 /** The log is unbounded; a browser tab is not. Older rows stay in /api/events. */
 
-type Connection = "connecting" | "open" | "closed" | "unsupported";
+type Connection = "connecting" | "open" | "closed" | "unsupported" | "refused";
+/** `refused` is a stream that never opened once, as distinct from one that
+ *  dropped and is retrying. EventSource does not report why, and the two look
+ *  identical from inside the browser — but only one of them will ever recover,
+ *  and calling both "reconnecting" describes a feed the page does not have. */
 
 /**
  * The event log as it is written.
@@ -43,8 +47,14 @@ export default function LiveTerminal({
 
     const source = new EventSource(`${apiUrl}/api/live/stream`);
     let closed = false;
+    let opened = false;
+    let failures = 0;
 
-    source.addEventListener("open", () => setConnection("open"));
+    source.addEventListener("open", () => {
+      opened = true;
+      failures = 0;
+      setConnection("open");
+    });
 
     source.addEventListener("log", (message) => {
       const event = JSON.parse((message as MessageEvent).data) as StreamEvent;
@@ -60,8 +70,18 @@ export default function LiveTerminal({
     // browser reconnects on its own with the last id it saw.
     source.addEventListener("close", () => setConnection("connecting"));
 
+    // A stream that never opened is not a stream that dropped. EventSource
+    // retries forever and the browser is not told why it failed, so the label
+    // said "reconnecting" indefinitely on a page that could never connect —
+    // which is the site describing a working feed it does not have.
+    //
+    // Measured on the live deployment: the api sent no
+    // access-control-allow-origin for this site's own domain, so every open
+    // was refused before it started, and the terminal read as merely quiet.
     source.onerror = () => {
-      if (!closed) setConnection("connecting");
+      if (closed) return;
+      failures += 1;
+      setConnection(!opened && failures >= 3 ? "refused" : "connecting");
     };
 
     return () => {
@@ -83,6 +103,12 @@ export default function LiveTerminal({
           : "streaming · nothing new yet";
       case "connecting":
         return "reconnecting";
+      case "refused":
+        return (
+          "the stream never opened from this page — the log above is what was " +
+          "loaded and is not advancing. the browser is not told why; the usual " +
+          "cause is the api refusing this origin"
+        );
       case "unsupported":
         return "no EventSource in this browser · showing the log as loaded";
       default:
@@ -98,7 +124,11 @@ export default function LiveTerminal({
             className={
               connection === "open"
                 ? "inline-block h-[6px] w-[6px] bg-amber"
-                : "inline-block h-[6px] w-[6px] bg-muted"
+                : connection === "refused"
+                  ? // Not the same grey as "quiet". A feed that cannot open is
+                    // a fault, and it has to look like one.
+                    "inline-block h-[6px] w-[6px] bg-magenta"
+                  : "inline-block h-[6px] w-[6px] bg-muted"
             }
             aria-hidden
           />
