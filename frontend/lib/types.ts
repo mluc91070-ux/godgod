@@ -338,6 +338,21 @@ export type Source = {
   last_used_at: string | null;
 };
 
+export type Attention = {
+  id: string;
+  observed_at: string;
+  source: string;
+  ref: string;
+  symbol: string | null;
+  name: string | null;
+  rank: number;
+  market_cap_rank: number | null;
+  chain: string | null;
+  address: string | null;
+  token_id: string | null;
+  is_demo: boolean;
+};
+
 export type TokenInfo = {
   id: string;
   address: string;

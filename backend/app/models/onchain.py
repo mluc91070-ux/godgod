@@ -110,6 +110,50 @@ class TokenSnapshot(Entity):
     token: Mapped[Token] = relationship(back_populates="snapshots")
 
 
+class AttentionSnapshot(Entity):
+    """One reading of a search ranking: this coin, at this rank, at this time.
+
+    Written only for entries that appear in the ranking. A token missing from
+    the list is **not ranked**, which is not the same as ranked last, so no row
+    is written for it and no detector can ever read a zero this system invented.
+
+    `token_id` is filled only on an exact contract-address match. A symbol is
+    not an identifier — two chains hold a dozen of most of them — and linking on
+    one would attach somebody else's attention to a real token's record.
+    """
+
+    __tablename__ = "attention_snapshots"
+
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    """Which feed, with a version. A ranking that changes how it is computed is
+    a different measurement and must not be compared with the old one."""
+
+    ref: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    """The feed's own identifier for the coin. Also how a resolved address is
+    read back instead of being looked up again."""
+    symbol: Mapped[str | None] = mapped_column(String(64))
+    name: Mapped[str | None] = mapped_column(String(256))
+    """Untrusted third-party strings, sanitised on the way in."""
+
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    """Position in the list. Lower is more looked-up. This is the measurement."""
+    market_cap_rank: Mapped[int | None] = mapped_column(Integer)
+
+    chain: Mapped[str | None] = mapped_column(String(32))
+    address: Mapped[str | None] = mapped_column(String(64), index=True)
+    """Where the feed says the coin lives. NULL when it did not say, which is
+    common and is a reason to store no link rather than to guess one."""
+
+    token_id: Mapped[str | None] = mapped_column(
+        ForeignKey("tokens.id", ondelete="SET NULL"), index=True
+    )
+    """Only on an exact address match, and NULL otherwise — including for a
+    token this system has simply never measured."""
+
+
 class LaunchpadLaunch(Entity):
     """A token seen launching on a bonding curve, and whether it ever finished.
 

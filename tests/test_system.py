@@ -38,7 +38,15 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     # Every client is implemented; none is configured here. The notes must say
     # each one refuses, rather than implying a live feed.
     providers = {p["name"]: p for p in body["providers"]}
-    assert set(providers) == {"solana", "market", "launchpad", "evm", "x", "anthropic"}
+    assert set(providers) == {
+        "solana",
+        "market",
+        "launchpad",
+        "evm",
+        "attention",
+        "x",
+        "anthropic",
+    }
     assert all(p["configured"] is False for p in providers.values())
 
     assert providers["solana"]["implemented"] is True
@@ -57,6 +65,12 @@ async def test_status_declares_mode_and_what_each_provider_can_do(client):
     assert providers["x"]["configured"] is False
     assert "Reading is removed" in providers["x"]["note"]
     assert "no collector" in providers["x"]["note"]
+
+    # What replaced the social series. Unset here, and the note has to say that
+    # nothing is measured rather than implying every token is ignored.
+    assert providers["attention"]["implemented"] is True
+    assert providers["attention"]["configured"] is False
+    assert "ATTENTION_API_URL is unset" in providers["attention"]["note"]
 
     # The second chain's node. Unset here, and the note has to say that no
     # curve state is read rather than implying every token is unmigrated.

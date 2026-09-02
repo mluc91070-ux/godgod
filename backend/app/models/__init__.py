@@ -7,6 +7,7 @@ test harness both rely on it.
 from app.models.base import Base, Entity, new_id, utcnow
 from app.models.memory import Memory
 from app.models.onchain import (
+    AttentionSnapshot,
     ChainCursor,
     LaunchpadLaunch,
     Token,
@@ -32,6 +33,7 @@ __all__ = [
     "Agent",
     "AgentRun",
     "Anomaly",
+    "AttentionSnapshot",
     "Base",
     "ChainCursor",
     "ContentDraft",

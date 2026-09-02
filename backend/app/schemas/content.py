@@ -30,6 +30,29 @@ class DraftDecision(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
 
 
+class AttentionOut(ORMModel):
+    """One reading of a search ranking.
+
+    `rank` is the measurement and lower means more looked-up. There is no row
+    for a coin that was not in the list, so an absent token is unranked rather
+    than ranked last. `token_id` is set only on an exact contract-address
+    match — a matching symbol is not a link.
+    """
+
+    id: str
+    observed_at: datetime
+    source: str
+    ref: str
+    symbol: str | None
+    name: str | None
+    rank: int
+    market_cap_rank: int | None
+    chain: str | None
+    address: str | None
+    token_id: str | None
+    is_demo: bool
+
+
 class TokenOut(ORMModel):
     id: str
     address: str

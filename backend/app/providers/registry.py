@@ -101,6 +101,24 @@ def _evm_note(settings: Settings) -> str:
     )
 
 
+def _attention_note(settings: Settings) -> str:
+    """What replaced the social series, and what it can and cannot say."""
+    if not settings.attention_api_url:
+        return (
+            "Nothing is measured about what people are looking up: "
+            "ATTENTION_API_URL is unset, so no ranking is read and no token is "
+            "recorded as ignored."
+        )
+    return (
+        "Reading a search ranking once per cycle and storing the positions. A "
+        "rank is a measurement, not a mood, and no model touches it. A coin "
+        "absent from the ranking gets no row — not ranked is not ranked last. "
+        f"A token is linked only on an exact contract address, at most "
+        f"{settings.attention_max_resolutions} new lookups per run; a symbol is "
+        "never a link."
+    )
+
+
 def _x_note(settings: Settings) -> str:
     """What is left after the reading side was removed.
 
@@ -177,6 +195,12 @@ def describe_providers(settings: Settings | None = None) -> list[ProviderStatus]
             ),
             implemented=True,
             note=_evm_note(settings),
+        ),
+        ProviderStatus(
+            name="attention",
+            configured=bool(settings.attention_api_url),
+            implemented=True,
+            note=_attention_note(settings),
         ),
         ProviderStatus(
             name="x",

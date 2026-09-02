@@ -1,8 +1,7 @@
-"""X drafts and token information.
+"""Drafts, token information, and the attention readings.
 
 Nothing here can publish. ``/publish`` exists so the contract is visible,
-and it refuses: the X provider is not implemented and V1 never posts
-automatically.
+and it refuses: V1 never posts automatically.
 """
 
 from __future__ import annotations
@@ -12,10 +11,10 @@ from sqlalchemy import select
 
 from app.api.deps import AdminDep, PageDep, SessionDep, SettingsDep, build_page, count_query
 from app.core.enums import DraftStatus
-from app.models import ContentDraft, Token
+from app.models import AttentionSnapshot, ContentDraft, Token
 from app.models.base import utcnow
 from app.schemas.common import Page
-from app.schemas.content import DraftDecision, DraftOut, TokenOut
+from app.schemas.content import AttentionOut, DraftDecision, DraftOut, TokenOut
 
 router = APIRouter(prefix="/api", tags=["content"])
 
@@ -120,6 +119,23 @@ async def list_tokens(session: SessionDep, settings: SettingsDep, page: PageDep)
     total = await count_query(session, stmt)
     rows = (await session.scalars(stmt.limit(page.limit).offset(page.offset))).all()
     return build_page(rows, TokenOut, total, page, settings)
+
+
+@router.get("/attention", response_model=Page[AttentionOut])
+async def list_attention(
+    session: SessionDep, settings: SettingsDep, page: PageDep
+) -> Page:
+    """The most recent readings of the search ranking, newest first.
+
+    Nothing here is derived. Every row is a position the feed reported at a
+    time, and a coin the feed did not list has no row at all.
+    """
+    stmt = select(AttentionSnapshot).order_by(
+        AttentionSnapshot.observed_at.desc(), AttentionSnapshot.rank
+    )
+    total = await count_query(session, stmt)
+    rows = (await session.scalars(stmt.limit(page.limit).offset(page.offset))).all()
+    return build_page(rows, AttentionOut, total, page, settings)
 
 
 @router.get("/tokens/{address}", response_model=TokenOut)

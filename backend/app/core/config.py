@@ -415,6 +415,26 @@ class Settings(BaseSettings):
     and the same answer, so the same number. On a token under an hour old the
     24h figure is simply everything that has traded since it launched."""
 
+    attention_api_url: str | None = None
+    """Where a search-ranking feed is read from.
+
+    This is what replaced the social collector. A ranking is a position, not a
+    mood: a token is in the list at a rank at a time, which is a series anyone
+    can count. No key, no account, and no model anywhere near it.
+    """
+
+    attention_timeout_seconds: float = 20.0
+
+    attention_max_resolutions: int = 6
+    """Coin-to-address lookups per run.
+
+    A ranking entry is useless until it is tied to a contract address, and that
+    is a second request per coin. The mapping does not change, so it is looked
+    up once and read back from the rows afterwards; this caps how many *new*
+    names a single run will resolve. The keyless tier is rate-limited, and a
+    run that spent its budget says so rather than reporting a short list.
+    """
+
     watchlist_notes_path: str = "data/watchlist/robinhood-runners.json"
     """Where the operator's notes about watched tokens are read from.
 

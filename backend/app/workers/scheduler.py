@@ -61,6 +61,15 @@ async def run_cycle(settings: Settings | None = None) -> dict[str, object]:
         report = await collect_chain(session, settings=settings)
         summary["chain"] = report.as_dict()
 
+    # What people are looking up, sampled on the same clock as the pool. It is
+    # its own session and its own failure: an attention source that is down or
+    # rate-limited costs that series, never the measurements.
+    from app.services.attention import collect_attention
+
+    async with sessionmaker() as session:
+        attention = await collect_attention(session, settings=settings)
+        summary["attention"] = attention.as_dict()
+
     # Observation and research read the live tables only once the site has
     # stopped serving fixtures. Running them against the demo dataset on a
     # timer would re-derive the same synthetic observations every cycle.

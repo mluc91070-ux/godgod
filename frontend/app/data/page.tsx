@@ -1,14 +1,15 @@
 import Collection from "@/components/Collection";
 import { Disconnected, Field, Label, Section } from "@/components/ui";
 import { api, fmtTime } from "@/lib/api";
-import type { Source, Status } from "@/lib/types";
+import type { Attention, Page, Source, Status } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function DataPage() {
-  const [sources, status] = await Promise.all([
+  const [sources, status, attention] = await Promise.all([
     api<Source[]>("/api/sources"),
     api<Status>("/api/status"),
+    api<Page<Attention>>("/api/attention?limit=20"),
   ]);
 
   if (!sources.ok) return <Disconnected error={sources.error} what="data sources" />;
@@ -24,6 +25,46 @@ export default async function DataPage() {
       </div>
 
       {status.ok ? <Collection status={status.data} /> : null}
+
+      {/* What people are looking up, which is the one thing a pool cannot say.
+          Positions, not sentiment: a coin is in the ranking at a rank at a
+          time. A coin the feed did not list has no row, so nothing here is
+          this system inventing anyone's indifference. */}
+      {attention.ok && attention.data.items.length > 0 ? (
+        <Section
+          title="attention"
+          note="a search ranking, sampled on the same clock as the pool"
+        >
+          <p className="text-muted">
+            Lower rank means more looked-up. A token absent from the ranking has no row —
+            unranked is not ranked last. A row is tied to a token only on an exact contract
+            address; a matching symbol is never a link.
+          </p>
+          <ul className="mt-4 divide-y divide-line">
+            {attention.data.items.slice(0, 15).map((row) => (
+              <li key={row.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2">
+                <span className="w-8 text-[11px] text-muted">#{row.rank}</span>
+                <span className="text-bone">{row.symbol ?? row.ref}</span>
+                <span className="text-[10px] uppercase tracking-widest text-muted">
+                  {row.chain ?? "chain not reported"}
+                </span>
+                {row.token_id ? (
+                  <span className="text-[10px] uppercase tracking-widest text-amber">
+                    measured here
+                  </span>
+                ) : (
+                  <span className="text-[10px] uppercase tracking-widest text-muted">
+                    not measured here
+                  </span>
+                )}
+                <span className="ml-auto text-[10px] text-muted">
+                  {fmtTime(row.observed_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
 
       <Section title="sources">
         <div className="space-y-6">

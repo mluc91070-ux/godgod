@@ -302,6 +302,29 @@ or the account is telling two stories about one dataset.
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.
 
+## Attention rules
+
+- **A rank is a measurement; a mood is not.** The search-ranking feed reports
+  positions, so it is countable and no model touches it. That is why it
+  replaced the social collector rather than another feed of text.
+- **A coin absent from the ranking gets no row.** "Not ranked" and "ranked
+  last" are different facts and only the first is true. A zero written here
+  would be this system inventing everyone's indifference, and a detector could
+  not tell the difference.
+- **A token is linked on an exact contract address, never a symbol.** The
+  feed's own coin detail reports `platforms`, chain to address. Two chains hold
+  a dozen of most symbols, and a wrong link puts someone else's attention on a
+  real token's record — the same rule the X collector had, kept after it went.
+- Addresses are resolved once and read back from the rows. The keyless tier is
+  rate-limited, and `ATTENTION_MAX_RESOLUTIONS` caps new lookups per run —
+  whatever it does not reach is counted, never reported as a shorter list.
+- One reading per slot, on the same clock as the pool, so the two series line
+  up without interpolation.
+- **The series has to exist before a detector can read it.** Nothing consumes
+  these rows yet, and that is a prerequisite rather than an omission: a new
+  detector needs a target in the synthetic dataset and a FLAT control, and
+  neither can be written against a shape nobody has seen.
+
 ## Social rules
 
 **Nothing reads X.** The collector, its endpoint, its gate and its tests are
