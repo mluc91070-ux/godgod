@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import ChainMarks from "@/components/ChainMarks";
 import { API_URL } from "@/lib/api";
 import type { Observation, StreamEvent, TokenInfo } from "@/lib/types";
 
@@ -458,22 +459,17 @@ export default function MarketField({
             : "")
         }
       />
+      {/* Both networks, before the rest of the legend. Everything after this —
+          frame, novelty, age — is read inside one of them, so the split leads.
+          A chain with nothing measured is still named: this system reads two,
+          and hiding the empty one would make a deployment gap look like a
+          design decision. */}
+      <ChainMarks counts={new Map(chainCounts)} />
+
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted">
         <span>
           <span className="text-bone">{nodes.length}</span> tokens drawn
         </span>
-        {/* The chains lead the legend, because they are the first split in the
-            population: everything after this — frame, novelty, age — is read
-            within one of them. A chain with nothing measured is not listed. */}
-        {chainCounts.map(([chain, count]) => (
-          <span key={chain} className="contents">
-            <span className="text-line">·</span>
-            <span>
-              <span className="text-bone">{count}</span> on {chain} —{" "}
-              {chain === HOME_CHAIN ? "round" : "square"}
-            </span>
-          </span>
-        ))}
         <span className="text-line">·</span>
         <span>
           <span className="text-bone">{nodes.length - promoted}</span> migrated — filled

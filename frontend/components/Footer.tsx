@@ -38,10 +38,10 @@ export default async function Footer() {
                 : "no wallet, nothing signs"}
             </span>
             <span className="select-none text-line">·</span>
-            <span>
-              x <span className="text-grey">{mode.x_stage}</span>
-            </span>
-            <span className="select-none text-line">·</span>
+            {/* The `x` stage used to sit here. The collector, its endpoint and
+                its tests were removed rather than disabled, so printing a stage
+                for it was advertising a capability that does not exist — the
+                one thing this footer is here to avoid. */}
           </>
         ) : null}
         <span>failures stay published</span>

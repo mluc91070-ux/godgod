@@ -68,26 +68,28 @@ export default async function StatusBar() {
         <Dot />
         <span className="text-bone">{state}</span>
 
-        {/* One block, because these three are one fact: what this deployment
-            is allowed to do. Read as three loose items they invited the
-            question "allowed by what?" on every page. */}
+        {/* What this deployment is allowed to do, in one block.
+ 
+            Two things left it. The `x` chip advertised a stage for a collector
+            that no longer exists — the whole social path was removed, not
+            disabled, and a header claiming a stage for it was claiming a
+            capability. And "no execution" was a constant: `wallet_execution_enabled`
+            is false in every version and there is no signing path to turn on,
+            so printing it on every page was noise that made the one case worth
+            seeing — it flipping to true — harder to notice rather than easier.
+            The amber warning below is what survives, and it appears only if
+            that ever changes. */}
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1 border border-line px-2 py-[2px]">
-          <span className="text-muted">execution</span>
+          <span className="text-muted">autonomy</span>
           <span className="text-bone">
             L{mode.autonomy_level} {mode.autonomy_label}
           </span>
-          <Dot />
-          <span>
-            x <span className="text-bone">{mode.x_stage}</span>
-          </span>
-          <Dot />
-          <span>
-            {mode.wallet_execution_enabled ? (
+          {mode.wallet_execution_enabled ? (
+            <>
+              <Dot />
               <span className="text-amber">wallet execution on</span>
-            ) : (
-              "no execution"
-            )}
-          </span>
+            </>
+          ) : null}
         </span>
 
         <span className="ml-auto tabular-nums">v{version}</span>
