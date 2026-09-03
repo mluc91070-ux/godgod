@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { Disconnected, Field, Label, Section, Tag } from "@/components/ui";
+import { ExperimentExample } from "@/components/examples";
+import { Field, Label, Nothing, Section, Tag } from "@/components/ui";
 import { api, fmt, fmtInt, fmtTime } from "@/lib/api";
 import type { Experiment, Page, Trace } from "@/lib/types";
 
@@ -14,7 +15,26 @@ export default async function ExperimentPage({ params }: Props) {
 
   if (!result.ok) {
     if (result.error.startsWith("404")) notFound();
-    return <Disconnected error={result.error} what="this experiment" />;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>experiment</Label>
+        <div className="mt-6">
+          <Nothing
+            what="this experiment"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "the dataset this question was run against, hashed so the run can be repeated exactly",
+              "every row that could not be built, counted under a named reason",
+              "the critic's checks, which can only make the verdict stricter and never lighter",
+            ]}
+          >
+            <ExperimentExample />
+          </Nothing>
+        </div>
+      </div>
+    );
   }
 
   const experiment = result.data;

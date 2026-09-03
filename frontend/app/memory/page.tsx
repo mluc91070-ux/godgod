@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { Disconnected, Empty, Label, Tag } from "@/components/ui";
+import { MemoryExample } from "@/components/examples";
+import { Empty, Label, Nothing, Tag } from "@/components/ui";
 import { api, fmt, fmtTime } from "@/lib/api";
 import type { MemoryDigest, MemoryHit, MemorySearch, Page, Memory } from "@/lib/types";
 
@@ -19,7 +20,28 @@ export default async function MemoryPage({ searchParams }: Props) {
     api<MemoryDigest>("/api/memory/summary"),
   ]);
 
-  if (!result.ok) return <Disconnected error={result.error} what="memory" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>memory</Label>
+        <div className="mt-6">
+          <Nothing
+            what="memory"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "what this system has written down about tokens, patterns and its own results",
+              "memory is searched before a hypothesis is generated, so it can notice it has asked something before",
+              "the embedder is a lexical hash, not a language model — the site reports semantic: false because of it",
+            ]}
+          >
+            <MemoryExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const hits: MemoryHit[] = query
     ? (result.data as MemorySearch).items

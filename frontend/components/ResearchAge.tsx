@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { fmtTime } from "@/lib/api";
 import { getStatus } from "@/lib/status";
 
@@ -10,10 +12,35 @@ import { getStatus } from "@/lib/status";
  * facts that turn an empty page from a broken one into an honest one.
  *
  * Every number here is read from `/api/status`; none is written down.
+ *
+ * It used to return `null` when that call failed, which meant the one page
+ * least able to afford it rendered nothing at all: a page with no rows *and* a
+ * sleeping backend showed a blank column. The dated paragraph is the part that
+ * needs the API, so that is the only part that disappears — the explanation of
+ * what the page is, and the worked example passed in as children, do not
+ * depend on it and are always drawn.
  */
-export default async function ResearchAge({ what }: { what: string }) {
+export default async function ResearchAge({
+  what,
+  children,
+}: {
+  what: string;
+  children?: ReactNode;
+}) {
   const result = await getStatus();
-  if (!result.ok) return null;
+
+  if (!result.ok) {
+    return (
+      <div className="border border-line p-6 text-muted">
+        <p>
+          no {what} yet — and the API did not answer, so this page cannot say how long it has
+          been measuring or when that is likely to change.
+        </p>
+        <p className="mt-2 font-mono text-[10px] text-grey">{result.error}</p>
+        {children}
+      </div>
+    );
+  }
 
   const { collection, research } = result.data;
   const since = collection.measuring_since;
@@ -58,6 +85,8 @@ export default async function ResearchAge({ what }: { what: string }) {
             )} minutes — this page fills itself.`
           : "the collection loop is not running, so this page will not fill on its own."}
       </p>
+
+      {children}
     </div>
   );
 }

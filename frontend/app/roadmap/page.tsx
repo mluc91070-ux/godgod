@@ -1,4 +1,5 @@
-import { Disconnected, Label, Section } from "@/components/ui";
+import { RoadmapExample } from "@/components/examples";
+import { Label, Nothing, Section } from "@/components/ui";
 import { fmtInt, fmtTime } from "@/lib/api";
 import { getStatus } from "@/lib/status";
 
@@ -28,7 +29,28 @@ export const metadata = {
  */
 export default async function RoadmapPage() {
   const result = await getStatus();
-  if (!result.ok) return <Disconnected error={result.error} what="the roadmap" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>roadmap</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the roadmap"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "what is built, what is waiting on data, and what will never be built",
+              "the third list is the honest one: no wallet, no signing, no transaction construction, in any version",
+              "every entry is read from what the system reports about itself, never from a plan written beside it",
+            ]}
+          >
+            <RoadmapExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const { collection, research, counts } = result.data;
   const horizons = research.horizons_hours ?? [];

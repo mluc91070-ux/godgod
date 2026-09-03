@@ -1,4 +1,5 @@
-import { Disconnected, Empty, Label, Section } from "@/components/ui";
+import { WatchlistExample } from "@/components/examples";
+import { Label, Nothing, Section } from "@/components/ui";
 import { api, fmtUsd } from "@/lib/api";
 import type { Memory, Page, TokenInfo } from "@/lib/types";
 
@@ -31,7 +32,26 @@ export default async function WatchlistPage() {
   ]);
 
   if (!notesResult.ok) {
-    return <Disconnected error={notesResult.error} what="the watchlist notes" />;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>watchlist</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the watchlist"
+            unreachable
+            error={notesResult.error}
+            because=""
+            needs={[
+              "tokens named by hand on Robinhood Chain, with the claim about why each one ran",
+              "the claim sits beside this system's own measurement of the same token, never blended with it",
+              "every one is dropped from every dataset by name: a list written after seeing which tokens ran is a list of survivors",
+            ]}
+          >
+            <WatchlistExample />
+          </Nothing>
+        </div>
+      </div>
+    );
   }
 
   // Only the hand-written ones. Anything the system derives about a token also
@@ -90,7 +110,17 @@ export default async function WatchlistPage() {
 
       <Section title="the tokens" note="claim on the left, measurement on the right">
         {notes.length === 0 ? (
-          <Empty>no notes are held.</Empty>
+          <Nothing
+            what="notes"
+            because="the notes file has not been loaded into this deployment. the tokens are still measured like any other — this page is the claims beside them, and there are none stored yet."
+            needs={[
+              "WATCHLIST_NOTES_PATH pointing at the notes file",
+              "the loader run once at boot — it is idempotent and stores nothing new on a redeploy",
+              "nothing else: the notes are read, never derived, and no experiment draws from them",
+            ]}
+          >
+            <WatchlistExample />
+          </Nothing>
         ) : (
           <div className="space-y-8">
             {notes.map((note) => {

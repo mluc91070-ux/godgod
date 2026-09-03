@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import ResearchAge from "@/components/ResearchAge";
-import { Disconnected, Empty, Label, Tag } from "@/components/ui";
+import { FindingExample } from "@/components/examples";
+import { Empty, Label, Nothing, Tag } from "@/components/ui";
 import { api, fmt } from "@/lib/api";
 import type { Experiment, ExperimentResult, Page } from "@/lib/types";
 
@@ -28,7 +29,28 @@ export default async function FindingsPage({ searchParams }: Props) {
     api<Page<Experiment>>("/api/experiments?limit=200"),
   ]);
 
-  if (!results.ok) return <Disconnected error={results.error} what="results" />;
+  if (!results.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>findings</Label>
+        <div className="mt-6">
+          <Nothing
+            what="findings"
+            unreachable
+            error={results.error}
+            because=""
+            needs={[
+              "every verdict this system has reached, including the ones that went against it",
+              "rejected and inconclusive results are published exactly like supported ones",
+              "each carries the effect in percentage points, both group sizes, and the rule written in advance that would have killed it",
+            ]}
+          >
+            <FindingExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const titles = new Map(
     experiments.ok ? experiments.data.items.map((item) => [item.id, item.title]) : [],
@@ -82,7 +104,9 @@ export default async function FindingsPage({ searchParams }: Props) {
           filter ? (
             <Empty>no result has been recorded under that filter.</Empty>
           ) : (
-            <ResearchAge what="question has been answered" />
+            <ResearchAge what="question has been answered">
+              <FindingExample />
+            </ResearchAge>
           )
         ) : (
           grouped.map((group) => (

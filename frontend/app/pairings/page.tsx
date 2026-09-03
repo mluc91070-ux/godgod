@@ -1,4 +1,5 @@
-import { Disconnected, Empty, Label, Section } from "@/components/ui";
+import { PairingExample } from "@/components/examples";
+import { Label, Nothing, Section } from "@/components/ui";
 import { api, fmtInt, fmtUsd } from "@/lib/api";
 import type { PairingSummary } from "@/lib/types";
 
@@ -40,7 +41,26 @@ export default async function PairingsPage() {
   const result = await api<PairingSummary>("/api/pairings");
 
   if (!result.ok) {
-    return <Disconnected error={result.error} what="the pairings" />;
+    return (
+      <div className="mx-auto max-w-4xl px-5 py-16">
+        <Label>pairings</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the pairings"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "what every measured pool is priced in — the denominator of the ratio a price is",
+              "a meme quoted in a tokenised share of a company is not the same instrument as one quoted in the gas token",
+              "the split is the population of an open hypothesis, shown before that hypothesis has an answer",
+            ]}
+          >
+            <PairingExample />
+          </Nothing>
+        </div>
+      </div>
+    );
   }
 
   const { counts, chains, equity_quoted: equity, marker, hypothesis_key } = result.data;
@@ -73,12 +93,17 @@ export default async function PairingsPage() {
 
       {total === 0 ? (
         <div className="mt-10">
-          <Empty>no measurement has recorded a quote asset yet</Empty>
-          <p className="mt-3 max-w-2xl text-[11px] text-muted">
-            The column is newer than most of the series. Rows written before it existed
-            report nothing and are absent here rather than counted as unknown — &ldquo;not
-            recorded&rdquo; is not a kind of pool.
-          </p>
+          <Nothing
+            what="recorded quote assets"
+            because="the column that records what a pool is priced in is newer than most of the series. rows written before it existed report nothing and are absent here rather than counted as unknown — “not recorded” is not a kind of pool, and putting them in a bucket would make silence look like a measurement."
+            needs={[
+              "one collection run on a build that records the quote asset",
+              "the market source reporting a quote token for the pair, which it does not always do",
+              "nothing else — the split appears on the first run and grows from there",
+            ]}
+          >
+            <PairingExample />
+          </Nothing>
         </div>
       ) : (
         <>
@@ -134,7 +159,15 @@ export default async function PairingsPage() {
             note="deepest first — this is the exposed arm"
           >
             {equity.length === 0 ? (
-              <Empty>no measured pool is currently quoted in a tokenised equity</Empty>
+              <Nothing
+                what="equity-quoted pools"
+                because="every pool measured so far is priced in the gas token or in something else. on a chain that issues no tokenised equities this is the correct and permanent answer, and an empty exposed arm is a true statement about that chain rather than a gap in the measurement."
+                needs={[
+                  "a chain that issues tokenised equities, and a marker matching how it names them",
+                  "a pool quoted against one of those wrappers, above the frame's own liquidity floor",
+                  "EQUITY_QUOTE_MARKER still matching — if the chain renames its wrappers the classifier goes quiet rather than guessing",
+                ]}
+              />
             ) : (
               <ul className="divide-y divide-line">
                 {equity.map((row) => (

@@ -1,5 +1,6 @@
 import Collection from "@/components/Collection";
-import { Disconnected, Field, Label, Section } from "@/components/ui";
+import { TokenExample } from "@/components/examples";
+import { Field, Label, Nothing, Section } from "@/components/ui";
 import { api, fmtTime } from "@/lib/api";
 import type { Attention, Page, Source, Status } from "@/lib/types";
 
@@ -12,7 +13,28 @@ export default async function DataPage() {
     api<Page<Attention>>("/api/attention?limit=20"),
   ]);
 
-  if (!sources.ok) return <Disconnected error={sources.error} what="data sources" />;
+  if (!sources.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>data</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the data sources"
+            unreachable
+            error={sources.error}
+            because=""
+            needs={[
+              "every source this system reads, and which sampling frame each one feeds",
+              "three frames kept apart: who paid for placement, whose curve filled, and what a pool is priced in",
+              "a source that is configured but never answered is shown as unconfigured rather than silently counted",
+            ]}
+          >
+            <TokenExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-10">

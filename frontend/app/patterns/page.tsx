@@ -1,5 +1,6 @@
 import ResearchAge from "@/components/ResearchAge";
-import { Disconnected, Label, Tag } from "@/components/ui";
+import { PatternExample } from "@/components/examples";
+import { Label, Nothing, Tag } from "@/components/ui";
 import { api, fmt, fmtTime } from "@/lib/api";
 import type { Page, Pattern } from "@/lib/types";
 
@@ -8,7 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function PatternsPage() {
   const result = await api<Page<Pattern>>("/api/patterns?limit=50");
 
-  if (!result.ok) return <Disconnected error={result.error} what="patterns" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>patterns</Label>
+        <div className="mt-6">
+          <Nothing
+            what="patterns"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "the few shapes that have survived being asked more than once",
+              "a pattern is the running tally of one template across separate datasets, not a single result",
+              "one that stops holding keeps its history rather than being quietly deleted",
+            ]}
+          >
+            <PatternExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const items = result.data.items;
 
@@ -30,7 +52,9 @@ export default async function PatternsPage() {
 
       <div className="mt-6 space-y-8">
         {items.length === 0 ? (
-          <ResearchAge what="question has been asked twice" />
+          <ResearchAge what="question has been asked twice">
+            <PatternExample />
+          </ResearchAge>
         ) : (
           items.map((pattern) => (
             <article key={pattern.id} className="border-t border-line pt-4">

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Disconnected, Empty, Field, Label, Section, Tag } from "@/components/ui";
+import { Empty, Field, Label, Nothing, Section, Tag } from "@/components/ui";
 import { api, fmt, fmtTime } from "@/lib/api";
 import type { Memory, MemoryCluster, MemorySearch } from "@/lib/types";
 
@@ -15,7 +15,24 @@ export default async function MemoryDetailPage({ params }: Props) {
 
   if (!result.ok) {
     if (result.error.startsWith("404")) notFound();
-    return <Disconnected error={result.error} what="this memory" />;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>memory</Label>
+        <div className="mt-6">
+          <Nothing
+            what="this memory"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "one thing this system wrote down, with what produced it and how sure it was",
+              "its nearest neighbours by embedding, so a repeated question is visible as one",
+              "the embedder is a lexical hash rather than a language model — this is not semantic search",
+            ]}
+          />
+        </div>
+      </div>
+    );
   }
 
   const memory = result.data;

@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import ResearchAge from "@/components/ResearchAge";
-import { Disconnected, Label, Tag } from "@/components/ui";
+import { ExperimentExample } from "@/components/examples";
+import { Label, Nothing, Tag } from "@/components/ui";
 import { api, fmtInt } from "@/lib/api";
 import type { Experiment, Page } from "@/lib/types";
 
@@ -10,7 +11,28 @@ export const dynamic = "force-dynamic";
 export default async function ExperimentsPage() {
   const result = await api<Page<Experiment>>("/api/experiments?limit=50");
 
-  if (!result.ok) return <Disconnected error={result.error} what="experiments" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>experiments</Label>
+        <div className="mt-6">
+          <Nothing
+            what="experiments"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "each question run against its own dataset, hashed so the run can be repeated exactly",
+              "every row that could not be built is counted under a named reason, and that list is usually larger than the dataset",
+              "the critic's verdict can only be stricter than the deterministic one, never lighter",
+            ]}
+          >
+            <ExperimentExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -27,7 +49,9 @@ export default async function ExperimentsPage() {
 
       {result.data.items.length === 0 ? (
         <div className="mt-6">
-          <ResearchAge what="experiment has been run" />
+          <ResearchAge what="experiment has been run">
+            <ExperimentExample />
+          </ResearchAge>
         </div>
       ) : null}
 

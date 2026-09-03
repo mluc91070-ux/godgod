@@ -1,4 +1,5 @@
-import { Disconnected, Field, Label, Section } from "@/components/ui";
+import { TokenExample } from "@/components/examples";
+import { Field, Label, Nothing, Section } from "@/components/ui";
 import { api, fmt, fmtInt, fmtTime, fmtUsd } from "@/lib/api";
 import { getStatus } from "@/lib/status";
 import type { ExperimentResult, Page, TokenInfo } from "@/lib/types";
@@ -16,7 +17,28 @@ export default async function TokenPage() {
     api<Page<ExperimentResult>>("/api/results?limit=200"),
   ]);
 
-  if (!result.ok) return <Disconnected error={result.error} what="token information" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>token</Label>
+        <div className="mt-6">
+          <Nothing
+            what="token measurements"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "the tokens under measurement, and which sampling frame found each one",
+              "holder counts stay NULL rather than estimated: a public node cannot count holders without an indexer",
+              "a token absent from the market source produces no row at all — absent is not zero liquidity",
+            ]}
+          >
+            <TokenExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const godgod = result.data.items.find((token) => token.symbol === "GODGOD");
   const observed = result.data.items.filter((token) => token.symbol !== "GODGOD");

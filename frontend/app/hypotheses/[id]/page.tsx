@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { Disconnected, Empty, Field, Label, Section, Tag } from "@/components/ui";
+import { HypothesisExample } from "@/components/examples";
+import { Empty, Field, Label, Nothing, Section, Tag } from "@/components/ui";
 import { api, fmt, fmtInt, fmtTime } from "@/lib/api";
 import type { Hypothesis, Memory, Page } from "@/lib/types";
 
@@ -15,7 +16,26 @@ export default async function HypothesisPage({ params }: Props) {
 
   if (!result.ok) {
     if (result.error.startsWith("404")) notFound();
-    return <Disconnected error={result.error} what="this hypothesis" />;
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>hypothesis</Label>
+        <div className="mt-6">
+          <Nothing
+            what="this hypothesis"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "the question, its population, its horizon and the baseline it is held against",
+              "the rule that would falsify it, fixed when the question was written rather than after the result",
+              "the memories consulted before it was posed, and every experiment run against it",
+            ]}
+          >
+            <HypothesisExample />
+          </Nothing>
+        </div>
+      </div>
+    );
   }
 
   const hypothesis = result.data;

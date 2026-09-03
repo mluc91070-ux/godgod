@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import ResearchAge from "@/components/ResearchAge";
-import { Disconnected, Empty, Label, Tag } from "@/components/ui";
+import { HypothesisExample } from "@/components/examples";
+import { Empty, Label, Nothing, Tag } from "@/components/ui";
 import { api, fmt } from "@/lib/api";
 import type { Hypothesis, Page } from "@/lib/types";
 
@@ -19,7 +20,28 @@ export default async function HypothesesPage({ searchParams }: Props) {
     `/api/hypotheses?limit=100${filter ? `&status=${encodeURIComponent(filter)}` : ""}`,
   );
 
-  if (!result.ok) return <Disconnected error={result.error} what="hypotheses" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>hypotheses</Label>
+        <div className="mt-6">
+          <Nothing
+            what="hypotheses"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "each question this system has posed, with its population, its horizon and its baseline",
+              "the rule that would falsify it is fixed when the question is written, never after the result",
+              "questions come from templates, so nothing reads the data before choosing what to claim about it",
+            ]}
+          >
+            <HypothesisExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -58,7 +80,9 @@ export default async function HypothesesPage({ searchParams }: Props) {
           filter ? (
             <Empty>no hypothesis has been recorded under that filter.</Empty>
           ) : (
-            <ResearchAge what="question has been posed" />
+            <ResearchAge what="question has been posed">
+              <HypothesisExample />
+            </ResearchAge>
           )
         ) : (
           <ul className="divide-y divide-line border-y border-line">

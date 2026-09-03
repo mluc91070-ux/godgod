@@ -1,4 +1,5 @@
-import { Disconnected, Empty, Label, Tag } from "@/components/ui";
+import { ObservationExample } from "@/components/examples";
+import { Label, Nothing, Tag } from "@/components/ui";
 import { api, fmt, fmtTime } from "@/lib/api";
 import type { Anomaly, Observation, Page, Status } from "@/lib/types";
 
@@ -48,7 +49,28 @@ export default async function ObservePage() {
     api<Status>("/api/status"),
   ]);
 
-  if (!observations.ok) return <Disconnected error={observations.error} what="observations" />;
+  if (!observations.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>observe</Label>
+        <div className="mt-6">
+          <Nothing
+            what="observations"
+            unreachable
+            error={observations.error}
+            because=""
+            needs={[
+              "every anomaly a detector flagged, with the measurement and the baseline it fired against",
+              "each one records the thresholds used, so it stays interpretable after those thresholds change",
+              "the pipeline is deterministic — no model decides what counts as an anomaly",
+            ]}
+          >
+            <ObservationExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const byObservation = new Map<string, Anomaly[]>();
   if (anomalies.ok) {
@@ -84,7 +106,17 @@ export default async function ObservePage() {
 
       <div className="mt-8 space-y-6">
         {observations.data.items.length === 0 ? (
-          <Empty>nothing observed yet.</Empty>
+          <Nothing
+            what="observations"
+            because="the detectors have run and flagged nothing. that is a verdict about the tokens under measurement, not a page that failed: a detector needs several readings of the same token before it is allowed to speak, and it returns nothing rather than a guess when it cannot measure."
+            needs={[
+              "a token measured at least OBSERVATION_MIN_SNAPSHOTS times in a row",
+              "a reading that departs from its own trailing window by more than the detector's threshold",
+              "the measurement the detector needs to be present — a NULL field produces no verdict, never a zero",
+            ]}
+          >
+            <ObservationExample />
+          </Nothing>
         ) : (
           observations.data.items.map((observation) => {
             const found = byObservation.get(observation.id) ?? [];

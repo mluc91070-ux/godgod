@@ -1,4 +1,5 @@
-import { Disconnected, Field, Label } from "@/components/ui";
+import { AgentExample } from "@/components/examples";
+import { Field, Label, Nothing } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { AgentInfo } from "@/lib/types";
 
@@ -7,7 +8,28 @@ export const dynamic = "force-dynamic";
 export default async function AgentsPage() {
   const result = await api<AgentInfo[]>("/api/agents");
 
-  if (!result.ok) return <Disconnected error={result.error} what="the agent roster" />;
+  if (!result.ok) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <Label>agents</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the agent roster"
+            unreachable
+            error={result.error}
+            because=""
+            needs={[
+              "which parts of this system call a model and which are engines with none",
+              "a deterministic engine is never reported as implemented — doing the same job is not the same claim",
+              "the researcher and the statistics stay deterministic on purpose: a hypothesis comes from a template so nothing reads the data before choosing what to claim about it",
+            ]}
+          >
+            <AgentExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl">

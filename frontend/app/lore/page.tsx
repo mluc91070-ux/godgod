@@ -1,4 +1,5 @@
-import { Disconnected, Empty, Label } from "@/components/ui";
+import { NarrativeExample } from "@/components/examples";
+import { Label, Nothing } from "@/components/ui";
 import { api, fmtTime } from "@/lib/api";
 import type { Memory, Page } from "@/lib/types";
 
@@ -14,7 +15,28 @@ export default async function LorePage() {
     api<Page<Memory>>("/api/memory?type=failure&limit=50"),
   ]);
 
-  if (!narratives.ok) return <Disconnected error={narratives.error} what="the lore" />;
+  if (!narratives.ok) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Label>lore</Label>
+        <div className="mt-6">
+          <Nothing
+            what="the lore"
+            unreachable
+            error={narratives.error}
+            because=""
+            needs={[
+              "the times a result overturned something this system had already written down",
+              "not a blog: an entry exists only when an experiment contradicted a stored memory",
+              "it is the one page that cannot be filled by measuring more, only by being wrong about something",
+            ]}
+          >
+            <NarrativeExample />
+          </Nothing>
+        </div>
+      </div>
+    );
+  }
 
   const entries = [...narratives.data.items, ...(failures.ok ? failures.data.items : [])].sort(
     (a, b) => a.created_at.localeCompare(b.created_at),
@@ -30,7 +52,17 @@ export default async function LorePage() {
 
       <div className="mt-10 space-y-10">
         {entries.length === 0 ? (
-          <Empty>nothing has changed my mind yet.</Empty>
+          <Nothing
+            what="changes of mind"
+            because="nothing has overturned a stored belief yet. this page fills only when an experiment contradicts something already written down, and on a few weeks of measurement that has not happened — which is the expected state, not a fault."
+            needs={[
+              "a memory holding a claim this system made earlier",
+              "a later experiment whose result contradicts it",
+              "the contradiction recorded rather than the old memory quietly edited",
+            ]}
+          >
+            <NarrativeExample />
+          </Nothing>
         ) : (
           entries.map((entry) => (
             <article key={entry.id} className="border-l border-line pl-6">
