@@ -35,27 +35,25 @@ from app.schemas.research import (
     ResearchReportOut,
     TraceOut,
 )
+from app.services.coverage import build_coverage
 from app.services.research import run_research_cycle
-from app.services.theses import build_theses
 
 router = APIRouter(prefix="/api", tags=["research"])
 
 
-@router.get("/theses")
-async def list_theses(session: SessionDep, settings: SettingsDep) -> dict:
-    """Arguments posed before the data existed to settle them.
+@router.get("/field-coverage")
+async def field_coverage(session: SessionDep) -> dict:
+    """How many live measurements carry a value for each snapshot field.
 
-    A thesis is not a hypothesis and not a finding: it has no dataset, no
-    horizon and no verdict, and nothing in it was produced by an experiment.
-    It is published because committing to a mechanism *before* the result is
-    known is the part that can later be checked, and because a mechanism
-    written as a chain shows exactly where it stops being testable.
+    The grading half of a posed thesis. An argument about a mechanism names the
+    fields its steps would need; this says whether those fields hold anything,
+    and it has to be the database that says it rather than the argument.
 
-    The status beside each link is counted from the live measurements at
-    request time. The file may claim a mechanism; it may not claim that the
-    mechanism was measured.
+    The argument itself is static and ships with the page, because a paragraph
+    somebody wrote does not become truer because a backend answered. Putting it
+    behind this endpoint only meant it vanished whenever the endpoint did.
     """
-    return await build_theses(session, settings=settings)
+    return await build_coverage(session)
 
 
 @router.post("/admin/research/run", response_model=ResearchReportOut)

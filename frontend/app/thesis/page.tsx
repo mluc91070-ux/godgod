@@ -1,6 +1,6 @@
-import { Disconnected, Empty, Label, Section } from "@/components/ui";
+import { Label, Section } from "@/components/ui";
 import { api, fmtInt } from "@/lib/api";
-import type { Theses, ThesisLink } from "@/lib/types";
+import { gradeLink, THESES, type LinkGrade } from "@/lib/thesis";
 
 export const dynamic = "force-dynamic";
 
@@ -10,41 +10,46 @@ export const metadata = {
     "Arguments posed before the data existed to settle them, decomposed into the chain of causation they claim, with each link graded against what this system actually measures.",
 };
 
-const STATUS_COPY: Record<ThesisLink["status"], string> = {
+type Coverage = {
+  measurements: number;
+  fields: Record<string, number>;
+  chains: Record<string, number>;
+  note: string;
+};
+
+const GRADE_COPY: Record<LinkGrade, string> = {
   measured: "measured",
   "partly-measured": "partly measured",
   "not-measured-here": "not measurable here",
+  "not-graded": "not graded",
 };
 
-const STATUS_COLOUR: Record<ThesisLink["status"], string> = {
+const GRADE_COLOUR: Record<LinkGrade, string> = {
   measured: "text-amber",
   "partly-measured": "text-bone",
   "not-measured-here": "text-grey",
+  "not-graded": "text-grey",
 };
 
 /**
  * A thesis is not a finding, and this page exists to keep it that way.
  *
- * Someone wrote an argument about why one chain might behave differently from
- * another. That is worth publishing — committing to a mechanism before the
- * result is known is the only part of it that can ever be checked — and it is
- * worth publishing in a form that cannot be mistaken for a result.
+ * The argument is static and renders unconditionally. That is the correction:
+ * the first version fetched the whole page from the API and rendered "no data"
+ * whenever the API was asleep or on an older build, which was a lie about an
+ * argument that had not changed and told the reader nothing about the deploy.
+ * A paragraph does not become truer because a backend answered.
  *
- * So a thesis is stored as a chain rather than a paragraph, because a
- * mechanism is only as testable as its weakest link, and each link is graded
- * by counting the live measurements that carry the fields it needs. The file
- * may claim a mechanism. It may not claim the mechanism was measured. When two
- * of five links come back with zero rows, the page says so with the number.
+ * The grading is the opposite kind of thing and is treated the opposite way. It
+ * is a count over live measurements, it only ever comes from the database, and
+ * when the database cannot be reached each link reads "not graded" — which is
+ * carefully not "not measurable here". One says nobody asked; the other says we
+ * asked and there was nothing. A deploy problem must never be able to dress
+ * itself up as a fact about the data.
  */
 export default async function ThesisPage() {
-  const result = await api<Theses>("/api/theses");
-
-  if (!result.ok) {
-    return <Disconnected error={result.error} what="the posed theses" />;
-  }
-
-  const { theses, measurements, chains, note } = result.data;
-  const chainRows = Object.entries(chains).sort((a, b) => b[1] - a[1]);
+  const result = await api<Coverage>("/api/field-coverage");
+  const coverage = result.ok ? result.data : null;
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-16">
@@ -60,24 +65,37 @@ export default async function ThesisPage() {
         It is here because committing to an explanation <em>before</em> the result is known is
         the part that can be checked later. Written as a chain rather than a paragraph, it also
         shows exactly where it stops being testable — and that grade is counted from the
-        database, not taken from the file.
+        database, never taken from the argument.
       </p>
 
-      {theses.length === 0 ? (
-        <div className="mt-10">
-          <Empty>{note}</Empty>
-        </div>
-      ) : (
-        theses.map((thesis) => (
+      {coverage === null ? (
+        <p className="mt-6 max-w-2xl border border-line p-4 text-[11px] text-muted">
+          The measurement API did not answer, so the links below read{" "}
+          <span className="text-bone">not graded</span> rather than carrying a number. That is
+          not the same as a link with nothing behind it: nobody asked the database this time.
+          The argument itself does not depend on it and is unchanged.
+        </p>
+      ) : null}
+
+      {THESES.map((thesis) => {
+        const graded = thesis.chain.map((link) => ({ link, ...gradeLink(link, coverage?.fields ?? null) }));
+        const blocked = graded.filter((row) => row.grade === "not-measured-here");
+        const chainRows = Object.entries(coverage?.chains ?? {}).sort((a, b) => b[1] - a[1]);
+
+        return (
           <article key={thesis.key} className="mt-12 border-t border-line pt-8">
             <div className="flex flex-wrap items-baseline gap-x-4 text-[10px] uppercase tracking-widest text-muted">
-              <span>posed by {thesis.posed_by}</span>
-              {thesis.posed_at ? <span>{thesis.posed_at}</span> : null}
-              <span className={thesis.testable_end_to_end ? "text-amber" : "text-grey"}>
-                {thesis.testable_end_to_end
-                  ? "testable end to end"
-                  : `blocked at ${thesis.blocked_at.length} of ${thesis.chain_of_causation.length} links`}
-              </span>
+              <span>posed by {thesis.posedBy}</span>
+              <span>{thesis.posedAt}</span>
+              {coverage === null ? (
+                <span className="text-grey">not graded</span>
+              ) : blocked.length > 0 ? (
+                <span className="text-grey">
+                  blocked at {blocked.length} of {graded.length} links
+                </span>
+              ) : (
+                <span className="text-amber">testable end to end</span>
+              )}
             </div>
 
             <h2 className="mt-3 text-xl text-bone">{thesis.title}</h2>
@@ -95,41 +113,47 @@ export default async function ThesisPage() {
 
             <Section
               title="the chain of causation"
-              note={`graded against ${fmtInt(measurements)} live measurements`}
+              note={
+                coverage
+                  ? `graded against ${fmtInt(coverage.measurements)} live measurements`
+                  : "the grading needs the measurement API"
+              }
             >
               <ul className="divide-y divide-line">
-                {thesis.chain_of_causation.map((link, index) => (
+                {graded.map(({ link, grade, counts, unknown }, index) => (
                   <li key={link.step} className="py-3">
                     <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                       <span className="w-5 text-[11px] text-grey">{index + 1}</span>
                       <span className="text-bone">{link.step}</span>
                       <span
-                        className={`ml-auto text-[10px] uppercase tracking-widest ${STATUS_COLOUR[link.status]}`}
+                        className={`ml-auto text-[10px] uppercase tracking-widest ${GRADE_COLOUR[grade]}`}
                       >
-                        {STATUS_COPY[link.status]}
+                        {GRADE_COPY[grade]}
                       </span>
                     </div>
                     <p className="ml-9 mt-1 max-w-2xl text-[11px] text-muted">{link.detail}</p>
                     <div className="ml-9 mt-1 flex flex-wrap gap-x-5 font-mono text-[10px] text-grey">
-                      {Object.entries(link.measured_fields).map(([name, count]) => (
-                        <span key={name} className={count > 0 ? "text-muted" : undefined}>
-                          {name} {fmtInt(count)}
-                        </span>
-                      ))}
-                      {link.unknown_fields.map((name) => (
+                      {counts === null
+                        ? link.fields.map((name) => <span key={name}>{name}</span>)
+                        : Object.entries(counts).map(([name, count]) => (
+                            <span key={name} className={count > 0 ? "text-muted" : undefined}>
+                              {name} {fmtInt(count)}
+                            </span>
+                          ))}
+                      {unknown.map((name) => (
                         <span key={name}>{name} — not a column</span>
                       ))}
                     </div>
                   </li>
                 ))}
               </ul>
-              {thesis.blocked_at.length > 0 ? (
+              {blocked.length > 0 ? (
                 <p className="mt-4 max-w-2xl text-[11px] text-muted">
-                  {thesis.blocked_at.join(" and ")} cannot be measured by this deployment. A
-                  public node cannot count holders — that needs an indexer — so the field is
-                  NULL on every live row rather than estimated, and the links that depend on it
-                  have nothing to read. The thesis is published with the gap rather than
-                  without it.
+                  {blocked.map((row) => row.link.step).join(" and ")} cannot be measured by this
+                  deployment. A public node cannot count holders — that needs an indexer — so
+                  the field is NULL on every live row rather than estimated, and the links that
+                  depend on it have nothing to read. The thesis is published with the gap rather
+                  than without it.
                 </p>
               ) : null}
             </Section>
@@ -161,8 +185,8 @@ export default async function ThesisPage() {
               ) : null}
             </Section>
           </article>
-        ))
-      )}
+        );
+      })}
     </main>
   );
 }
