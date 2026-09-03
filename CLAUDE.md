@@ -302,6 +302,32 @@ or the account is telling two stories about one dataset.
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.
 
+## Thesis rules
+
+- **A thesis is an argument, not a hypothesis and not a finding.** It has no
+  dataset, no horizon and no verdict. It is published because committing to a
+  mechanism *before* the result is known is the part that can be checked later,
+  and it is kept in its own object so it can never be read as a result.
+- **The file never grades itself.** A thesis names the fields each link of its
+  mechanism needs; `services/theses.py` counts how many live measurements
+  actually carry them. The file may claim a mechanism, it may not claim the
+  mechanism was measured, and `testable_end_to_end` is derived from the counts.
+- **`not-measured-here` is a first-class state,** and so is `partly-measured`.
+  A public node cannot count holders, so a link needing one comes back with a
+  zero attached rather than passing quietly. Publishing the gap is the point of
+  decomposing the argument.
+- **Fixtures are excluded from the count.** The synthetic dataset has a holder
+  count for every token; counting it would report an indexer this deployment
+  does not have — the exact shape of claiming an unimplemented capability.
+- **A field that is not a column is `unknown_field`, never zero.** A typo must
+  not read as "measured and found empty".
+- **A cross-chain thesis names its confounds before it is tested.** The frames
+  differ between chains (only `promotion-feed` runs identically on both), the
+  newer chain cannot have old tokens, and "long-duration" is a claim about a
+  span longer than the series. A chain contrast that does not hold the frame
+  and the age band constant measures the sampling rule and reports it as the
+  chain.
+
 ## Pairing rules
 
 - **A price is a ratio and the denominator is half of it.** A meme quoted in a

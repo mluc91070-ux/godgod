@@ -62,6 +62,11 @@ const GROUPS: Group[] = [
     label: "research",
     items: [
       {
+        href: "/thesis",
+        label: "theses",
+        blurb: "arguments posed before the data existed, and where each one stops being testable",
+      },
+      {
         href: "/hypotheses",
         label: "hypotheses",
         blurb: "questions posed with the rule that would kill them attached",

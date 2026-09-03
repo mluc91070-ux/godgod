@@ -52,6 +52,11 @@ services:
         value: /data/fixtures
       - key: WATCHLIST_NOTES_PATH
         value: /data/watchlist/robinhood-runners.json
+      # Arguments posed before the data existed to settle them. The image maps
+      # data/ to /data/, and the service reads from there rather than from a
+      # path relative to the working directory.
+      - key: THESES_PATH
+        value: /data/theses/chain-structure.json
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: MODEL_WRITER

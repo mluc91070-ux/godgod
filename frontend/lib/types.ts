@@ -377,6 +377,36 @@ export type PairingSummary = {
   hypothesis_key: string;
 };
 
+export type ThesisLink = {
+  step: string;
+  detail: string;
+  fields: string[];
+  measured_fields: Record<string, number>;
+  unknown_fields: string[];
+  status: "measured" | "partly-measured" | "not-measured-here";
+};
+
+export type Thesis = {
+  key: string;
+  title: string;
+  claim: string;
+  posed_at: string | null;
+  posed_by: string;
+  argument: string[];
+  chain_of_causation: ThesisLink[];
+  falsification: string;
+  confounds: { name: string; detail: string }[];
+  testable_end_to_end: boolean;
+  blocked_at: string[];
+};
+
+export type Theses = {
+  theses: Thesis[];
+  measurements: number;
+  chains: Record<string, number>;
+  note: string;
+};
+
 export type TokenInfo = {
   id: string;
   address: string;

@@ -443,6 +443,20 @@ class Settings(BaseSettings):
     failing — a deployment with no notes simply has none.
     """
 
+    theses_path: str = "data/theses/chain-structure.json"
+    """Where the posed theses live.
+
+    A thesis is an argument written before the data exists to settle it, and it
+    is kept apart from hypotheses for the same reason the watchlist is kept
+    apart from the sampling frames: it was written by a person, and nothing in
+    it was produced by an experiment. What the site shows beside each link of a
+    thesis is derived from the database, never from this file — the file may
+    claim a mechanism, it may not claim the mechanism was measured.
+
+    Absent is a valid state. A deployment with no theses has none, and the
+    endpoint says so rather than failing.
+    """
+
     chain_watchlist: Annotated[list[str], NoDecode] = Field(default_factory=list)
     """Tokens named by hand, as `chain:address`, measured every run.
 

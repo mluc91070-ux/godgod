@@ -36,8 +36,26 @@ from app.schemas.research import (
     TraceOut,
 )
 from app.services.research import run_research_cycle
+from app.services.theses import build_theses
 
 router = APIRouter(prefix="/api", tags=["research"])
+
+
+@router.get("/theses")
+async def list_theses(session: SessionDep, settings: SettingsDep) -> dict:
+    """Arguments posed before the data existed to settle them.
+
+    A thesis is not a hypothesis and not a finding: it has no dataset, no
+    horizon and no verdict, and nothing in it was produced by an experiment.
+    It is published because committing to a mechanism *before* the result is
+    known is the part that can later be checked, and because a mechanism
+    written as a chain shows exactly where it stops being testable.
+
+    The status beside each link is counted from the live measurements at
+    request time. The file may claim a mechanism; it may not claim that the
+    mechanism was measured.
+    """
+    return await build_theses(session, settings=settings)
 
 
 @router.post("/admin/research/run", response_model=ResearchReportOut)

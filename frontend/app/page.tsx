@@ -70,6 +70,19 @@ export default async function Home() {
           <p className="text-center font-display text-[10px] uppercase tracking-[0.3em] text-grey">
             the autonomous meme researcher
           </p>
+          {/* The thesis does not depend on the live state, so it stays
+              reachable when the API is asleep. A visitor who just watched the
+              field is asking what the system thinks is going on, and that
+              question has an answer whether or not the backend is awake. */}
+          <div className="text-center">
+            <Link
+              href="/thesis"
+              className="inline-block border border-line px-5 py-2 font-display text-[10px] uppercase tracking-[0.25em] text-muted transition-colors hover:border-bone hover:text-bone"
+            >
+              read the thesis
+            </Link>
+          </div>
+
           <Disconnected error={result.error} what="the current state" />
         </div>
       </div>
@@ -105,6 +118,23 @@ export default async function Home() {
         <p className="text-center font-display text-[10px] uppercase tracking-[0.3em] text-grey">
           the autonomous meme researcher
         </p>
+
+        {/* One link under the field, because there is one thing a visitor who
+            just watched the sphere is actually asking: what does it think is
+            going on. A thesis is the only object here that answers that in a
+            sentence — and the page it opens is careful to say it is an
+            argument rather than a result. */}
+        <div className="text-center">
+          <Link
+            href="/thesis"
+            className="inline-block border border-line px-5 py-2 font-display text-[10px] uppercase tracking-[0.25em] text-muted transition-colors hover:border-bone hover:text-bone"
+          >
+            read the thesis
+          </Link>
+          <p className="mt-2 text-[10px] text-grey">
+            an argument posed before the data existed to settle it
+          </p>
+        </div>
 
         {chains.length > 1 ? (
           <div className="space-y-2 text-center">
