@@ -49,6 +49,7 @@ cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"
 cd frontend && npm run dev
 cd frontend && npm run typecheck && npm run build
 cd frontend && npm run ux-audit http://127.0.0.1:3000   # every route at 4 widths
+cd frontend && npm run content-audit https://godgod.tech # is any page blank?
 #   needs a served build and `npx playwright install chromium` once
 ```
 
@@ -576,6 +577,18 @@ rules below are what governs it if it is ever wired up.
 - `body` carries `overflow-x-hidden`, which means an overflow does not scroll,
   it **clips** — content past the edge is unreachable rather than merely
   awkward. That is why the audit is automated rather than eyeballed.
+- **Audit both branches.** `Hero` draws the token cloud when the population is
+  reachable and a fixed-size sphere when it is not, and every audit run against
+  a working API renders the first and never touches the second. The fallback
+  shipped a hard `size={520}` that overflowed a phone by a hundred pixels for
+  as long as it existed. `NEXT_PUBLIC_*` is inlined at build time, so testing
+  the unreachable branch means *building* without the API url, not just serving
+  without it.
+- **"Blank" is a measurement, not a look.** `npm run content-audit` subtracts
+  the nav, the strip and the footer — identical on every page — and reports the
+  characters left. Counting the whole document reports every page as full while
+  the middle of it is empty. It also separates a page with nothing to say from
+  a page that could not ask.
 
 ## Phases
 

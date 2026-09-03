@@ -1,0 +1,76 @@
+# Deploy the API when main moves.
+#
+# The frontend redeploys itself on every push; the API does not, and the gap
+# between the two has been the standing failure of this project. Work lands in
+# git, the site picks up the pages, the backend keeps serving a build from
+# weeks ago, and every page that depends on a new endpoint reports it as an
+# unreachable API. A reader cannot tell that from a system that is idle.
+#
+# One secret closes it. In Render: the service → Settings → Deploy Hook → copy
+# the URL. In GitHub: Settings → Secrets and variables → Actions → New
+# repository secret, named RENDER_DEPLOY_HOOK. Nothing else changes; the hook
+# URL is a bearer credential and never appears in this file or in a log.
+#
+# Without the secret this workflow does nothing and says so. That is deliberate:
+# a deploy step that silently no-ops is how a repository ends up believing it
+# ships continuously while shipping nothing.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    # Frontend-only pushes do not need the API restarted, and a restart costs a
+    # cold start for anyone reading the site at that moment.
+    paths:
+      - "backend/**"
+      - "data/**"
+      - "render.yaml"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    # Job-level, not step-level: a step's `env` is not readable from a later
+    # step's `if`, so the wait below would have been skipped on every run —
+    # a green check for a deploy nobody confirmed.
+    env:
+      HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+      API: ${{ vars.GODGOD_API_URL || 'https://godgod-api.onrender.com' }}
+    steps:
+      - name: trigger the render deploy
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK is not set, so nothing was deployed." >> "$GITHUB_STEP_SUMMARY"
+            echo "Add it under Settings → Secrets and variables → Actions." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # -f so a 4xx or 5xx fails the job. A deploy that was refused must
+          # not report success: that is the exact shape of the problem this
+          # workflow exists to fix.
+          code=$(curl -fsS -o /dev/null -w '%{http_code}' -X POST "$HOOK")
+          echo "render accepted the deploy (HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: wait for the new build to answer
+        if: ${{ env.HOOK != '' }}
+        run: |
+          # A build takes a few minutes and a free instance is slow to wake, so
+          # this polls rather than sleeping once. It checks an endpoint that
+          # only exists on the new code, so "answered" means "the new build is
+          # serving", not "something is listening".
+          for i in $(seq 1 40); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$API/api/field-coverage" || true)
+            if [ "$code" = "200" ]; then
+              echo "the new build is live ($API/api/field-coverage answered 200)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "the deploy was accepted but the new endpoints did not answer within 13 minutes." >> "$GITHUB_STEP_SUMMARY"
+          echo "check the Render logs: the build may have failed, or the service may be missing an env var." >> "$GITHUB_STEP_SUMMARY"
+          exit 1
