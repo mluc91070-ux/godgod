@@ -424,7 +424,14 @@ export default function FieldSphere({
   return (
     <canvas
       ref={canvasRef}
-      style={{ width: size, height: size }}
+      // Square, and never wider than the box it is in. `size` stays the
+      // drawing buffer — the resolution the shader renders at — while the CSS
+      // width is capped at the container, so a 520px sphere on a 320px phone
+      // is scaled down rather than pushed off the side. It was pushed off the
+      // side: this is the fallback field, drawn only when the token list
+      // cannot be reached, so every audit that ran against a working API
+      // rendered the other component and never saw it.
+      style={{ width: `min(${size}px, 100%)`, aspectRatio: "1 / 1", height: "auto" }}
       aria-label={
         `GODGOD field. state ${state}, activity ${activity.toFixed(2)}` +
         (novelty !== null ? `, novelty ${novelty.toFixed(2)}` : "")
