@@ -61,6 +61,14 @@ class DetectorParams:
     survival_quiet_volume_ratio: float = 0.25
     """Volume below this share of its own liquidity-implied baseline is quiet."""
 
+    equity_quote_min_liquidity_usd: float = 5_000.0
+    """Depth below which an equity-quoted pool is not worth reporting.
+
+    The pairing itself is free to create — anyone can open a pool against a
+    tokenised share — so the pairing alone is not news. Depth is what makes it
+    a market, and it is what this detector's score is bound to."""
+    equity_quote_liquidity_saturation: float = 500_000.0
+
 
 @dataclass(frozen=True)
 class AnomalyCandidate:
@@ -259,6 +267,63 @@ def token_survival_anomaly(
     )
 
 
+def quote_asset_pairing(
+    window: TokenWindow, params: DetectorParams
+) -> AnomalyCandidate | None:
+    """The first measurement where this token is priced in a tokenised equity.
+
+    An appearance, not a level — it fires once per token and then never again,
+    which is why the whole history is checked rather than the previous row. A
+    detector that fired on every reading of an equity-quoted token would not be
+    reporting an anomaly, it would be reporting a category, and it would bury
+    the pipeline under one anomaly per token per slot.
+
+    NULL is not a kind. Rows written before the column existed carry NULL, and
+    treating those as "not an equity" would make every token on the chain look
+    like it changed denomination the day the column shipped. Only rows that
+    actually recorded a kind count as history.
+    """
+    from app.providers.market import EQUITY_QUOTE
+
+    if window.latest.get("quote_kind") != EQUITY_QUOTE:
+        return None
+
+    seen_before = [
+        row.get("quote_kind") for row in window.history if row.get("quote_kind") is not None
+    ]
+    if EQUITY_QUOTE in seen_before:
+        return None
+
+    liquidity = window.value("liquidity_usd")
+    if liquidity is None or liquidity < params.equity_quote_min_liquidity_usd:
+        return None
+
+    quote = window.latest.get("quote_symbol")
+    return AnomalyCandidate(
+        anomaly_type=str(AnomalyType.QUOTE_ASSET_PAIRING),
+        detector="equity-quote-pairing-v1",
+        score=strength(
+            liquidity,
+            params.equity_quote_min_liquidity_usd,
+            params.equity_quote_liquidity_saturation,
+        ),
+        baseline=_params(
+            {
+                "prior_kinds_recorded": len(seen_before),
+                "window_points": len(window.history),
+            },
+            params,
+            ["equity_quote_min_liquidity_usd", "equity_quote_liquidity_saturation"],
+        ),
+        measured={"quote_symbol": quote, "liquidity_usd": liquidity},
+        explanation=(
+            f"priced in {quote}, a tokenised equity, on ${liquidity:,.0f} of depth"
+            if quote
+            else f"priced in a tokenised equity on ${liquidity:,.0f} of depth"
+        ),
+    )
+
+
 ONCHAIN_DETECTORS: tuple[Callable[[TokenWindow, DetectorParams], AnomalyCandidate | None], ...] = (
     volume_acceleration,
     holder_acceleration,
@@ -266,6 +331,7 @@ ONCHAIN_DETECTORS: tuple[Callable[[TokenWindow, DetectorParams], AnomalyCandidat
     wallet_concentration_change,
     unusual_transaction_pattern,
     token_survival_anomaly,
+    quote_asset_pairing,
 )
 
 
@@ -387,6 +453,7 @@ DETECTOR_NAMES: tuple[str, ...] = (
     "social-onchain-divergence-v1",
     "narrative-acceleration-v1",
     "cluster-appearance-v1",
+    "equity-quote-pairing-v1",
 )
 """Every detector that can fire. Reported by /api/status."""
 

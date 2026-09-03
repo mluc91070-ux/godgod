@@ -124,6 +124,21 @@ class CollectionInfo(BaseModel):
     Counted apart and never folded into either frame: the list was written
     after seeing which tokens did well, so it is a set of survivors, and the
     research datasets drop it by name rather than drawing from it."""
+    tokens_equity_quoted: int
+    """Found by the structural frame: their deepest pool is priced in a
+    tokenised equity rather than in the chain's own gas token.
+
+    A fourth population, and the only one that is not about attention. The
+    other frames answer with whoever paid this hour or whoever bought; this one
+    answers with what a pool is denominated in, which is the exposure the
+    pairing hypothesis compares and a property neither other frame reaches
+    reliably."""
+    quote_kinds: dict[str, int]
+    """Live tokens by what their latest measurement was priced in.
+
+    `unknown` means the source described the pair and it was neither an equity
+    wrapper nor the gas token; a token whose rows predate the column is not
+    counted here at all, because "not recorded" is not a kind."""
     tokens_unrecorded_frame: int
     """Measured before the sampling frame was recorded at all.
 

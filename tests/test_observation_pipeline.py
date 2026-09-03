@@ -71,9 +71,9 @@ async def test_no_model_is_called_anywhere_in_the_pipeline(session, backfilled):
 
 
 async def test_ingestion_is_exact_and_not_duplicated(session, backfilled):
-    """6 tokens x 24 hourly measurements, stored once each."""
-    assert await session.scalar(select(func.count()).select_from(Token)) == 6
-    assert await session.scalar(select(func.count()).select_from(TokenSnapshot)) == 144
+    """7 tokens x 24 hourly measurements, stored once each."""
+    assert await session.scalar(select(func.count()).select_from(Token)) == 7
+    assert await session.scalar(select(func.count()).select_from(TokenSnapshot)) == 168
 
     posts = await session.scalar(select(func.count()).select_from(SocialPost))
     distinct = await session.scalar(select(func.count(func.distinct(SocialPost.external_id))))

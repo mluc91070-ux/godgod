@@ -167,6 +167,8 @@ def _snapshot_dict(row: TokenSnapshot) -> dict[str, Any]:
         "buys": row.buys,
         "sells": row.sells,
         "age_seconds": row.age_seconds,
+        "quote_kind": row.quote_kind,
+        "quote_symbol": row.quote_symbol,
     }
 
 
@@ -261,6 +263,16 @@ async def build_dataset(
             later = _reading_at(snapshots, index + 1, moment + horizon, tolerance)
             if later is None:
                 dataset.drop("no_reading_at_horizon")
+                continue
+
+            if not template.eligible(current):
+                # Not exposed *and* not a valid control. A template that
+                # compares two named groups has to be able to say a row is
+                # neither, or everything it did not select becomes its
+                # baseline: rows whose quote asset was never recorded would
+                # sit in the control arm as though the system had checked
+                # them and found nothing. Silence is not a comparison group.
+                dataset.drop("outside_template_population")
                 continue
 
             result = template.outcome(current, later)

@@ -3,22 +3,37 @@
     "is_demo": false,
     "kind": "operator-notes",
     "supplied_by": "operator",
-    "supplied_at": "2026-09-01",
+    "supplied_at": "2026-09-03",
     "note": "Notes a person wrote about tokens on Robinhood Chain: what each one is, and why they think it ran. This file is not research and nothing here was measured by this system except the fields named `measured_*`, which were read from the market source at import time and are stamped with when. The `claimed_market_cap` values are the operator's figures, kept so the two can be compared rather than blended. Every `why` is an untested claim about a mechanism — the site labels it as one, no detector reads it, no dataset draws from it, and no experiment has been run on any of it.",
-    "addresses_checked": "All fourteen were resolved against the market source on chain robinhood before this file was written; every symbol matched. Three entries the operator supplied without a usable address (YOLO, RABBIT, PONGO) were left out rather than guessed at.",
-    "measured_at": "2026-09-01T21:40:00Z"
+    "addresses_checked": "All fifteen were resolved against the market source on chain robinhood before this file was written; every symbol matched. Entries the operator supplied without a usable address (YOLO, PONGO, RABBIT) were left out rather than guessed at — PONGO was given as \"multiple contracts\", which is not an address.",
+    "measured_at": "2026-09-03T16:22:13Z",
+    "quote_note": "`measured_quote_symbol` and `measured_quote_kind` are the one part of each row that is not an opinion: they are what the deepest pool is priced in, read from the source. Four of the fifteen are quoted in a tokenised equity rather than in the chain's gas token, and that split is the population the pairing hypothesis compares — which is also why these rows stay out of it. A list written after seeing which tokens did well cannot be a sample of anything."
   },
   "chain": "robinhood",
   "tokens": [
+    {
+      "address": "0x12D5ee7917cA430073C3A638ee1e6f0648A98a01",
+      "symbol": "FATCOIN",
+      "lore": "\"trading 24/7 made us fat, lilly sells the cure.\" the pool is quoted in the tokenised eli lilly share.",
+      "why": "the clearest case of the pairing in the list, and the one that makes it legible: the joke and the denominator are the same joke. it is also the smallest cap here and the highest turnover — $3.6m of daily volume against a $2.9m cap — so whatever the pairing does, it is not doing it by being large. that is a claim about a mechanism and this system has not tested it.",
+      "claimed_market_cap": "1-3.6M",
+      "measured_market_cap_usd": 2903819,
+      "measured_liquidity_usd": 208213,
+      "measured_volume_24h_usd": 3645106,
+      "measured_quote_symbol": "LLY",
+      "measured_quote_kind": "tokenised-equity"
+    },
     {
       "address": "0x39dBED3a2bd333467115dE45665cC57F813C4571",
       "symbol": "PONS",
       "lore": "the launchpad's own token. every launch on it pays fees, and the token is what those fees run through.",
       "why": "a claim about position rather than about a meme: if the launchpad is where the chain's tokens are created, its token is a bet on the volume of everything launched, not on any one of them. that is testable — fees collected against launches per day — and nothing here has tested it.",
       "claimed_market_cap": "300-440M",
-      "measured_market_cap_usd": 292800000,
-      "measured_liquidity_usd": 5000000,
-      "measured_volume_24h_usd": 7100000
+      "measured_market_cap_usd": 394743575,
+      "measured_liquidity_usd": 6075336,
+      "measured_volume_24h_usd": 7824088,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x020bfC650A365f8BB26819deAAbF3E21291018b4",
@@ -26,9 +41,11 @@
       "lore": "\"cashcat\" is said to have been the chain's internal name before the rebrand. it became the unofficial mascot.",
       "why": "a claim that borrowed identity carries further than invented identity — the token did not have to explain itself, only to be recognised. whether that shows up as a faster first day is a question about the population, not about this token.",
       "claimed_market_cap": "180-230M",
-      "measured_market_cap_usd": 222600000,
-      "measured_liquidity_usd": 4400000,
-      "measured_volume_24h_usd": 6500000
+      "measured_market_cap_usd": 261975991,
+      "measured_liquidity_usd": 5409229,
+      "measured_volume_24h_usd": 6762190,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x2E8c31162b855A2ffa90F6F8634643Ad6F111e18",
@@ -36,9 +53,11 @@
       "lore": "a dog meme paired against the tokenised NVDA stock, with a vault that accumulates it.",
       "why": "the interesting part is the pairing. a meme quoted against a tokenised equity moves with two things at once, and its chart is not separable from NVDA's without the pair data. the operator's figure for this one was 100-190M; it measured 297M, which is why the figures are kept apart here.",
       "claimed_market_cap": "100-190M",
-      "measured_market_cap_usd": 297000000,
-      "measured_liquidity_usd": 6400000,
-      "measured_volume_24h_usd": 30700000
+      "measured_market_cap_usd": 281684840,
+      "measured_liquidity_usd": 6275739,
+      "measured_volume_24h_usd": 3659935,
+      "measured_quote_symbol": "NVDA",
+      "measured_quote_kind": "tokenised-equity"
     },
     {
       "address": "0x98096d17e191B3dA1d5f99a6D7b3584351b11E18",
@@ -46,9 +65,11 @@
       "lore": "a hard-money joke attached to HIMS, the men's-health stock. the pool is said to have absorbed a large share of the tokenised HIMS float.",
       "why": "same shape as AI and a stronger version of it: if a meme pool holds a real fraction of a tokenised equity's float, the meme is no longer only a meme, and depth on one side becomes a constraint on the other.",
       "claimed_market_cap": "40-90M",
-      "measured_market_cap_usd": 72100000,
-      "measured_liquidity_usd": 2900000,
-      "measured_volume_24h_usd": 8700000
+      "measured_market_cap_usd": 58397060,
+      "measured_liquidity_usd": 2599079,
+      "measured_volume_24h_usd": 3708776,
+      "measured_quote_symbol": "HIMS",
+      "measured_quote_kind": "tokenised-equity"
     },
     {
       "address": "0x5Cb6F181081301b44905F3ae15419112ecaBd8A6",
@@ -56,9 +77,11 @@
       "lore": "\"this pipedog he has pipe he has question\". one image, no thesis.",
       "why": "the control case in this list. nothing about it is structural — no fee capture, no equity pairing, no borrowed identity — and it ran anyway. any explanation that fits the others and not this one is incomplete.",
       "claimed_market_cap": "25-35M",
-      "measured_market_cap_usd": 29200000,
-      "measured_liquidity_usd": 8800000,
-      "measured_volume_24h_usd": 4800000
+      "measured_market_cap_usd": 27471680,
+      "measured_liquidity_usd": 8634251,
+      "measured_volume_24h_usd": 3155484,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x7FE995a80075dF3Dc8Ae11A9b82c7FE4202CD87f",
@@ -66,9 +89,11 @@
       "lore": "the cat that goes \"hmm...\" before buying. the second cat, after cashcat.",
       "why": "a claim about sequence: the second animal in a format arrives to an audience that already knows the joke. it is also the cheapest kind of claim to be wrong about, because most second cats go nowhere and only the ones that ran are in a list like this.",
       "claimed_market_cap": "18-30M",
-      "measured_market_cap_usd": 22200000,
-      "measured_liquidity_usd": 829000,
-      "measured_volume_24h_usd": 3100000
+      "measured_market_cap_usd": 25909281,
+      "measured_liquidity_usd": 840120,
+      "measured_volume_24h_usd": 2252624,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0xe934e36a439c94017b64a3fece66af12099abf50",
@@ -76,9 +101,11 @@
       "lore": "the token behind the wsb \"broker\" nfts. each broker is worth a fixed pack of tokens.",
       "why": "a fixed redemption rate between an nft and a token is a floor written in a contract rather than in sentiment, and a floor is a thing a detector could actually look for — the price should behave differently near it.",
       "claimed_market_cap": "15-45M",
-      "measured_market_cap_usd": 38500000,
-      "measured_liquidity_usd": 4100000,
-      "measured_volume_24h_usd": 3800000
+      "measured_market_cap_usd": 48599808,
+      "measured_liquidity_usd": 3730810,
+      "measured_volume_24h_usd": 2615589,
+      "measured_quote_symbol": "ETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x45242320dbb855eea8fd36804c6487e10e97fcf9",
@@ -86,9 +113,11 @@
       "lore": "wsb slang for gains. the culture the chain came from, tokenised.",
       "why": "the same borrowed-identity claim as cashcat, from a different source: a word its audience already used before the token existed.",
       "claimed_market_cap": "15-26M",
-      "measured_market_cap_usd": 15900000,
-      "measured_liquidity_usd": 840000,
-      "measured_volume_24h_usd": 1900000
+      "measured_market_cap_usd": 32275258,
+      "measured_liquidity_usd": 1129716,
+      "measured_volume_24h_usd": 1922580,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0xd5f1afea47b1a9eab414d2ee740cf1d6d039e725",
@@ -96,9 +125,11 @@
       "lore": "an ai robot duck, and a rumour about who might buy the company behind it.",
       "why": "the only one in the list whose story depends on news breaking a particular way. that makes it the most fragile and the easiest to check: the claim has a date attached to it, and most do not.",
       "claimed_market_cap": "12-22M",
-      "measured_market_cap_usd": 15600000,
-      "measured_liquidity_usd": 341000,
-      "measured_volume_24h_usd": 1500000
+      "measured_market_cap_usd": 38252366,
+      "measured_liquidity_usd": 540660,
+      "measured_volume_24h_usd": 1374530,
+      "measured_quote_symbol": "NVDA",
+      "measured_quote_kind": "tokenised-equity"
     },
     {
       "address": "0x18e674231a58c239dc7daedcffe15ec3a24cff5c",
@@ -106,9 +137,11 @@
       "lore": "pons sells the launch; this sells the pool rules — anti-snipe, burns, taxes on uniswap v4.",
       "why": "the second infrastructure bet in the list, one layer down from pons. if it is right, the two should move together, and if they do not, one of them is not about the launchpad at all.",
       "claimed_market_cap": "10-21M",
-      "measured_market_cap_usd": 11600000,
-      "measured_liquidity_usd": 716000,
-      "measured_volume_24h_usd": 3800000
+      "measured_market_cap_usd": 15611312,
+      "measured_liquidity_usd": 829460,
+      "measured_volume_24h_usd": 3921671,
+      "measured_quote_symbol": "ETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x5173d45a1191ee33cbb7d8c7e65f21b04ed54802",
@@ -116,9 +149,11 @@
       "lore": "a dex token that caught the high-turnover rotation.",
       "why": "the numbers say what the story does not: 7.2m of daily volume against 451k of depth is sixteen times the pool traded in a day. that ratio is measurable, it is unusual in this list, and it is the kind of thing a detector already looks for.",
       "claimed_market_cap": "9-15M",
-      "measured_market_cap_usd": 9500000,
-      "measured_liquidity_usd": 451000,
-      "measured_volume_24h_usd": 7200000
+      "measured_market_cap_usd": 6929045,
+      "measured_liquidity_usd": 370998,
+      "measured_volume_24h_usd": 1932839,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0xD7321801CAae694090694Ff55A9323139F043B88",
@@ -126,9 +161,11 @@
       "lore": "the chain's ceo named it as his favourite meme. the punchline was tokenised the same day.",
       "why": "a claim about a single identifiable trigger with a timestamp, which makes it the most falsifiable entry here: either the move starts at the remark or it does not.",
       "claimed_market_cap": "5-12M",
-      "measured_market_cap_usd": 5900000,
-      "measured_liquidity_usd": 481000,
-      "measured_volume_24h_usd": 1600000
+      "measured_market_cap_usd": 5203065,
+      "measured_liquidity_usd": 472823,
+      "measured_volume_24h_usd": 1763619,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0x8e62F281f282686fCa6dCB39288069a93fC23F1c",
@@ -136,9 +173,11 @@
       "lore": "a furie-adjacent character, the chain's \"hood mascot\".",
       "why": "an art-style claim: the format is recognisable before the token is. same family as cashcat and tendies, weaker version.",
       "claimed_market_cap": "2-4M",
-      "measured_market_cap_usd": 2600000,
-      "measured_liquidity_usd": 336000,
-      "measured_volume_24h_usd": 464000
+      "measured_market_cap_usd": 3347068,
+      "measured_liquidity_usd": 384949,
+      "measured_volume_24h_usd": 536617,
+      "measured_quote_symbol": "WETH",
+      "measured_quote_kind": "gas"
     },
     {
       "address": "0xded852De9fe9bA9b6f27f39e8e81CF851A5C79cc",
@@ -146,9 +185,11 @@
       "lore": "a cat named on the theory that the company might one day ship something official.",
       "why": "the thinnest claim in the list, and the numbers show why it is worth watching anyway: 20.3m of daily volume against 151k of depth, which is a hundred and thirty times the pool. that is either the most active token here or a measurement about something other than trading, and only more readings will say which.",
       "claimed_market_cap": "1-3M",
-      "measured_market_cap_usd": 3500000,
-      "measured_liquidity_usd": 151000,
-      "measured_volume_24h_usd": 20300000
+      "measured_market_cap_usd": 3135223,
+      "measured_liquidity_usd": 143761,
+      "measured_volume_24h_usd": 1189996,
+      "measured_quote_symbol": "USDG",
+      "measured_quote_kind": "other"
     }
   ]
 }

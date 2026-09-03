@@ -90,6 +90,20 @@ export default function Collection({ status }: { status: Status }) {
         </div>
       </div>
 
+      {/* The fourth frame, and the only structural one. The others answer with
+          whoever paid or whoever bought; this one answers with what a pool is
+          denominated in — a fact about the pool rather than about the hour. */}
+      {c.tokens_equity_quoted > 0 || (c.quote_kinds?.["tokenised-equity"] ?? 0) > 0 ? (
+        <div className="mt-3 flex justify-between border-b border-line py-1 text-[11px]">
+          <span className="text-muted">
+            priced in a tokenised share, not in the gas token
+          </span>
+          <span className="text-amber">
+            {fmtInt(c.quote_kinds?.["tokenised-equity"] ?? 0)}
+          </span>
+        </div>
+      ) : null}
+
       {c.tokens_watchlist > 0 ? (
         <div className="mt-3 flex justify-between border-b border-line py-1 text-[11px]">
           <span className="text-muted">
@@ -108,6 +122,9 @@ export default function Collection({ status }: { status: Status }) {
           : null}
         {c.tokens_watchlist > 0
           ? " tokens named by hand are measured and shown like any other, and dropped from every dataset by name: the list was written after seeing which ones did well, so a rate computed over them is a fact about whoever wrote it."
+          : null}
+        {(c.quote_kinds?.["tokenised-equity"] ?? 0) > 0
+          ? ` ${fmtInt(c.quote_kinds["tokenised-equity"])} of them are quoted in a tokenised share rather than in the chain's gas token, which makes them a different instrument and the population of an open question — see pairings.`
           : null}
         {c.tokens_unrecorded_frame > 0
           ? ` ${fmtInt(c.tokens_unrecorded_frame)} more were measured before the frame was recorded at all — they are not counted as either, because nobody wrote down which.`

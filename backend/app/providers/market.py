@@ -62,6 +62,23 @@ class MarketSnapshot:
     buys: int | None = None
     sells: int | None = None
     created_at: datetime | None = None
+    quote_symbol: str | None = None
+    """What the deepest pool is quoted in, as the source reports it.
+
+    A price is a ratio and the denominator is half of it. Two memes on the same
+    chain, one quoted in the gas token and one in a tokenised share of Nvidia,
+    are not the same instrument: the second one's chart cannot be separated
+    from Nvidia's without the pair data, and the depth on the equity side is a
+    constraint on the meme side. Recording the denominator is what makes that a
+    question the system can ask rather than an assumption it makes."""
+    quote_name: str | None = None
+    quote_address: str | None = None
+    quote_kind: str | None = None
+    """`tokenised-equity`, `gas`, `other`, or `unknown` when nothing was said.
+
+    Classified from the quote token's *name*, which is where the chain puts the
+    marker, rather than from its symbol — a symbol is free text anyone can
+    mint, and "NVDA" costs nothing to claim."""
     pairs_seen: int = 0
 
     @property
@@ -81,6 +98,9 @@ class MarketSnapshot:
             "buys": self.buys,
             "sells": self.sells,
             "age_seconds": self.age_seconds,
+            "quote_symbol": self.quote_symbol,
+            "quote_address": self.quote_address,
+            "quote_kind": self.quote_kind,
         }
 
 
@@ -98,6 +118,15 @@ class MarketProvider(ABC):
 
     @abstractmethod
     async def discover(self, limit: int = 30) -> list[MarketSnapshot]: ...
+
+    async def equity_quoted(self, limit: int = 30) -> list[MarketSnapshot]:
+        """Tokens quoted against a tokenised equity.
+
+        Not abstract: a source that cannot answer this returns nothing, and an
+        empty cohort is a true statement about a chain with no equity wrappers
+        on it. Raising here would make an ordinary chain look like an outage.
+        """
+        return []
 
     @abstractmethod
     async def snapshots(
@@ -136,6 +165,39 @@ class NullMarketProvider(MarketProvider):
         raise ProviderNotConfigured("MARKET_API_URL is not set")
 
 
+EQUITY_QUOTE = "tokenised-equity"
+GAS_QUOTE = "gas"
+OTHER_QUOTE = "other"
+UNKNOWN_QUOTE = "unknown"
+
+QUOTE_KINDS = (EQUITY_QUOTE, GAS_QUOTE, OTHER_QUOTE, UNKNOWN_QUOTE)
+
+
+def classify_quote(
+    symbol: str | None, name: str | None, settings: Settings | None = None
+) -> str:
+    """What kind of thing a pool is quoted in.
+
+    Four answers, and the fourth is the important one. A pair the source did
+    not describe is `unknown` — not `other` — because "we asked and it is
+    neither" and "nobody told us" are different facts, and a comparison that
+    merges them puts silence in the baseline arm.
+
+    The equity test reads the name, where the chain writes its marker. The gas
+    test reads the symbol, because a gas token's name varies ("Ether", "WETH")
+    while its symbol is the thing every pool agrees on.
+    """
+    settings = settings or get_settings()
+    if not symbol and not name:
+        return UNKNOWN_QUOTE
+    marker = settings.equity_quote_marker.strip().lower()
+    if marker and marker in (name or "").lower():
+        return EQUITY_QUOTE
+    if (symbol or "").upper() in {item.upper() for item in settings.gas_quote_symbols}:
+        return GAS_QUOTE
+    return OTHER_QUOTE
+
+
 def _number(value: Any) -> float | None:
     """Parse a number, or return None. Never a default."""
     if value is None or isinstance(value, bool):
@@ -152,7 +214,10 @@ def _int(value: Any) -> int | None:
 
 
 def _from_pair(
-    address: str, pairs: list[dict[str, Any]], chain: str = "solana"
+    address: str,
+    pairs: list[dict[str, Any]],
+    chain: str = "solana",
+    settings: Settings | None = None,
 ) -> MarketSnapshot | None:
     """Fold the pairs for one token into a single measurement.
 
@@ -173,6 +238,14 @@ def _from_pair(
         relevant, key=lambda pair: _number((pair.get("liquidity") or {}).get("usd")) or 0.0
     )
     base = deepest.get("baseToken") or {}
+    # From the deepest pool, the same one the price is taken from, because the
+    # denominator has to belong to the numerator. Summing liquidity across
+    # pools is fine — depth adds up — but a token trading against three
+    # different assets has no single quote, and picking a shallow pool's would
+    # describe a price nobody was quoted.
+    quote = deepest.get("quoteToken") or {}
+    quote_symbol = sanitize_external_text(str(quote.get("symbol") or ""), max_len=32) or None
+    quote_name = sanitize_external_text(str(quote.get("name") or ""), max_len=128) or None
 
     def total(extract) -> float | None:
         values = [extract(pair) for pair in relevant]
@@ -233,6 +306,12 @@ def _from_pair(
         created_at=(
             datetime.fromtimestamp(created_ms / 1000, tz=UTC) if created_ms else None
         ),
+        quote_symbol=quote_symbol,
+        quote_name=quote_name,
+        quote_address=(
+            sanitize_external_text(str(quote.get("address") or ""), max_len=64) or None
+        ),
+        quote_kind=classify_quote(quote_symbol, quote_name, settings),
         pairs_seen=len(relevant),
     )
 
@@ -279,7 +358,7 @@ class HttpMarketProvider(MarketProvider):
     async def get_snapshot(self, address: str, chain: str = "solana") -> MarketSnapshot | None:
         payload = await self._get(f"/tokens/v1/{chain}/{address}")
         pairs = payload if isinstance(payload, list) else (payload.get("pairs") or [])
-        return _from_pair(address, pairs, chain)
+        return _from_pair(address, pairs, chain, self._settings)
 
     async def search(self, query: str, limit: int = 20) -> list[MarketSnapshot]:
         payload = await self._get("/latest/dex/search", {"q": query})
@@ -298,7 +377,7 @@ class HttpMarketProvider(MarketProvider):
         snapshots = [
             snapshot
             for (chain, address), group in seen.items()
-            if (snapshot := _from_pair(address, group, chain)) is not None
+            if (snapshot := _from_pair(address, group, chain, self._settings)) is not None
         ]
         snapshots.sort(key=lambda item: item.liquidity_usd or 0.0, reverse=True)
         return snapshots[:limit]
@@ -346,6 +425,59 @@ class HttpMarketProvider(MarketProvider):
         snapshots.sort(key=lambda item: item.volume_usd or 0.0, reverse=True)
         return snapshots[:limit]
 
+    async def equity_quoted(self, limit: int = 30) -> list[MarketSnapshot]:
+        """The memes quoted against a tokenised equity, measured.
+
+        A frame with a structural definition rather than a popularity one. The
+        promotion feed answers with whoever paid this hour and a filled bonding
+        curve answers with whoever bought; both are about attention. This one
+        asks what a pool is denominated in, which is a fact about the pool that
+        does not change with the hour, and it is the only way to assemble the
+        cohort the pairing hypothesis compares against.
+
+        The search returns pairs on both sides of the pairing — the equity
+        wrappers themselves come back quoted in the gas token. Those are
+        dropped: a tokenised share of Nvidia is not a meme with an Nvidia
+        denominator, and counting it in the exposed arm would put the thing
+        being measured against inside the group being measured.
+        """
+        payload = await self._get("/latest/dex/search", {"q": self._settings.equity_quote_query})
+        pairs = payload.get("pairs") or []
+
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for pair in pairs:
+            chain = str(pair.get("chainId") or "")
+            if chain not in self._chains:
+                continue
+            quote = pair.get("quoteToken") or {}
+            kind = classify_quote(
+                str(quote.get("symbol") or "") or None,
+                str(quote.get("name") or "") or None,
+                self._settings,
+            )
+            if kind != EQUITY_QUOTE:
+                continue
+            base = pair.get("baseToken") or {}
+            address = base.get("address")
+            if not address:
+                continue
+            # The wrapper itself, appearing as somebody's base token. Excluded
+            # by the same marker that selected the pair, read on the other side.
+            if (
+                self._settings.equity_quote_marker.strip().lower()
+                in str(base.get("name") or "").lower()
+            ):
+                continue
+            grouped.setdefault((chain, address), []).append(pair)
+
+        snapshots = [
+            snapshot
+            for (chain, address), group in grouped.items()
+            if (snapshot := _from_pair(address, group, chain, self._settings)) is not None
+        ]
+        snapshots.sort(key=lambda item: item.liquidity_usd or 0.0, reverse=True)
+        return snapshots[:limit]
+
     async def snapshots(
         self, addresses: list[str], chain: str = "solana"
     ) -> list[MarketSnapshot]:
@@ -370,7 +502,7 @@ class HttpMarketProvider(MarketProvider):
             results.extend(
                 snapshot
                 for address, group in grouped.items()
-                if (snapshot := _from_pair(address, group, chain)) is not None
+                if (snapshot := _from_pair(address, group, chain, self._settings)) is not None
             )
         return results
 

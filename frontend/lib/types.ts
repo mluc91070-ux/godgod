@@ -97,6 +97,8 @@ export type Status = {
     tokens_promoted: number;
     tokens_migrated: number;
     tokens_watchlist: number;
+    tokens_equity_quoted: number;
+    quote_kinds: Record<string, number>;
     tokens_unrecorded_frame: number;
     migrations_available: boolean;
     tokens_by_chain: Record<string, number>;
@@ -351,6 +353,28 @@ export type Attention = {
   address: string | null;
   token_id: string | null;
   is_demo: boolean;
+};
+
+export type Pairing = {
+  address: string;
+  chain: string;
+  symbol: string | null;
+  name: string | null;
+  observed_at: string;
+  quote_symbol: string | null;
+  quote_kind: string;
+  market_cap_usd: number | null;
+  liquidity_usd: number | null;
+  volume_usd: number | null;
+  source: string | null;
+};
+
+export type PairingSummary = {
+  counts: Record<string, number>;
+  chains: Record<string, Record<string, number>>;
+  equity_quoted: Pairing[];
+  marker: string;
+  hypothesis_key: string;
 };
 
 export type TokenInfo = {

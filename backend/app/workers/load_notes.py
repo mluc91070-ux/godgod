@@ -14,8 +14,13 @@ enforced here rather than left to whoever reads the page:
 
 The numbers are kept in two separate fields on purpose. `claimed_market_cap`
 is the operator's figure and `measured_market_cap_usd` is what the market
-source said when the file was written. On one of the fourteen they disagree by
-more than fifty percent, which is the whole reason they are not merged.
+source said when the file was written. On one of them they disagreed by more
+than fifty percent, which is the whole reason they are not merged.
+
+One field on each entry is not an opinion at all: what the deepest pool is
+priced in. It is read from the source, it is the only part of a note that a
+detector also measures independently, and it is rendered last so a reader can
+see the one checkable fact in a paragraph of claims.
 
 Run:  cd backend && .venv/Scripts/python -m app.workers.load_notes
 """
@@ -50,6 +55,8 @@ def render(entry: dict, chain: str) -> tuple[str, str]:
     why = sanitize_external_text(str(entry.get("why") or ""), max_len=1200)
     claimed = sanitize_external_text(str(entry.get("claimed_market_cap") or ""), max_len=64)
     measured = entry.get("measured_market_cap_usd")
+    quote = sanitize_external_text(str(entry.get("measured_quote_symbol") or ""), max_len=32)
+    quote_kind = sanitize_external_text(str(entry.get("measured_quote_kind") or ""), max_len=32)
 
     summary = f"{symbol} on {chain} — an operator note, not a finding"
     body = (
@@ -60,6 +67,13 @@ def render(entry: dict, chain: str) -> tuple[str, str]:
         f"in this system, and the token is excluded from every dataset because a "
         f"list of tokens chosen after they ran is a list of survivors."
     )
+    if quote:
+        # The one line in a note that was measured rather than asserted. An
+        # equity denominator is a structural fact about the pool, and it is
+        # the exposure of an open hypothesis — which this token is excluded
+        # from, for the same reason every other claim here is untested.
+        kind = f", which is {quote_kind.replace('-', ' ')}" if quote_kind else ""
+        body += f"\n\npriced in {quote}{kind}. that part is measured, not claimed."
     return summary, body
 
 

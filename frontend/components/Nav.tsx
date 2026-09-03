@@ -46,6 +46,11 @@ const GROUPS: Group[] = [
         blurb: "the tokens under measurement, and which feed found them",
       },
       {
+        href: "/pairings",
+        label: "pairings",
+        blurb: "what each pool is priced in, and the cohort quoted in tokenised shares",
+      },
+      {
         href: "/watchlist",
         label: "watchlist",
         blurb: "tokens named by hand, the claims about them, and the measurements beside them",

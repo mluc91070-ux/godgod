@@ -145,6 +145,7 @@ async def main() -> int:
     class FakeMarket:
         def __init__(self, *snapshots, raises=None):
             self._snapshots = list(snapshots)
+            self._equity_quoted: list = []
             self._raises = raises
 
         async def discover(self, limit=30):
@@ -157,6 +158,10 @@ async def main() -> int:
 
         async def get_snapshot(self, addr, chain="solana"):
             return next((s for s in self._snapshots if s.address == addr), None)
+
+        async def equity_quoted(self, limit=30):
+            """The structural frame. Empty unless a check plants a cohort."""
+            return list(self._equity_quoted)
 
         async def snapshots(self, addresses, chain="solana"):
             wanted = set(addresses)

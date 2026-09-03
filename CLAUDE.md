@@ -302,6 +302,49 @@ or the account is telling two stories about one dataset.
 - `implemented=true` on an agent means a model-backed agent runs. A deterministic
   engine doing the same job is not the same claim.
 
+## Pairing rules
+
+- **A price is a ratio and the denominator is half of it.** A meme quoted in a
+  tokenised share of a company is not the same instrument as a meme quoted in
+  the chain's gas token: its chart is not separable from that company's without
+  the pair data, and the depth on the equity side is a constraint on the meme
+  side. `TokenSnapshot.quote_symbol/quote_address/quote_kind` record it.
+- **The kind is read from the quote token's *name*, never its symbol.**
+  `EQUITY_QUOTE_MARKER` is how the chain names its wrappers. A symbol is free
+  text anyone can mint and claiming a famous ticker costs nothing; a name-based
+  marker also fails loudly — rename the wrappers and the classifier reports
+  `other`, rather than silently matching something that stopped meaning
+  anything.
+- **Four answers, and the fourth is the point.** `tokenised-equity`, `gas`,
+  `other`, `unknown`. "We asked and it is neither" and "nobody told us" are
+  different facts. NULL is a fifth thing again — the column is newer than the
+  series, and a NULL row is *not recorded*, not `unknown`.
+- **Stored per measurement, never on the token.** The quote belongs to the pool
+  the price came from, and a token that gains a deeper pool against a different
+  asset has genuinely changed denomination. Held on the token, a liquidity
+  shift would rewrite the exposure of every historical row.
+- **The detector fires on the appearance, once.** `equity-quote-pairing-v1`
+  checks the whole history, not the previous row. Firing on every reading of an
+  equity-quoted token would report a category rather than an anomaly and bury
+  the pipeline under one row per token per slot. Its score is bound to depth,
+  because anyone can open a pool against a tokenised share and the pairing
+  alone is not news.
+- **A template that compares two named groups needs `eligible`.** Without it,
+  everything not selected becomes the baseline: `other`, `unknown` and NULL
+  rows would sit in the control arm as though they had been checked and found
+  negative. Silence is not a comparison group, and those rows are dropped under
+  `outside_template_population`.
+- **The exposure is a standing property, not an event.** Every other trigger
+  here is a change; this one is a fact about the pool that holds across a
+  token's whole series, so its rows are perfectly correlated. That is declared
+  rather than hidden — the critic's independence check is exactly the thing
+  that should see it.
+- **`equity-quote` is a sampling frame with its own budget and its own
+  floors.** It is the only frame defined by structure instead of attention, so
+  it must not compete for the promotion feed's slots, and it must not inherit
+  the promotion feed's $50k liquidity floor: a cohort filtered by depth cannot
+  answer a question about depth.
+
 ## Attention rules
 
 - **A rank is a measurement; a mood is not.** The search-ranking feed reports
@@ -396,8 +439,11 @@ rules below are what governs it if it is ever wired up.
   for the same kind of reason — the launchpad covers one chain — and that is
   stated wherever the frame is described, so an empty cohort on another chain is
   never read as "none found".
-- **Two frames, kept apart.** `promotion-feed` is tokens somebody paid to place;
-  `launchpad-migration` is tokens whose bonding curve filled. Both are measured
+- **Three frames, kept apart.** `promotion-feed` is tokens somebody paid to
+  place; `launchpad-migration` is tokens whose bonding curve filled;
+  `equity-quote` is tokens whose deepest pool is priced in a tokenised equity.
+  The first two are about who noticed, the third about what a pool is
+  denominated in. See "Pairing rules". All three are measured
   by the same market provider into identical rows, and `Token.source` records
   which one found it. It is written once and never rewritten: a token that
   entered as promoted stays promoted, or the population of every past
@@ -405,7 +451,7 @@ rules below are what governs it if it is ever wired up.
 - **The frame says how a token was found; `selected_by` says why a row exists.**
   They are different questions and live in different columns. `Token.source` is
   written once. `TokenSnapshot.selected_by` is per measurement — `discovery`,
-  `migration` or `retention` — because a token above
+  `migration`, `equity-quote`, `watchlist` or `retention` — because a token above
   `CHAIN_RETAIN_MIN_MARKET_CAP_USD` is re-measured every run whether or not the
   feed still names it, and it **skips the liquidity and volume floors**. That
   is the point: a large cap that drains is the outcome the earlier reading was

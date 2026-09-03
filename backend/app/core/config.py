@@ -495,6 +495,67 @@ class Settings(BaseSettings):
     comparison in this system is held within one chain.
     """
 
+    equity_quote_marker: str = "• Robinhood Token"
+    """How the chain names its tokenised-equity wrappers.
+
+    A meme quoted against a tokenised equity is a different instrument from a
+    meme quoted against the gas token: its chart is not separable from the
+    equity's without the pair data, and the depth on one side is a constraint
+    on the other. Whether that changes how the token behaves is a question, and
+    a question needs the two groups told apart before it can be asked.
+
+    The chain tells them apart itself. Every equity wrapper the market source
+    reports carries this marker in the quote token's *name* — "NVIDIA •
+    Robinhood Token", "Eli Lilly • Robinhood Token" — so the classification is
+    read off the source rather than guessed from a symbol, which is the one
+    field an attacker controls freely.
+
+    It is configuration because it is a property of the source, not of this
+    system. If the chain renames its wrappers, the classifier must go quiet and
+    record `unknown`, not keep matching a string that stopped meaning anything.
+    """
+
+    gas_quote_symbols: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["SOL", "WSOL", "ETH", "WETH"]
+    )
+    """Quote symbols that are the chain's own unit of account, wrapped or not.
+
+    The baseline arm of the pairing question. Everything that is neither this
+    nor an equity wrapper is `other` — a stablecoin quote, a meme-against-meme
+    pool — and stays out of both arms rather than being forced into one.
+    """
+
+    equity_quote_query: str = "Robinhood Token"
+    """What the collector searches to find the tokenised-equity cohort.
+
+    The frame this opens is the only one on this chain that is not a leftover
+    of how Solana is sampled: the promotion feed answers with whoever paid, and
+    a filled bonding curve answers with whoever bought. This answers with a
+    structural fact about the pool — what it is quoted in — which is exactly
+    the population the pairing hypothesis needs and the one neither other frame
+    reliably reaches.
+    """
+
+    equity_quote_max_tokens: int = 30
+    """Tokens taken from the equity-quote frame per run.
+
+    Its own budget rather than a share of the promotion feed's: the two frames
+    compete for slots, and on measurement the promotion feed on the older chain
+    fills them all. A cohort that is the subject of a hypothesis cannot be
+    sampled out of existence by an unrelated feed being busy.
+    """
+
+    equity_quote_min_liquidity_usd: float = 5_000.0
+    """A lower floor than the promotion frame's, for the same reason the
+    launchpad frame has one: this cohort is selected by a structural property
+    and not by size, so applying a fifty-thousand-dollar floor to it would keep
+    only the four tokens already known and leave the comparison with one arm.
+
+    Five thousand is still a pool, not a dust pair — measured on the live
+    cohort, it admits the long tail of equity-quoted memes while dropping the
+    pairs holding a few hundred dollars.
+    """
+
     chain_discover: bool = True
     """Read the promotion feed instead of searching by name.
 
@@ -615,6 +676,7 @@ class Settings(BaseSettings):
         "chain_watch_queries",
         "market_chains",
         "chain_watchlist",
+        "gas_quote_symbols",
         "evm_launchpad_factories",
         mode="before",
     )

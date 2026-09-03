@@ -178,7 +178,7 @@ async def describe_collection(
     # an ORM object and then ran a COUNT(*) for each one: at 1,035 tokens that
     # was 1,036 round trips, `/api/status` answered in about two seconds, and
     # every page asks for it — so the cost landed on every visit to the site.
-    from app.services.chain import CHAIN_RUN_NAME, MIGRATED, PROMOTED, WATCHLIST
+    from app.services.chain import CHAIN_RUN_NAME, EQUITY, MIGRATED, PROMOTED, WATCHLIST
 
     per_token = (
         select(func.count().label("n"))
@@ -225,6 +225,38 @@ async def describe_collection(
     promoted = by_frame.get(PROMOTED, 0)
     migrated = by_frame.get(MIGRATED, 0)
     watchlist = by_frame.get(WATCHLIST, 0)
+    equity_quoted = by_frame.get(EQUITY, 0)
+
+    # What each live token was last priced in. Read from the newest snapshot
+    # per token rather than from the token row, because the quote belongs to
+    # the pool the price came from and a token can gain a deeper pool against a
+    # different asset. Rows written before the column existed report nothing
+    # and are absent here rather than counted as `unknown` — "not recorded" is
+    # not a measurement.
+    newest = (
+        select(
+            TokenSnapshot.token_id.label("token_id"),
+            func.max(TokenSnapshot.observed_at).label("observed_at"),
+        )
+        .where(TokenSnapshot.is_demo.is_(False))
+        .group_by(TokenSnapshot.token_id)
+        .subquery()
+    )
+    quote_kinds = {
+        str(kind): int(count)
+        for kind, count in (
+            await session.execute(
+                select(TokenSnapshot.quote_kind, func.count())
+                .join(
+                    newest,
+                    (TokenSnapshot.token_id == newest.c.token_id)
+                    & (TokenSnapshot.observed_at == newest.c.observed_at),
+                )
+                .where(TokenSnapshot.quote_kind.is_not(None))
+                .group_by(TokenSnapshot.quote_kind)
+            )
+        ).all()
+    }
 
     async def count_live(model) -> int:
         return int(
@@ -246,7 +278,11 @@ async def describe_collection(
         # Everything that is neither frame, including the NULL the clobbered
         # rows were reset to. Derived by subtraction so the three always sum.
         tokens_watchlist=watchlist,
-        tokens_unrecorded_frame=token_count - promoted - migrated - watchlist,
+        tokens_equity_quoted=equity_quoted,
+        quote_kinds=quote_kinds,
+        tokens_unrecorded_frame=(
+            token_count - promoted - migrated - watchlist - equity_quoted
+        ),
         migrations_available=bool(
             settings.launchpad_migrations and settings.launchpad_api_url
         ),

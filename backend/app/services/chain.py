@@ -19,12 +19,19 @@ Three things this module refuses to do:
   else the share stays `NULL` under a named drop, because "the endpoint that
   could answer this was never called" is not the same as "there is no answer".
 
-Two populations are sampled on every configured chain, and every token records
-which frame found it and which network it lives on:
+Three populations are sampled on every configured chain, and every token
+records which frame found it and which network it lives on:
 
 - **promoted** — the promotion feed. Somebody paid to put it there.
 - **migrated** — a bonding curve that filled. Nobody paid for placement; the
   crowd bought it one trade at a time.
+- **equity-quoted** — the pool is priced in a tokenised equity rather than in
+  the chain's gas token. The only frame here defined by structure instead of
+  by attention: the other two answer with who noticed, this one answers with
+  what a pool is denominated in, which does not change with the hour. It
+  exists because the pairing hypothesis needs a population, and a meme quoted
+  against a tokenised share reaches the promotion feed only if somebody paid
+  to put it there.
 
 Both frames now run on both chains, though not from the same kind of source:
 one launchpad publishes an API, the other publishes only a contract, which is
@@ -131,6 +138,15 @@ class ChainReport:
     by_chain: dict[str, int] = field(default_factory=dict)
     """Measurements stored per chain. A run that reached one chain and not the
     other is not a smaller run, it is a run with a hole in it."""
+    equity_quoted_seen: int = 0
+    """Tokens the equity-quote frame returned this run."""
+    equity_quoted_measured: int = 0
+    """Of those, the ones that cleared the frame's own floors and were stored.
+    Zero against a non-zero `seen` is a cohort that exists and is too thin to
+    measure, which is a different statement from a chain with no such pools."""
+    equity_error: str | None = None
+    """Named apart, like the launchpad's: this frame going down costs its
+    cohort, not the discovery run that already succeeded."""
     migrations_seen: int = 0
     """Completed bonding curves the launchpad reported this run."""
     migrations_measured: int = 0
@@ -162,6 +178,9 @@ class ChainReport:
             "retained": self.retained,
             "watched": self.watched,
             "distributions_measured": self.distributions_measured,
+            "equity_quoted_seen": self.equity_quoted_seen,
+            "equity_quoted_measured": self.equity_quoted_measured,
+            "equity_error": self.equity_error,
             "migrations_seen": self.migrations_seen,
             "migrations_measured": self.migrations_measured,
             "launchpad_error": self.launchpad_error,
@@ -173,6 +192,7 @@ class ChainReport:
                 self.error is None
                 and self.launchpad_error is None
                 and self.retention_error is None
+                and self.equity_error is None
             ),
             "llm_calls": 0,
         }
@@ -180,6 +200,17 @@ class ChainReport:
 
 PROMOTED = "promotion-feed"
 MIGRATED = "launchpad-migration"
+EQUITY = "equity-quote"
+"""The fourth frame, and the only one defined by structure rather than by
+attention.
+
+The promotion feed answers with whoever paid this hour; a filled bonding curve
+answers with whoever bought. Both are about who noticed. This one asks what a
+pool is *denominated in* — a fact about the pool that does not move with the
+hour — and it exists because the pairing hypothesis needs a population that
+neither of the other two reliably reaches. A meme quoted in a tokenised share
+is only on the promotion feed if somebody paid to put it there.
+"""
 WATCHLIST = "hand-watchlist"
 """The third frame, and the one that is not a sample.
 
@@ -452,6 +483,24 @@ async def collect_chain(
     # and the discovery floors would drop it exactly when it became
     # interesting. Every such row records `selected_by="retention"` so the two
     # rules never sit in one column unlabelled.
+    # The structural frame. Everything quoted in a tokenised equity, whether or
+    # not anyone promoted it and whether or not its curve is on a launchpad
+    # this system can read. Its own budget rather than a share of the promotion
+    # feed's: the frames compete for slots, and measured on the live feed the
+    # older chain's promotions fill every one of them. A cohort that is the
+    # subject of a hypothesis cannot be sampled out of existence by an
+    # unrelated feed being busy.
+    equity: set[tuple[str, str]] = set()
+    try:
+        found = await market.equity_quoted(limit=settings.equity_quote_max_tokens)
+        report.equity_quoted_seen = len(found)
+        for item in found:
+            equity.add((item.chain, item.address))
+        candidates.extend(found)
+    except (ProviderNotConfigured, MarketCallFailed) as exc:
+        report.drop("equity_quote_frame_failed")
+        report.equity_error = f"{type(exc).__name__}: {exc}"
+
     # The named list, measured whatever the feed is doing. Same rows as any
     # other token; a different frame on the row, so no experiment can mistake a
     # list of winners for a sample.
@@ -515,11 +564,13 @@ async def collect_chain(
     budget = (
         settings.chain_max_tokens
         + (settings.launchpad_max_tokens if migrations else 0)
+        + len(equity)
         + len(retained)
         + len(watchlist)
     )
     for snapshot in list(unique.values())[:budget]:
         migration = migrations.get((snapshot.chain, snapshot.address))
+        equity_quoted = (snapshot.chain, snapshot.address) in equity
         watching = (snapshot.chain, snapshot.address) in watchlist
         keep = watching or (snapshot.chain, snapshot.address) in retained
         # The floors are per-frame because they answer different questions. On
@@ -527,17 +578,24 @@ async def collect_chain(
         # balance. A token that migrated twenty minutes ago cannot be one, and
         # the promotion floor rejects it for the opposite reason: too thin. See
         # `launchpad_min_liquidity_usd` for the run that measured this.
-        min_liquidity = (
-            settings.launchpad_min_liquidity_usd
-            if migration is not None
-            else settings.chain_min_liquidity_usd
-        )
-        min_volume = (
-            settings.launchpad_min_volume_usd
-            if migration is not None
-            else settings.chain_min_volume_usd
-        )
-        frame = "migration" if migration is not None else "promotion"
+        #
+        # The equity frame gets a third pair of floors for a third reason. It
+        # selects on a structural property and not on size, so the promotion
+        # feed's fifty-thousand-dollar floor would keep only the handful of
+        # large pools already known and leave the comparison with one arm — a
+        # cohort filtered by depth cannot answer a question about depth.
+        if migration is not None:
+            min_liquidity = settings.launchpad_min_liquidity_usd
+            min_volume = settings.launchpad_min_volume_usd
+            frame = "migration"
+        elif equity_quoted:
+            min_liquidity = settings.equity_quote_min_liquidity_usd
+            min_volume = settings.launchpad_min_volume_usd
+            frame = "equity"
+        else:
+            min_liquidity = settings.chain_min_liquidity_usd
+            min_volume = settings.chain_min_volume_usd
+            frame = "promotion"
         selected_by = (
             "watchlist"
             if watching
@@ -545,6 +603,8 @@ async def collect_chain(
             if keep
             else "migration"
             if migration is not None
+            else "equity-quote"
+            if equity_quoted
             else "discovery"
         )
 
@@ -578,7 +638,7 @@ async def collect_chain(
             # Only if this row is new. A token the feed already found keeps the
             # frame that found it — naming it by hand afterwards does not
             # change how it entered the dataset.
-            frame=WATCHLIST if watching else None,
+            frame=WATCHLIST if watching else EQUITY if equity_quoted else None,
         )
         if await _already_measured(session, token.id, observed_at):
             report.drop("already_measured_this_slot")
@@ -630,6 +690,8 @@ async def collect_chain(
         report.measured += 1
         report.snapshots_stored += 1
         report.count_chain(token.chain)
+        if equity_quoted:
+            report.equity_quoted_measured += 1
         if watching:
             report.watched += 1
         elif keep:

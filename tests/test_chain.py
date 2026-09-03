@@ -96,6 +96,7 @@ async def chain_settings(settings):
 class FakeMarket:
     def __init__(self, *snapshots: MarketSnapshot, raises: Exception | None = None) -> None:
         self._snapshots = list(snapshots)
+        self._equity_quoted: list = []
         self._raises = raises
         self.queries: list[str] = []
 
@@ -113,6 +114,10 @@ class FakeMarket:
 
     async def get_snapshot(self, address, chain="solana"):
         return next((s for s in self._snapshots if s.address == address), None)
+
+    async def equity_quoted(self, limit=30):
+        """The structural frame. Empty unless a test plants a cohort in it."""
+        return list(self._equity_quoted)
 
     async def snapshots(self, addresses, chain="solana"):
         wanted = set(addresses)

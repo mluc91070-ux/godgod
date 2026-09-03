@@ -219,6 +219,11 @@ class DatabaseObservationSource(ObservationSource):
                     "buys": row.buys,
                     "sells": row.sells,
                     "age_seconds": row.age_seconds,
+                    # A string, unlike everything above it. Detectors that read
+                    # it must treat NULL as "not recorded" rather than as a
+                    # kind: the column is newer than most of the series.
+                    "quote_kind": row.quote_kind,
+                    "quote_symbol": row.quote_symbol,
                 }
             )
         return result

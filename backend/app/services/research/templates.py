@@ -107,6 +107,17 @@ class HypothesisTemplate:
 
     features: list[str] = field(default_factory=list)
 
+    eligible: Callable[[dict[str, Any]], bool] = lambda row: True
+    """Whether a measurement belongs to this question's population at all.
+
+    Default: everything. Most templates compare "the condition held" against
+    "the condition did not hold", and every row is one or the other. A template
+    that compares two *named* groups needs a third answer — neither — or the
+    rows it did not select silently become its baseline. See the pairing
+    template, where a pool quoted in something the source never described would
+    otherwise be counted as evidence about pools quoted in the gas token.
+    """
+
     @property
     def stratum_label(self) -> str:
         return STRATIFICATIONS[self.stratify_by]
@@ -157,6 +168,35 @@ def _holder_spike(window: TokenWindow, params: DetectorParams) -> bool:
         return False
     observed = ratio(latest - previous, median(deltas))
     return observed is not None and observed >= params.holder_growth_ratio
+
+
+def _equity_quoted(window: TokenWindow, params: DetectorParams) -> bool:
+    """Is this measurement's deepest pool priced in a tokenised equity?
+
+    A standing property rather than an event, unlike every other trigger here.
+    That is a real difference and it is declared rather than hidden: the critic
+    checks independence, and it will see that the exposure of a token's rows is
+    perfectly correlated across the series. The alternative — quietly treating
+    a structural cohort as if each of its measurements were an independent
+    draw — is the thing that check exists to catch.
+    """
+    from app.providers.market import EQUITY_QUOTE
+
+    return window.latest.get("quote_kind") == EQUITY_QUOTE
+
+
+def _quoted_in_a_known_asset(row: dict[str, Any]) -> bool:
+    """Eligible only if the source described the pair as one of the two arms.
+
+    `other` (a stablecoin, a meme quoted in another meme) and `unknown` (the
+    source said nothing) are both excluded, and NULL — a row written before the
+    column existed — is excluded with them. None of the three is evidence about
+    a gas-quoted pool, and dropping them costs rows where keeping them would
+    cost the meaning of the comparison.
+    """
+    from app.providers.market import EQUITY_QUOTE, GAS_QUOTE
+
+    return row.get("quote_kind") in (EQUITY_QUOTE, GAS_QUOTE)
 
 
 def _quiet_survivor(window: TokenWindow, params: DetectorParams) -> bool:
@@ -486,6 +526,60 @@ TEMPLATES: tuple[HypothesisTemplate, ...] = (
         stratify_by="age",
         min_effect_pp=8.0,
         features=["holders", "liquidity_usd", "volume_usd"],
+    ),
+    HypothesisTemplate(
+        key="equity-quoted-market-cap-6h",
+        anomaly_type=str(AnomalyType.QUOTE_ASSET_PAIRING),
+        question=(
+            "Does pricing a meme in a tokenised share hold its valuation better than "
+            "pricing it in the gas token?"
+        ),
+        statement=(
+            "A measurement of a token whose deepest pool is quoted in a tokenised equity "
+            "is followed, six hours later, by a market cap still standing at 70% of its "
+            "level — more often than a measurement of a token in the same chain and "
+            "liquidity band whose deepest pool is quoted in the chain's own gas token."
+        ),
+        population=(
+            "Tokens on a chain that issues tokenised equities, measured with a quote "
+            "asset the source described — either an equity wrapper or the gas token. A "
+            "pool quoted in anything else, or in something the source did not name, is "
+            "in neither arm"
+        ),
+        sample_definition=(
+            "Measurements holding at least four readings in the preceding six hours, a "
+            "recorded quote asset, and a reading six hours later"
+        ),
+        timeframe="6h of history behind each measurement; the outcome read 6h after it",
+        baseline=(
+            "Measurements in the same chain and liquidity band whose deepest pool is "
+            "quoted in the gas token"
+        ),
+        expected_result=(
+            "Equity-quoted tokens hold their valuation more often, because the "
+            "denominator is an asset with an off-chain price and a redemption path "
+            "rather than one that falls with the same risk appetite the meme rises on"
+        ),
+        falsification_condition=(
+            "The gap is under 6 percentage points, points the other way — which would "
+            "mean the equity denominator transmits its own drawdowns rather than "
+            "damping the meme's — or reverses between liquidity bands"
+        ),
+        variables={
+            "independent": ["quote_kind"],
+            "dependent": ["market_cap_held"],
+            "controls": ["chain", "liquidity_stratum"],
+        },
+        trigger=_equity_quoted,
+        outcome=_market_cap_held,
+        outcome_label="market cap at least 70% of its level",
+        window_hours=6,
+        horizon_hours=6,
+        expected_direction=1,
+        stratify_by="liquidity",
+        min_effect_pp=6.0,
+        features=["quote_kind", "market_cap_usd", "liquidity_usd"],
+        eligible=_quoted_in_a_known_asset,
     ),
 )
 

@@ -19,6 +19,7 @@ Planted patterns (what each token is for):
     BUZZ   social mentions x8 at hour 10, on-chain participation flat
     FLAT   control. nothing happens. must produce zero anomalies
     OLD    seven days old, alive, low volume throughout
+    PAIR   quoted in the gas token, then in a tokenised equity from hour 14
 """
 
 from __future__ import annotations
@@ -52,6 +53,8 @@ def snapshot(
     buys: int,
     sells: int,
     age_seconds: int,
+    quote_symbol: str,
+    quote_kind: str,
 ) -> dict:
     return {
         "observed_at": iso(moment),
@@ -64,6 +67,11 @@ def snapshot(
         "buys": buys,
         "sells": sells,
         "age_seconds": age_seconds,
+        # Placeholder symbols, like every other identifier here. The *kind* is
+        # what the detector reads, and naming a real equity in a fixture would
+        # attach invented numbers to a real asset.
+        "quote_symbol": quote_symbol,
+        "quote_kind": quote_kind,
     }
 
 
@@ -81,6 +89,9 @@ def build_token(
     volume_multiplier_at: tuple[int, float] | None = None,
     liquidity_drop_at: tuple[int, float] | None = None,
     concentration_jump_at: tuple[int, float] | None = None,
+    quote_symbol: str = "DEMOGAS",
+    quote_kind: str = "gas",
+    equity_quote_from: int | None = None,
 ) -> dict:
     launch = START - timedelta(hours=launch_offset_hours)
     snapshots = []
@@ -124,6 +135,16 @@ def build_token(
                 buys=buys,
                 sells=sells,
                 age_seconds=int((moment - launch).total_seconds()),
+                quote_symbol=(
+                    "DEMOEQ"
+                    if equity_quote_from is not None and hour >= equity_quote_from
+                    else quote_symbol
+                ),
+                quote_kind=(
+                    "tokenised-equity"
+                    if equity_quote_from is not None and hour >= equity_quote_from
+                    else quote_kind
+                ),
             )
         )
 
@@ -233,6 +254,17 @@ def main() -> int:
             note="control: nothing happens. detectors must stay silent",
             base_volume=3_000.0,
             holder_growth=3,
+        ),
+        build_token(
+            "PAIR",
+            "PAIR",
+            note=(
+                "planted: the deepest pool changes denomination at hour 14, gas token "
+                "to tokenised equity. the pairing detector must fire once and only once"
+            ),
+            base_volume=7_000.0,
+            holder_growth=6,
+            equity_quote_from=14,
         ),
         build_token(
             "OLD",

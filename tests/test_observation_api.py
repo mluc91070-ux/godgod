@@ -33,7 +33,7 @@ async def test_admin_can_run_a_cycle_and_the_report_says_no_model_ran(client, ad
     report = response.json()
     assert report["llm_calls"] == 0
     assert report["cycles"] == 1
-    assert report["subjects_examined"] == 6
+    assert report["subjects_examined"] == 7
     assert report["as_of"]
     assert isinstance(report["dropped"], dict)
 
@@ -76,7 +76,7 @@ async def test_status_describes_the_observation_stage(client):
     assert pipeline["source"] == "fixture-timeseries"
     assert pipeline["source_is_demo"] is True
     assert pipeline["llm_in_loop"] is False
-    assert len(pipeline["detectors"]) == 10
+    assert len(pipeline["detectors"]) == 11
     assert "volume-acceleration-v1" in pipeline["detectors"]
 
 

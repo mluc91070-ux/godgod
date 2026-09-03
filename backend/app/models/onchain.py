@@ -93,6 +93,21 @@ class TokenSnapshot(Entity):
     liquidity_change_pct: Mapped[float | None] = mapped_column(Float)
     holder_change_pct: Mapped[float | None] = mapped_column(Float)
 
+    quote_symbol: Mapped[str | None] = mapped_column(String(32))
+    quote_address: Mapped[str | None] = mapped_column(String(64))
+    quote_kind: Mapped[str | None] = mapped_column(String(24), index=True)
+    """What the deepest pool was quoted in when this reading was taken:
+    `tokenised-equity`, `gas`, `other`, or `unknown`.
+
+    Stored per measurement rather than on the token, because it is a property
+    of the pool the price came from and a token can gain a deeper pool against
+    a different asset. Reading it off the token would rewrite the exposure of
+    every past row the moment liquidity moved.
+
+    NULL on every row written before the column existed. That is "not
+    recorded", and it is not `unknown` either — `unknown` means this system
+    looked and the source said nothing."""
+
     source: Mapped[str | None] = mapped_column(String(128))
     selected_by: Mapped[str | None] = mapped_column(String(32))
     """Why this measurement was taken: `discovery`, `migration` or `retention`.

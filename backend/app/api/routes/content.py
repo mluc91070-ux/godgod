@@ -7,14 +7,23 @@ and it refuses: V1 never posts automatically.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import AdminDep, PageDep, SessionDep, SettingsDep, build_page, count_query
-from app.core.enums import DraftStatus
-from app.models import AttentionSnapshot, ContentDraft, Token
+from app.core.enums import AnomalyType, DraftStatus
+from app.models import AttentionSnapshot, ContentDraft, Token, TokenSnapshot
 from app.models.base import utcnow
+from app.providers.market import EQUITY_QUOTE
 from app.schemas.common import Page
-from app.schemas.content import AttentionOut, DraftDecision, DraftOut, TokenOut
+from app.schemas.content import (
+    AttentionOut,
+    DraftDecision,
+    DraftOut,
+    PairingOut,
+    PairingSummary,
+    TokenOut,
+)
+from app.services.research.templates import TEMPLATES_BY_ANOMALY
 
 router = APIRouter(prefix="/api", tags=["content"])
 
@@ -136,6 +145,85 @@ async def list_attention(
     total = await count_query(session, stmt)
     rows = (await session.scalars(stmt.limit(page.limit).offset(page.offset))).all()
     return build_page(rows, AttentionOut, total, page, settings)
+
+
+@router.get("/pairings", response_model=PairingSummary)
+async def list_pairings(session: SessionDep, settings: SettingsDep) -> PairingSummary:
+    """What the measured tokens are priced in, and the equity-quoted cohort.
+
+    A price is a ratio, and this is the denominator. A meme quoted in a
+    tokenised share of a company is not the same instrument as a meme quoted
+    in the chain's gas token: its chart is not separable from that company's
+    without the pair data, and the depth on the equity side is a constraint on
+    the meme side.
+
+    Nothing here is a result. It is the population of one hypothesis, shown
+    before that hypothesis has an answer, so the two arms can be seen to exist
+    rather than asserted to. The comparison itself is run by the research cycle
+    and published with its own verdict.
+
+    Read from the newest measurement of each token, never from the token row:
+    the quote belongs to the pool the price came from, and a token that gains a
+    deeper pool against a different asset has genuinely changed denomination.
+    A token whose rows all predate the column reports nothing and is absent —
+    "not recorded" is not a kind.
+    """
+    newest = (
+        select(
+            TokenSnapshot.token_id.label("token_id"),
+            func.max(TokenSnapshot.observed_at).label("observed_at"),
+        )
+        .where(TokenSnapshot.is_demo.is_(False), TokenSnapshot.quote_kind.is_not(None))
+        .group_by(TokenSnapshot.token_id)
+        .subquery()
+    )
+    rows = (
+        await session.execute(
+            select(Token, TokenSnapshot)
+            .join(TokenSnapshot, TokenSnapshot.token_id == Token.id)
+            .join(
+                newest,
+                (TokenSnapshot.token_id == newest.c.token_id)
+                & (TokenSnapshot.observed_at == newest.c.observed_at),
+            )
+            .where(Token.is_demo.is_(False))
+        )
+    ).all()
+
+    counts: dict[str, int] = {}
+    chains: dict[str, dict[str, int]] = {}
+    equity: list[PairingOut] = []
+    for token, snapshot in rows:
+        kind = str(snapshot.quote_kind)
+        counts[kind] = counts.get(kind, 0) + 1
+        per_chain = chains.setdefault(token.chain or "unrecorded", {})
+        per_chain[kind] = per_chain.get(kind, 0) + 1
+        if kind != EQUITY_QUOTE:
+            continue
+        equity.append(
+            PairingOut(
+                address=token.address,
+                chain=token.chain,
+                symbol=token.symbol,
+                name=token.name,
+                observed_at=snapshot.observed_at,
+                quote_symbol=snapshot.quote_symbol,
+                quote_kind=kind,
+                market_cap_usd=snapshot.market_cap_usd,
+                liquidity_usd=snapshot.liquidity_usd,
+                volume_usd=snapshot.volume_usd,
+                source=token.source,
+            )
+        )
+    equity.sort(key=lambda item: item.liquidity_usd or 0.0, reverse=True)
+
+    return PairingSummary(
+        counts=counts,
+        chains=chains,
+        equity_quoted=equity,
+        marker=settings.equity_quote_marker,
+        hypothesis_key=TEMPLATES_BY_ANOMALY[str(AnomalyType.QUOTE_ASSET_PAIRING)].key,
+    )
 
 
 @router.get("/tokens/{address}", response_model=TokenOut)

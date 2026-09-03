@@ -96,7 +96,7 @@ async def main() -> int:
 
         snapshots = await session.scalar(select(func.count()).select_from(TokenSnapshot))
         failures += not check(
-            "measurements ingested exactly once", snapshots == 144, f"{snapshots} rows"
+            "measurements ingested exactly once", snapshots == 168, f"{snapshots} rows"
         )
 
         runs = (
@@ -117,7 +117,7 @@ async def main() -> int:
             f"{dropped} dropped vs {created} recorded",
         )
 
-        failures += not check("detector roster complete", len(DETECTOR_NAMES) == 10)
+        failures += not check("detector roster complete", len(DETECTOR_NAMES) == 11)
 
     await dispose_engine()
     print()
