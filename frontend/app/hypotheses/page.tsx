@@ -245,7 +245,7 @@ export default async function HypothesesPage({ searchParams }: Props) {
                       #{String(hypothesis.seq ?? 0).padStart(6, "0")}
                     </span>
                     <span>{hypothesis.question}</span>
-                    <span className="flex justify-end">
+                    <span className="flex justify-start sm:justify-end">
                       <Tag value={hypothesis.status} />
                     </span>
                   </div>

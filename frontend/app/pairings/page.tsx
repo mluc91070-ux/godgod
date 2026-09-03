@@ -42,7 +42,7 @@ export default async function PairingsPage() {
 
   if (!result.ok) {
     return (
-      <div className="mx-auto max-w-4xl px-5 py-16">
+      <div className="mx-auto max-w-4xl">
         <Label>pairings</Label>
         <div className="mt-6">
           <Nothing
@@ -75,7 +75,7 @@ export default async function PairingsPage() {
     .sort((a, b) => b.total - a.total);
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-16">
+    <div className="mx-auto max-w-4xl">
       <Label>pairings</Label>
       <h1 className="mt-2 text-2xl text-bone">what each pool is priced in</h1>
 
@@ -217,6 +217,6 @@ export default async function PairingsPage() {
           </Section>
         </>
       )}
-    </main>
+    </div>
   );
 }

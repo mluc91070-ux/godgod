@@ -48,6 +48,8 @@ cd backend && .venv/Scripts/python -m alembic revision --autogenerate -m "msg"
 # frontend
 cd frontend && npm run dev
 cd frontend && npm run typecheck && npm run build
+cd frontend && npm run ux-audit http://127.0.0.1:3000   # every route at 4 widths
+#   needs a served build and `npx playwright install chromium` once
 ```
 
 On macOS/Linux use `backend/.venv/bin/python`.
@@ -562,6 +564,18 @@ rules below are what governs it if it is ever wired up.
   and drew fog, not a sphere; the second aliased its seed hash against the
   golden angle and drew a spiral. Both were obvious in a still image and
   invisible in the code.
+- **Measure the layout; do not photograph it.** `npm run ux-audit` walks every
+  route at 320, 390, 768 and 1440 in a real browser and reports any element
+  whose right edge passes the viewport. It exists because a screenshot lied:
+  Chrome's CLI on Windows will not open a window under about 500px, so asking
+  for 390 lays the page out at 500 and *crops the capture*. Every page came
+  back with its right-hand side sheared off and looked exactly like an overflow
+  bug. The give-away was that the text wrapped at identical words in the 390
+  and 500 shots — same wrap points mean same layout width, so the narrow one
+  was never rendered narrow. Nothing was wrong with the CSS.
+- `body` carries `overflow-x-hidden`, which means an overflow does not scroll,
+  it **clips** — content past the edge is unreachable rather than merely
+  awkward. That is why the audit is automated rather than eyeballed.
 
 ## Phases
 

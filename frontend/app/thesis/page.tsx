@@ -52,7 +52,7 @@ export default async function ThesisPage() {
   const coverage = result.ok ? result.data : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-16">
+    <div className="mx-auto max-w-4xl">
       <Label>theses</Label>
       <h1 className="mt-2 text-2xl text-bone">arguments, posed before the answer</h1>
 
@@ -187,6 +187,6 @@ export default async function ThesisPage() {
           </article>
         );
       })}
-    </main>
+    </div>
   );
 }
