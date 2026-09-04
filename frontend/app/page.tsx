@@ -3,6 +3,7 @@ import Link from "next/link";
 import Hero from "@/components/Hero";
 import { Disconnected } from "@/components/ui";
 import { api, clock, fmtInt } from "@/lib/api";
+import { THESES } from "@/lib/thesis";
 import type { Live, Observation, Page, TokenInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +80,7 @@ export default async function Home() {
               href="/thesis"
               className="inline-block border border-line px-5 py-2 font-display text-[10px] uppercase tracking-[0.25em] text-muted transition-colors hover:border-bone hover:text-bone"
             >
-              read the thesis
+              read the theses
             </Link>
           </div>
 
@@ -129,10 +130,10 @@ export default async function Home() {
             href="/thesis"
             className="inline-block border border-line px-5 py-2 font-display text-[10px] uppercase tracking-[0.25em] text-muted transition-colors hover:border-bone hover:text-bone"
           >
-            read the thesis
+            read the theses
           </Link>
           <p className="mt-2 text-[10px] text-grey">
-            an argument posed before the data existed to settle it
+            {THESES.length} arguments posed before the data existed to settle them
           </p>
         </div>
 

@@ -31,19 +31,149 @@ export type ThesisLink = {
   fields: string[];
 };
 
+/**
+ * The event that made someone write the thesis down, with its numbers.
+ *
+ * This is the one place in this file that carries figures, so it carries their
+ * provenance with them. They were read by hand, from the public pair index, at
+ * the stated minute — they are not collector output, they are not graded, and
+ * nothing re-reads them. A number that cannot be refreshed must say when it was
+ * true, or it becomes a claim about now.
+ *
+ * `notClaimed` is not a disclaimer bolted on afterwards. A triggering event is
+ * where a thesis is most likely to smuggle in a conclusion, so the sentence
+ * naming what these figures do *not* establish is stored beside them and
+ * renders with them.
+ */
+export type ThesisTrigger = {
+  event: string;
+  measuredAt: string;
+  source: string;
+  rows: { label: string; value: string; note: string }[];
+  notClaimed: string;
+};
+
 export type Thesis = {
   key: string;
   title: string;
   posedBy: string;
   posedAt: string;
+  /** The operator's own number for it, when it was posed publicly first. Not an
+   *  internal id: nothing in the database is keyed by this. */
+  posedAs?: string;
   claim: string;
   argument: string[];
+  trigger?: ThesisTrigger;
   chain: ThesisLink[];
   falsification: string;
   confounds: { name: string; detail: string }[];
 };
 
+/** Newest first. A thesis is dated by when it was committed to, so the order is
+ *  the order they were posed — not an order of confidence. */
 export const THESES: Thesis[] = [
+  {
+    key: "tokenisation-retail-narrative",
+    title:
+      "Does putting tokenised equities next to memes produce longer-lived narratives, or only more speculation?",
+    posedBy: "operator",
+    posedAt: "2026-09-04",
+    posedAs: "#0011",
+    claim:
+      "Robinhood Chain puts tokenised stocks in the same venue as memes, trading against each other, 24/7. The claim is that this chain — tokenisation, retail arriving, social coordination, liquidity, narrative — produces a different kind of meme than a purely speculative venue does. That it produces more speculation is not in question.",
+    argument: [
+      "Tokenised equities are not another asset listing. They put a share and a joke about that share in the same order book, at the same hours, priced in each other. The boundary between “financial asset” and “meme” is thinner here than anywhere this system has read before.",
+      "GameStop showed what happens when retail attention becomes a social movement rather than a trade. The argument is that a venue combining retail finance, a financial identity people already have, and onchain social coordination can reproduce that — not the price action, the coordination.",
+      "The mechanism claimed is a chain: tokenisation brings people in, arriving people coordinate, coordination brings liquidity, and liquidity is what a narrative needs in order to last longer than a session. On a venue optimised for short-horizon extraction, the same narrative gets sold into before it exists.",
+      "The honest form of the question is not whether this creates speculation. It obviously does, and the numbers below are what speculation looks like. It is whether anything survives the speculation — whether a meme born beside a tokenised stock is still there in a month, or whether the equity quote is a costume on the same one-day lifecycle.",
+    ],
+    trigger: {
+      event:
+        "A meme took the ticker of a listed cinema chain, and inside a day the tokenised shares of that company had their deepest market priced in the meme rather than in a dollar.",
+      measuredAt: "2026-09-04, read once by hand",
+      source:
+        "the public pair index, queried directly — not this system's collector, which has not run against these tokens",
+      rows: [
+        {
+          label: "A Meme Coin · MEME · 0x385F…1e18",
+          value: "$69.8M market cap · $162.4M traded in 24h · +315%",
+          note: "all 30 of its pools were opened the same day it was measured",
+        },
+        {
+          label: "AMC Entertainment • Robinhood Token · 0x05a3…222B",
+          value: "$4.05M onchain · $234.7M traded in 24h · 129,660 buys / 118,629 sells",
+          note: "the value of the tokenised shares that exist on this chain, at $2.73 each",
+        },
+        {
+          label: "the deepest market for the tokenised equity",
+          value: "AMC/MEME · $3.10M liquidity · $72.6M in 24h · opened the evening before",
+          note: "the share is priced in the joke, not the other way round",
+        },
+      ],
+      notClaimed:
+        "These figures do not say a meme passed a listed company's market capitalisation. $4.05M is the tokenised float on one chain, not the company: this system reads pools, it does not read equity markets, and it has no source for a listed market cap — so that comparison is not made here. What is measured is the ratio between the meme and the tokenised float, and which of the two prices the other.",
+    },
+    chain: [
+      {
+        step: "tokenisation",
+        detail:
+          "that tokenised equities are actually there and actually quote other tokens — read from the quote side of the deepest pool, never from a symbol, which anyone can mint",
+        fields: ["quote_kind", "quote_symbol"],
+      },
+      {
+        step: "retail onboarding",
+        detail:
+          "new participants arriving rather than the same ones trading more — needs accounts, and this system reads pools",
+        fields: ["holders"],
+      },
+      {
+        step: "social coordination",
+        detail:
+          "attention converging on a token before its price does. No snapshot column carries this, and no onchain count is a substitute: buys and sells measure trading, which is the thing coordination is supposed to explain",
+        fields: [],
+      },
+      {
+        step: "liquidity",
+        detail: "whether depth arrives and then stays, which is the part a narrative needs",
+        fields: ["liquidity_usd", "volume_usd"],
+      },
+      {
+        step: "new meme narratives",
+        detail:
+          "whether tokens born in this venue are still worth something later — the only link that answers the actual question",
+        fields: ["market_cap_usd", "age_seconds", "liquidity_usd"],
+      },
+    ],
+    falsification:
+      "Take tokens first seen inside the equity-quote frame and tokens first seen inside the promotion feed, hold them to the same liquidity band and the same token-age band, and measure how much of the market cap and the depth is still there at a fixed horizon. If the survival gap is under the effect threshold, or points the other way, the chain above is wrong at its last link — and the last link is the claim. Onboarding numbers, volume records and a day like the one below would not rescue it, because none of them is survival.",
+    confounds: [
+      {
+        name: "the venue is younger than the claim",
+        detail:
+          "Its mainnet opened on 2026-07-01 and this system has been measuring since 2026-08-26. “Longer-lived” is a statement about weeks. A horizon longer than the history cannot be observed, and quietly shortening it answers a different question under the original wording.",
+      },
+      {
+        name: "the meme borrows the company's ticker",
+        detail:
+          "The token that set this off is called AMC, and so is the tokenised share. A pool cannot tell attention paid to the stock apart from attention paid to the joke about the stock, so a ticker collision would look exactly like the social coordination this thesis needs.",
+      },
+      {
+        name: "onboarding is invisible from a pool",
+        detail:
+          "New people, existing people trading more, and one person with forty wallets produce the same rows. Nothing in this deployment distinguishes them, so the second link cannot be measured here — it is published as untestable rather than proxied by transaction counts.",
+      },
+      {
+        name: "the trigger is hours old",
+        detail:
+          "Every figure under “what set it off” was read on the day it happened, at the top of the move. A day is the unit this thesis is arguing against, so it is evidence that something occurred and no evidence at all for the thing being claimed.",
+      },
+      {
+        name: "the token set is a business decision",
+        detail:
+          "Which equities get tokenised is chosen by one company. The population is therefore not a sample of anything, and a result about it is partly a result about that listing policy — which is not what the thesis says it is measuring.",
+      },
+    ],
+  },
   {
     key: "chain-structure-runner-duration",
     title:

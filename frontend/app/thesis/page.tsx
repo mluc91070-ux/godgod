@@ -87,6 +87,9 @@ export default async function ThesisPage() {
             <div className="flex flex-wrap items-baseline gap-x-4 text-[10px] uppercase tracking-widest text-muted">
               <span>posed by {thesis.posedBy}</span>
               <span>{thesis.posedAt}</span>
+              {thesis.posedAs ? (
+                <span className="text-grey">posed publicly as {thesis.posedAs}</span>
+              ) : null}
               {coverage === null ? (
                 <span className="text-grey">not graded</span>
               ) : blocked.length > 0 ? (
@@ -110,6 +113,38 @@ export default async function ThesisPage() {
                 ))}
               </div>
             </Section>
+
+            {/* The figures live here and nowhere else on the page, because this
+                is the only part of a thesis that carries numbers — and they are
+                hand-read, from outside this system, at a stated minute. So they
+                are stamped with when and where, and the sentence saying what
+                they do not establish renders with them rather than under a
+                footnote. An event is where an argument is most tempted to
+                smuggle in its conclusion. */}
+            {thesis.trigger ? (
+              <Section
+                title="what set it off"
+                note={`${thesis.trigger.measuredAt} · not collector output`}
+              >
+                <p className="max-w-2xl text-muted">{thesis.trigger.event}</p>
+                <ul className="mt-4 divide-y divide-line border-y border-line">
+                  {thesis.trigger.rows.map((row) => (
+                    <li key={row.label} className="py-3">
+                      <div className="font-mono text-[11px] text-grey">{row.label}</div>
+                      <div className="mt-1 text-bone">{row.value}</div>
+                      <p className="mt-1 max-w-2xl text-[11px] text-muted">{row.note}</p>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-[10px] uppercase tracking-widest text-grey">
+                  source: {thesis.trigger.source}
+                </p>
+                <p className="mt-4 max-w-2xl border border-line p-4 text-[11px] text-muted">
+                  <span className="text-bone">not claimed. </span>
+                  {thesis.trigger.notClaimed}
+                </p>
+              </Section>
+            ) : null}
 
             <Section
               title="the chain of causation"
@@ -150,10 +185,11 @@ export default async function ThesisPage() {
               {blocked.length > 0 ? (
                 <p className="mt-4 max-w-2xl text-[11px] text-muted">
                   {blocked.map((row) => row.link.step).join(" and ")} cannot be measured by this
-                  deployment. A public node cannot count holders — that needs an indexer — so
-                  the field is NULL on every live row rather than estimated, and the links that
-                  depend on it have nothing to read. The thesis is published with the gap rather
-                  than without it.
+                  deployment — either because the column is NULL on every live row, or because
+                  no column carries the thing at all. A public node cannot count holders without
+                  an indexer, so that field is stored empty rather than estimated, and a step
+                  with no field named beside it is one nothing here can stand in for. The thesis
+                  is published with the gap rather than without it.
                 </p>
               ) : null}
             </Section>
